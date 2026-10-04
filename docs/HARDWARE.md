@@ -103,7 +103,12 @@ stationary consistency over about 22 seconds. It does not validate angle
 measurements during movement, long-term drift, or camera/IMU alignment. The
 same run measured 1.373 g acceleration magnitude, still uncalibrated.
 
-Next perform a safe, approximate 90-degree rotation using
-src/imu/rotation_test.py. Record which physical direction was turned, whether
-the IMU remained level, and any cable or mounting constraints. The result is
-sensor-axis relative rotation only; acceleration calibration remains separate.
+The IMU is now taped beside the camera on the moving head; the user confirmed
+no relative shifting. Mounted opposite turns produced X/Y/Z angles
+(+12.37, +94.27, -0.56) and (-12.49, -101.11, +1.33) degrees. Pan therefore
+projects mainly onto Y in this mounting, with an X component. Do not assume
+Y alone is an exact camera yaw axis. A 15-second turn/return test ended at
+(+0.80, +0.61, +0.86) degrees, with 278 samples and 54.3 ms median spacing.
+These manual tests support short-term consistency, not absolute angle accuracy.
+See the IMU plan for full conditions and limitations; acceleration remains
+uncalibrated. The next experiment is documented in COMBINED_CAPTURE.md.

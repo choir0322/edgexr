@@ -1,5 +1,10 @@
 # Benchmarking protocol
 
+For the new simultaneous 720p/30 fps camera and raw IMU recording experiment,
+see [COMBINED_CAPTURE.md](COMBINED_CAPTURE.md). Its stored video, disk writes,
+and concurrent sensor polling make it a different workload from the camera-only
+120 fps baseline below. Host receipt timestamps are not exposure timestamps.
+
 ## Principle
 
 A number without conditions is not a result. Every EdgeXR benchmark must say

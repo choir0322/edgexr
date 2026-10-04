@@ -1,5 +1,10 @@
 # EdgeXR
 
+The next hardware experiment is [camera and IMU recording](docs/COMBINED_CAPTURE.md).
+It saves local video and timestamp logs at 720p/30 fps using existing dependencies.
+Mounted IMU turn/return results are recorded in the active IMU plan; camera/IMU
+synchronization and camera-axis calibration remain unverified.
+
 EdgeXR is a learning-first spatial-perception and performance project for a
 Raspberry Pi 4. The intended system will use a USB global-shutter OV9281 camera,
 an IMU from the SunFounder AI Fusion Lab Kit, object detection/tracking, and

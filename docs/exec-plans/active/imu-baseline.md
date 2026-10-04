@@ -22,8 +22,7 @@ but still pass through driver conversion. The vendor calibration file under
 - [x] 2026-10-04: Add an independent gyro-offset verification mode and test.
 - [x] 2026-10-04: Run the two-window verification on the Pi and review the residual.
 - [x] 2026-10-04: Add a read-only timestamped rotation test and unit tests.
-- [ ] Run a controlled rotation on the Pi and compare the reported angle with
-  the approximate physical turn.
+- [x] 2026-10-04: Review opposite hand turns and mounted return-to-start test.
 
 ## Plan of work
 
@@ -113,7 +112,28 @@ still uncalibrated.
 
 ## Outcomes and retrospective
 
-The baseline and independent stationary verification ran on the Pi. The
-short-term gyro offset was stable, but acceleration remains uncalibrated and
-the dynamic response is unknown. The timestamped rotation test and local
-tests are ready; the Pi rotation run and review remain pending.
+Mounted beside the camera, the IMU reportedly does not shift relative to it.
+On the Pi 4, the mounted stillness test's second-window corrected gyro mean
+was (-0.028, -0.049, -0.069) deg/s. Acceleration magnitude was 1.253 g and
+remains uncalibrated. Opposite approximate 90-degree whole-base turns produced:
+
+| Run | Duration | Samples | Integrated X/Y/Z (degrees) | Median/max interval (ms) |
+| --- | --- | --- | --- | --- |
+| First, assumed counterclockwise | 5 s | 94 | +12.37 / +94.27 / -0.56 | 54.3 / 54.8 |
+| Second, assumed clockwise | 5 s | 94 | -12.49 / -101.11 / +1.33 | 54.3 / 54.7 |
+| Turn and return to start | 15 s | 278 | +0.80 / +0.61 / +0.86 | 54.3 / 56.6 |
+
+The return run used stationary offset (-4.42, +14.94, -2.81) deg/s, estimated
+over 10 seconds. Results were supplied by the user on 2026-10-04. Turn labels
+assume the requested sequence; precise angles were not measured. Previously
+reported OS was Bookworm aarch64, kernel 6.12.47+rpt-rpi-v8; library version,
+servo power state, temperature and warm-up were not recorded for these runs.
+Camera acquisition was not part of this experiment; scene/lighting are not
+applicable. No raw logs were saved by the rotation tool.
+
+Pan projects mainly onto mounted Y with a repeatable X component. Fixed axis
+misalignment is a plausible explanation, not an established camera transform.
+Sub-degree return residuals support short-term consistency, not sub-degree
+accuracy: opposite errors can cancel, and manual endpoint error is unknown.
+Initial gyro acceptance checks are met. Acceleration calibration, long-term
+drift and camera alignment remain open. Next: combined-capture.md.
