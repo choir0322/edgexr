@@ -59,3 +59,33 @@ then rotate it slowly about one axis at a time. Label its board orientation in a
 photo or diagram stored outside Git if needed. Do not combine IMU data with
 camera tracking until the raw readings, units, sample rate, and coordinate
 convention are understood.
+
+## First IMU observations
+
+The separate SunFounder 10-axis IMU module is now connected through the Fusion
+HAT. The Pi's I2C scan gained three sensor addresses (0x1c, 0x36, 0x76), and
+the SunFounder example produced changing acceleration, gyro, magnetometer,
+and pressure readings when the board moved. The board has an SH3001 motion
+sensor, QMC6310 magnetometer, and SPL06_001 barometer.
+
+The vendor calibration completed, but it saved identical bias and scale arrays
+for all three sensors. Its shared mutable default arrays and six-face gyro
+scaling make that output unreliable. A stationary vendor-calibrated reading
+had about 3.3 g total acceleration and about 62 degrees/second on gyro Y.
+Do not use the saved calibration in EdgeXR. Its file is under
+/root/.config/sunfounder-imu-config.json on the tested Pi; leave it untouched
+for now.
+
+SunFounder's accel_gyro.read_raw() bypasses the saved calibration but still
+converts register values to g and degrees/second. On one stationary two-face
+check, Z acceleration changed from +1.269 g to -0.726 g, a nearly 2 g
+difference, while gyro readings stayed near (-4.3, +15, -2.7) degrees/second.
+The Z midpoint is about +0.271 g, suggesting a persistent offset, but two
+faces are insufficient for full three-axis calibration. The driver's SH3001
+temperature decoding appears to use the wrong byte order; temperature is
+excluded from the IMU baseline until verified.
+
+Next run src/imu/raw_baseline.py while the board is motionless. Record board
+orientation, surface, duration, sample count, and whether servos were active.
+Review the result before applying any corrections or integrating with camera
+tracking.

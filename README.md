@@ -79,3 +79,26 @@ PYTHONPATH=src python3 -m unittest discover -s tests/unit -v
 
 The Pi must still run this new tool, and the sample image needs visual review.
 After that, verify the exact IMU hardware before camera/IMU integration.
+
+## IMU raw baseline
+
+The SunFounder 10-axis IMU is connected and responds to motion, but its vendor
+calibration produced invalid stationary values. Do not use that calibration
+for camera-motion estimates. The first EdgeXR IMU tool only reads SH3001
+acceleration and gyro data; it does not change the vendor configuration.
+
+After reviewing and pushing this change, pull it on the Pi. Place the IMU
+motionless on a stable, nonmetallic surface, and run:
+
+```bash
+cd ~/projects/edgexr
+git pull --ff-only
+sudo python3 src/imu/raw_baseline.py --seconds 10
+```
+
+The tool reports axis means and variation, acceleration magnitude in g, and
+the stationary gyro mean as an **offset estimate**. It does not apply that
+offset yet. SunFounder's read_raw() skips its saved user calibration but still
+converts sensor registers, so this is a driver-level baseline rather than a
+direct register dump. Record the exact board orientation and keep the board
+still throughout the run. See docs/exec-plans/active/imu-baseline.md.
