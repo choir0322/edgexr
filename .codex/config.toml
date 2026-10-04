@@ -1,0 +1,5 @@
+# EdgeXR project-local Codex configuration.
+#
+# Intentionally kept minimal: repository behavior belongs in AGENTS.md, where
+# both people and coding agents can review it. Add only documented, project-wide
+# settings here after the project directory is trusted by the local Codex client.

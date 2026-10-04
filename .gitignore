@@ -1,0 +1,42 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# System and editor files
+.DS_Store
+Thumbs.db
+.vscode/*.log
+!.vscode/extensions.json
+!.vscode/settings.json
+
+# Camera captures and generated media
+captures/
+recordings/
+*.mp4
+*.avi
+*.mkv
+*.mov
+
+# Large or generated model artifacts
+models/*.onnx
+models/*.tflite
+models/*.pt
+models/*.pth
+models/*.engine
+
+# Generated benchmark data; commit concise summaries intentionally.
+benchmarks/results/raw/
+benchmarks/results/*.jsonl
+benchmarks/results/*.log
