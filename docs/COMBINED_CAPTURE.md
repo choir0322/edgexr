@@ -1,5 +1,28 @@
 # First camera and IMU recording
 
+## Offline analysis
+
+After copying or recording a run, use the standard-library analyzer:
+
+```bash
+python3 src/recording/analyze_capture.py recordings/combined-motion-01 --baseline-seconds 1
+```
+
+It prints JSON and does not change the recording. The baseline is the specified
+number of seconds after the RECORDING cue: the board must actually be still.
+Review per-second rates and baseline spread before interpreting integrated
+angles. A three-second baseline was unsuitable for the first motion run because
+the movement started early. The first-second mean is compared with the last
+two seconds, not assumed to remain correct indefinitely. Axis integrals are
+appropriate for this approximate single-axis experiment, not general 3D pose.
+
+Initial results are in COMBINED_RESULTS.md. Next repeat with a marked base edge
+and exact return direction. Keep still for 3 seconds after the cue; turn over
+3 seconds, hold 2 seconds, return over 3 seconds, then remain still. Use output
+recordings/combined-motion-02 and record the actual physical direction, because
+the first motion's gyro sign is opposite the earlier assumed direction label.
+Check the lens cap is off and the mount remains fixed. Do not force servo gears.
+
 This is a new workload: 1280x720 MJPEG at a requested 30 fps, video packet
 copy, frame decode/logging, and concurrent raw IMU reads. Do not compare its
 throughput directly to the earlier 120 fps camera-only decode benchmark.

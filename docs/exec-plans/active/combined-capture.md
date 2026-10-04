@@ -21,7 +21,11 @@ Use existing FFmpeg and SunFounder installations, plus Python standard library.
 - [x] 2026-10-04: Implement recorder; all 16 unit tests pass. Synthetic MJPEG
   smoke run saved 34 frame records and 21 fake IMU samples; saved video decoded
   successfully. This is a Mac functional check, not a Pi performance result.
-- [ ] Run on Pi and review usable video, logs, overlap, and timing gaps.
+- [x] 2026-10-04: Inspect both Pi recordings, full CSVs and video decode; user
+  confirmed playback. See docs/COMBINED_RESULTS.md for conditions and metrics.
+- [x] 2026-10-04: Add offline timing and gyro integration analysis; 19 tests pass.
+- [ ] Repeat motion with marked starting direction: first combined return
+  left approximately +13.15 degrees on Y; cause remains unresolved.
 
 ## Plan of work
 
@@ -56,7 +60,8 @@ Local tests check timestamp parsing, finite arguments, common clock conversion,
 and FFmpeg output configuration. Pi acceptance requires successful completion,
 nonzero frames and IMU samples, playable video, increasing timestamps and
 coverage of the motion window. Inspect ffmpeg.log for negotiated mode and errors.
-Hardware performance and playback remain unverified until the user runs it.
+Both hardware recordings decoded successfully and the user confirmed playback.
+Recording acceptance is met; this does not establish motion accuracy.
 
 ## Surprises and discoveries
 
@@ -76,6 +81,11 @@ camera-IMU time offset. Packet video and decoded logs may differ at shutdown.
 
 ## Outcomes and retrospective
 
-Local tests and a real FFmpeg synthetic-input smoke test passed, including
-decoding the saved video. Pi experiment remains pending. A successful recording
-alone will not demonstrate sensor fusion accuracy or synchronized capture.
+Both Pi recordings have increasing timestamps, approximately 30 fps camera PTS
+after the first interval and 19 Hz IMU polling. Full logs show no large later
+gaps. The first motion starts earlier than the proposed 3-second still period,
+so analysis uses the first second after the cue and labels that assumption.
+The recorded return is about +13.15 degrees on Y; plausible stationary baseline
+choices leave 11.60 to 14.34 degrees. Mark and repeat the physical endpoint
+before treating the sensor-axis integral as a reliable return measurement.
+No camera/exposure synchronization or exact camera-axis transform is claimed.
