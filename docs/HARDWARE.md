@@ -85,7 +85,16 @@ faces are insufficient for full three-axis calibration. The driver's SH3001
 temperature decoding appears to use the wrong byte order; temperature is
 excluded from the IMU baseline until verified.
 
-Next run src/imu/raw_baseline.py while the board is motionless. Record board
-orientation, surface, duration, sample count, and whether servos were active.
-Review the result before applying any corrections or integrating with camera
-tracking.
+The first 10-second raw baseline on the Pi returned 98 samples (9.8 samples/s,
+limited by the tool's 0.1-second interval). Acceleration mean was
+(-0.519, -0.010, +1.273) g, magnitude 1.375 g with 0.003 g standard
+deviation. Gyro mean was (-4.186, +15.156, -2.736) degrees/second with
+standard deviations (0.184, 0.195, 0.111) degrees/second. The board was
+reported stationary and flat; exact face, surface, servo state, and warm-up
+time were not recorded. The low spread shows stability during this run, not
+absolute accuracy.
+
+Next run the independent two-window gyro-offset check with --verify-gyro,
+keeping the board still throughout. Record the missing conditions. Review its
+residual before applying any correction to live data or integrating with
+camera tracking. Acceleration calibration remains separate.

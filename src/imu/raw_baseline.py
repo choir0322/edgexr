@@ -86,13 +86,55 @@ def format_report(result):
     ])
 
 
+def validate_gyro_offset(baseline, verification):
+    """Apply one window's gyro mean only to a separate window's mean."""
+    offset = baseline["gyro_mean_dps"]
+    raw_mean = verification["gyro_mean_dps"]
+    return {
+        "offset_dps": offset,
+        "verification_raw_mean_dps": raw_mean,
+        "verification_corrected_mean_dps": tuple(
+            raw - bias for raw, bias in zip(raw_mean, offset)
+        ),
+        # Subtracting a constant changes the mean, not the spread.
+        "verification_corrected_std_dps": verification["gyro_std_dps"],
+    }
+
+
+def format_gyro_validation(result):
+    def axes(values):
+        return ", ".join(f"{name}={value:+.3f}" for name, value in zip("XYZ", values))
+
+    return "\n".join([
+        f"Estimated gyro offset (deg/s): {axes(result['offset_dps'])}",
+        f"Second-window raw gyro mean (deg/s): "
+        f"{axes(result['verification_raw_mean_dps'])}",
+        f"Second-window corrected gyro mean (deg/s): "
+        f"{axes(result['verification_corrected_mean_dps'])}",
+        f"Second-window gyro stddev (deg/s): "
+        f"{axes(result['verification_corrected_std_dps'])}",
+        "Correction is valid only while the board stayed still in both windows.",
+        "Read-only: correction was not saved or applied to live tracking.",
+    ])
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--seconds", type=float, default=10.0)
     parser.add_argument("--interval", type=float, default=0.1)
+    parser.add_argument(
+        "--verify-gyro", action="store_true",
+        help="use a second, separate stationary window to check the gyro offset",
+    )
+    parser.add_argument(
+        "--settle-seconds", type=float, default=2.0,
+        help="pause between baseline and verification windows (default: 2)",
+    )
     args = parser.parse_args(argv)
     if args.seconds <= 0 or args.interval <= 0:
         parser.error("--seconds and --interval must be positive")
+    if args.settle_seconds < 0:
+        parser.error("--settle-seconds cannot be negative")
 
     try:
         from sunfounder_imu import IMU
@@ -103,7 +145,20 @@ def main(argv=None):
     try:
         sensor = IMU().accel_gyro
         samples, elapsed = collect(sensor, args.seconds, args.interval)
-        print(format_report(summarize(samples, elapsed)))
+        baseline = summarize(samples, elapsed)
+        print(format_report(baseline))
+        if args.verify_gyro:
+            print(
+                f"Keep the board still. Waiting {args.settle_seconds:g} s "
+                "before a separate verification window.",
+                flush=True,
+            )
+            time.sleep(args.settle_seconds)
+            verification_samples, verification_elapsed = collect(
+                sensor, args.seconds, args.interval
+            )
+            verification = summarize(verification_samples, verification_elapsed)
+            print(format_gyro_validation(validate_gyro_offset(baseline, verification)))
     except (OSError, ValueError, struct.error) as error:
         print(f"IMU baseline failed: {error}", file=sys.stderr)
         return 1

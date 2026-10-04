@@ -102,3 +102,14 @@ offset yet. SunFounder's read_raw() skips its saved user calibration but still
 converts sensor registers, so this is a driver-level baseline rather than a
 direct register dump. Record the exact board orientation and keep the board
 still throughout the run. See docs/exec-plans/active/imu-baseline.md.
+
+To test whether the offset holds beyond the samples used to estimate it, run
+two separate stationary windows with a pause between them:
+
+```bash
+sudo python3 src/imu/raw_baseline.py --seconds 10 --verify-gyro
+```
+
+The second window reports raw and offset-corrected gyro means. Keep the board
+still through both windows and the pause. The correction is only shown in the
+report; it is not saved, applied to the accelerometer, or used by tracking.
