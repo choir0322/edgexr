@@ -24,8 +24,9 @@ Use existing FFmpeg and SunFounder installations, plus Python standard library.
 - [x] 2026-10-04: Inspect both Pi recordings, full CSVs and video decode; user
   confirmed playback. See docs/COMBINED_RESULTS.md for conditions and metrics.
 - [x] 2026-10-04: Add offline timing and gyro integration analysis; 19 tests pass.
-- [ ] Repeat motion with marked starting direction: first combined return
-  left approximately +13.15 degrees on Y; cause remains unresolved.
+- [x] 2026-10-04: Inspect marked return trial 02: final sensor-axis angles
+  (+0.435, -1.476, -0.467) degrees using its first second as stationary bias.
+  See docs/MOTION_02_RESULTS.md. Trial 01 discrepancy's cause remains unknown.
 
 ## Plan of work
 
@@ -89,3 +90,11 @@ The recorded return is about +13.15 degrees on Y; plausible stationary baseline
 choices leave 11.60 to 14.34 degrees. Mark and repeat the physical endpoint
 before treating the sensor-axis integral as a reliable return measurement.
 No camera/exposure synchronization or exact camera-axis transform is claimed.
+
+The marked repeat completed with steady timing and much smaller return residual.
+Its first-second bias differs substantially from trial 01, so each run needs a
+fresh stationary estimate. There is a brief disturbance at 1.561 seconds after
+the cue; do not average the entire first three seconds as a stationary baseline.
+Recording and initial inspection are complete. Next use existing recordings for
+offline visual-motion comparison; exact timing/axis calibration remains future
+work. See MOTION_02_RESULTS.md for evidence and limits of the conclusion.
