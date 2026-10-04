@@ -32,6 +32,26 @@ hardware log or ExecPlan:
 `scripts/hardware_inventory.sh` collects a safe starting inventory when run on
 the Pi. It does not change camera controls or install packages.
 
+## First camera observations
+
+The user's initial Raspberry Pi 4 check reported Linux
+`6.12.47+rpt-rpi-v8`, a 43.3 C temperature reading before benchmarking, and a
+USB device identified as `1bcf:2cd1 Sunplus DECXIN CAMERA`. The camera was on
+a 480 Mb/s USB 2.0 link behind a hub. On that run, `/dev/video0` offered image
+capture while `/dev/video1` listed no capture formats. Device paths may change.
+
+The camera advertised 1280x800 and 1280x720 MJPEG at 120 fps; 1280x720 YUYV
+was advertised at 10 fps. A 1,200-frame V4L2 stream at 1280x720 MJPEG reported
+about 118.6-118.8 fps after startup. A separate 10-second FFmpeg decode test
+output 1,181 frames at roughly 119 fps, with 7.882 s user CPU time and a peak
+resident set of 155,748 kB. These are capture/decode checks, not application
+throughput or end-to-end latency measurements. FFmpeg reported repeated output
+timestamps; that warning alone does not establish image duplication or loss.
+
+An image was saved to `/tmp/edgexr-sample.png` on the Pi but has not yet been
+visually reviewed. Exact sensor identity, exposure/gain settings, lighting,
+power supply, cooling, and warm-state behavior remain to be verified.
+
 ## IMU verification checklist
 
 First record raw accelerometer and gyroscope readings while the board is still,

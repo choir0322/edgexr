@@ -59,6 +59,23 @@ raw video, or large model files to commits.
 
 ## Current status
 
-The project has no runtime code yet. The next meaningful milestone is a
-repeatable camera and IMU verification record on the target Raspberry Pi. See
-`docs/ROADMAP.md` for the order and `docs/HARDWARE.md` for what to record.
+The first Pi check identified a 1280x720 MJPEG mode near 119 decoded frames per
+second. The observation and remaining unknowns are in `docs/HARDWARE.md`.
+To repeat a timestamped capture/decode baseline on the Pi:
+
+```bash
+python3 src/camera/capture_baseline.py --device /dev/video0 --seconds 10
+```
+
+Choose the device reported by `scripts/hardware_inventory.sh`; `/dev/video0`
+was correct for the first check but is not guaranteed. The tool requires FFmpeg,
+which was already available on the tested Pi. It requests 1280x720 MJPEG at
+120 fps by default and does not save footage. Use `--help` to see mode options.
+Run hardware-independent checks with:
+
+```bash
+PYTHONPATH=src python3 -m unittest discover -s tests/unit -v
+```
+
+The Pi must still run this new tool, and the sample image needs visual review.
+After that, verify the exact IMU hardware before camera/IMU integration.

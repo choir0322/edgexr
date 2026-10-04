@@ -32,3 +32,17 @@ For each run, capture:
 
 Never compare results from different camera modes, cooling setups, or run
 durations as if they were the same experiment. Document the limitation instead.
+
+## Camera-only baseline
+
+`src/camera/capture_baseline.py` uses the installed FFmpeg command to request a
+V4L2 MJPEG mode and decode frames. FFmpeg's `showinfo` filter reports each
+decoded frame's input presentation timestamp. The tool reports both frames per
+wall second and the rate derived from the timestamp span, plus median and 95th
+percentile spacing between positive timestamps. Equal or backward timestamps
+are counted separately; they do not by themselves prove repeated images.
+
+This tool does not convert every frame to RGB, display video, run detection, or
+measure end-to-end application latency. Its timestamp logging also adds some
+overhead. Record its exact command, scene, duration, and Pi conditions alongside
+any result. Do not compare its throughput directly with an application FPS.
