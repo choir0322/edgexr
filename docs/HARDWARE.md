@@ -94,7 +94,16 @@ reported stationary and flat; exact face, surface, servo state, and warm-up
 time were not recorded. The low spread shows stability during this run, not
 absolute accuracy.
 
-Next run the independent two-window gyro-offset check with --verify-gyro,
-keeping the board still throughout. Record the missing conditions. Review its
-residual before applying any correction to live data or integrating with
-camera tracking. Acceleration calibration remains separate.
+The independent two-window check estimated stationary gyro offset
+(-4.177, +15.133, -2.747) degrees/second, then measured raw gyro mean
+(-4.176, +15.069, -2.717) degrees/second in a separate window. Its corrected
+second-window mean was (+0.001, -0.064, +0.030) degrees/second, with standard
+deviations (0.178, 0.220, 0.114) degrees/second. This supports short-term
+stationary consistency over about 22 seconds. It does not validate angle
+measurements during movement, long-term drift, or camera/IMU alignment. The
+same run measured 1.373 g acceleration magnitude, still uncalibrated.
+
+Next perform a safe, approximate 90-degree rotation using
+src/imu/rotation_test.py. Record which physical direction was turned, whether
+the IMU remained level, and any cable or mounting constraints. The result is
+sensor-axis relative rotation only; acceleration calibration remains separate.

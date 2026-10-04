@@ -113,3 +113,24 @@ sudo python3 src/imu/raw_baseline.py --seconds 10 --verify-gyro
 The second window reports raw and offset-corrected gyro means. Keep the board
 still through both windows and the pause. The correction is only shown in the
 report; it is not saved, applied to the accelerometer, or used by tracking.
+
+## Timestamped IMU rotation check
+
+After the stationary gyro offset has been checked, use a separate, read-only
+test to see how the sensor responds to an approximate 90-degree turn:
+
+```bash
+sudo python3 src/imu/rotation_test.py --still-seconds 10 --rotate-seconds 5
+```
+
+Keep the IMU still during the first 10 seconds. The program then waits for
+Enter. If the wires and mounting allow safe motion, press Enter, turn the board
+approximately 90 degrees around the vertical direction while keeping it level,
+and stop within five seconds. Do not disconnect the board or strain the HAT
+while powered; if safe movement is not possible, skip the rotation phase.
+
+The tool subtracts that run's stationary gyro offset and integrates using
+actual monotonic timestamps. It reports relative angles around the IMU's X,
+Y, and Z axes, plus sample timing. These are not yet camera coordinates or an
+absolute compass heading. It does not change hardware settings, save data, or
+modify the SunFounder calibration file.
