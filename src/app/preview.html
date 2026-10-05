@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>EdgeXR · Camera motion</title>
+<style>
+body{margin:0;background:#101820;color:#e5edf2;font:16px system-ui,sans-serif}main{max-width:900px;margin:32px auto;padding:0 20px}
+h1{font-size:26px;margin-bottom:6px}p{color:#aabac6;line-height:1.5}.view{position:relative;background:#05090c;border:1px solid #354957;border-radius:12px;overflow:hidden}
+canvas{display:block;width:100%;height:auto}#overlay{position:absolute;inset:0}.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:12px;margin:20px 0}
+.card{background:#1b2b38;border-radius:8px;padding:14px}.card span{display:block;font-size:13px;color:#aabac6}.card strong{display:block;font-size:23px;margin-top:5px}
+#status{padding:10px 0;color:#68d6bb;min-height:24px}.error{color:#ffb29c!important}small{color:#aabac6}code{color:#cfdee8}
+</style>
+<main>
+<h1>EdgeXR · Camera motion</h1>
+<p>Live image movement from the Pi. Camera only · analysis at 320 × 180.</p>
+<div id="status" role="status" aria-live="polite">Connecting…</div>
+<div class="view"><canvas id="image" width="320" height="180" aria-label="Camera preview"></canvas><canvas id="overlay" width="640" height="360" aria-label="Estimated image movement"></canvas></div>
+<div class="cards">
+<div class="card"><span>Decoded receipt rate</span><strong id="capture">—</strong></div>
+<div class="card"><span>Analyzed frame rate</span><strong id="analysis">—</strong></div>
+<div class="card"><span>Latest estimator time</span><strong id="cost">—</strong></div>
+<div class="card"><span>Skipped decoded frames</span><strong id="skipped">—</strong></div>
+<div class="card"><span>Result age on Pi</span><strong id="age">—</strong></div>
+</div>
+<p id="motion">Waiting for a frame…</p>
+<small>Arrow shows scene content shifting, not camera rotation. Arrow length is exaggerated for visibility.
+Browser updates at up to 5 fps. Rates use recent host timestamps; estimator time excludes capture and display.
+Result age excludes SSH/browser delay and is not camera-to-screen latency. No footage is saved.</small>
+</main>
+<script>
+const canvas=document.getElementById('image'),ctx=canvas.getContext('2d');
+const overlay=document.getElementById('overlay'),arrow=overlay.getContext('2d');
+const status=document.getElementById('status');
+const put=(id,value)=>document.getElementById(id).textContent=value;
+const fmt=(v,unit)=>v==null?'—':v.toFixed(1)+' '+unit;
+function render(data){
+  arrow.clearRect(0,0,640,360);
+  if(data.pixels_b64){
+    const bytes=atob(data.pixels_b64),image=ctx.createImageData(320,180);
+    for(let i=0;i<bytes.length;i++){
+      const v=bytes.charCodeAt(i),j=i*4;image.data[j]=v;image.data[j+1]=v;image.data[j+2]=v;image.data[j+3]=255;
+    }
+    ctx.putImageData(image,0,0);
+  }
+  put('capture',fmt(data.capture_fps,'fps'));put('analysis',fmt(data.analysis_fps,'fps'));
+  put('cost',fmt(data.analysis_ms,'ms'));put('skipped',String(data.skipped));put('age',fmt(data.result_age_ms,'ms'));
+  status.className=data.status==='live'?'':'error';
+  status.textContent=data.status==='live'?'Live · '+data.motion:data.error||('Camera '+data.status+' — check the Pi terminal and connection.');
+  if(data.status!=='live'||data.motion!=='reliable'){
+    put('motion','No reliable movement estimate for this frame. The image may still be visible.');return;
+  }
+  const size=Math.hypot(data.dx,data.dy);
+  put('motion',`Image shift: X ${data.dx.toFixed(2)} px, Y ${data.dy.toFixed(2)} px · ${data.patches}/9 patches agree. Right/down are positive.`);
+  if(size<0.15){status.textContent='Live · little image movement';return;}
+  const length=Math.min(110,Math.max(20,size*12)),dx=data.dx/size*length,dy=data.dy/size*length;
+  const angle=Math.atan2(dy,dx);arrow.strokeStyle='#50ffd0';arrow.lineWidth=4;
+  arrow.beginPath();arrow.moveTo(320,180);arrow.lineTo(320+dx,180+dy);
+  arrow.lineTo(320+dx-13*Math.cos(angle-.5),180+dy-13*Math.sin(angle-.5));
+  arrow.moveTo(320+dx,180+dy);arrow.lineTo(320+dx-13*Math.cos(angle+.5),180+dy-13*Math.sin(angle+.5));arrow.stroke();
+}
+async function poll(){
+  try{
+    const response=await fetch('/api/frame',{cache:'no-store',signal:AbortSignal.timeout(3000)});
+    if(!response.ok)throw new Error('Preview response '+response.status);
+    render(await response.json());
+  }catch(error){
+    arrow.clearRect(0,0,640,360);status.className='error';status.textContent='Disconnected — check the SSH tunnel and Pi program.';
+    for(const id of ['capture','analysis','cost','skipped','age'])put(id,'—');
+    put('motion','Preview is not updating; any visible image is the last received frame.');
+  }finally{setTimeout(poll,200);}
+}
+poll();
+</script>
+</html>

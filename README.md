@@ -1,5 +1,10 @@
 # EdgeXR
 
+For SSH-only operation, start the [live browser camera preview](docs/LIVE_PREVIEW.md).
+It reuses image-motion analysis and reports processing rates. The Pi binds only
+to loopback; your Mac connects through an SSH tunnel. Pi/browser acceptance is
+still pending; no footage is saved and no IMU or servo control is included.
+
 Offline [visual motion versus gyro analysis](docs/VISUAL_MOTION.md) is now
 available for saved recordings. It uses optional NumPy plus FFmpeg, with an
 optional Matplotlib chart; nothing is installed automatically. Read
