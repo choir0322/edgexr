@@ -1,5 +1,11 @@
 # EdgeXR
 
+Offline [visual motion versus gyro analysis](docs/VISUAL_MOTION.md) is now
+available for saved recordings. It uses optional NumPy plus FFmpeg, with an
+optional Matplotlib chart; nothing is installed automatically. Read
+[the first results](docs/VISUAL_MOTION_RESULTS.md) before interpreting correlation
+as calibration or synchronization.
+
 The next hardware experiment is [camera and IMU recording](docs/COMBINED_CAPTURE.md).
 It saves local video and timestamp logs at 720p/30 fps using existing dependencies.
 Mounted IMU turn/return results are recorded in the active IMU plan; camera/IMU
