@@ -1,5 +1,9 @@
 # EdgeXR
 
+The SSH browser preview can now show [live IMU readings](docs/LIVE_IMU.md)
+with `--imu`. The gyro gets a fresh stationary offset each run; image and IMU
+readings are displayed together without claiming exact synchronization.
+
 For SSH-only operation, start the [live browser camera preview](docs/LIVE_PREVIEW.md).
 It reuses image-motion analysis and reports processing rates. The Pi binds only
 to loopback; your Mac connects through an SSH tunnel. Pi/browser acceptance is

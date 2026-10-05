@@ -15,6 +15,7 @@ from urllib.parse import urlsplit
 import numpy as np
 
 from recording.visual_motion import WIDTH, HEIGHT, image_shift
+from imu.live_reader import LiveImu, poll_imu
 
 
 def read_frame(stream, size=WIDTH*HEIGHT):
@@ -37,7 +38,7 @@ def rate(times):
 
 
 class State:
-    def __init__(self):
+    def __init__(self, imu_enabled=False):
         self.condition = threading.Condition()
         self.stop = threading.Event()
         self.latest = None
@@ -49,6 +50,7 @@ class State:
         self.result = None
         self.error = None
         self.started = time.monotonic()
+        self.imu = LiveImu(imu_enabled)
 
     def publish_frame(self, pixels, timestamp):
         with self.condition:
@@ -96,6 +98,7 @@ class State:
             if status != 'live':
                 result.update(motion='unavailable',dx=None,dy=None)
             result.pop('captured',None)
+            result['imu'] = self.imu.snapshot(now)
             return result
 
 
@@ -229,20 +232,34 @@ def main():
     source.add_argument('--device',help='verified V4L2 camera path')
     source.add_argument('--demo',action='store_true',help='synthetic video; no camera access')
     parser.add_argument('--port',type=int,default=8765)
+    parser.add_argument('--imu',action='store_true',help='read SunFounder SH3001 gyro on a separate thread')
     args = parser.parse_args()
     if not 1024 <= args.port <= 65535:
         parser.error('port must be between 1024 and 65535')
     if not shutil.which('ffmpeg'):
         parser.error('existing FFmpeg installation required')
-    state = State()
+    state = State(imu_enabled=args.imu)
     process = None
     server = None
     try:
         server = make_server(state,args.port)
         process,threads = start_workers(state,camera_command(args.device,args.demo))
+        if args.imu:
+            try:
+                from sunfounder_imu import IMU
+                sensor = IMU().accel_gyro
+                if sensor is None:
+                    raise ValueError('No accelerometer/gyroscope found')
+                imu_thread = threading.Thread(target=poll_imu,args=(state.imu,sensor,state.stop),daemon=True)
+                imu_thread.start()
+                threads.append(imu_thread)
+            except Exception as error:
+                state.imu.fail(f'IMU setup failed: {error}')
         print(f'Preview: http://127.0.0.1:{args.port} (use SSH forwarding from your Mac).',flush=True)
         print('Camera: synthetic demo' if args.demo else f'Camera: {args.device}, requested 1280x720 MJPEG at 30 fps',flush=True)
         print('Analysis: 320x180 grayscale. No footage saved. Ctrl+C stops.',flush=True)
+        if args.imu:
+            print('IMU: first second must be still; using per-run raw gyro offset. IMU errors appear in browser.',flush=True)
         while not state.stop.is_set():
             server.handle_request()
     except KeyboardInterrupt:

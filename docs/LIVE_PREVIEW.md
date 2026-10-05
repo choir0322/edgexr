@@ -1,5 +1,8 @@
 # Camera preview through SSH
 
+For optional live IMU readings, see [LIVE_IMU.md](LIVE_IMU.md). Start with the
+camera-only procedure here if troubleshooting capture or SSH access.
+
 Run capture and image-motion analysis on the Pi; view the result in your Mac
 browser. The server binds only 127.0.0.1 on the Pi. SSH forwards a local Mac
 port to it. No router changes, public hosting, camera upload or web framework.

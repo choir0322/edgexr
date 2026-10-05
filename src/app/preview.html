@@ -20,11 +20,16 @@ canvas{display:block;width:100%;height:auto}#overlay{position:absolute;inset:0}.
 <div class="card"><span>Latest estimator time</span><strong id="cost">—</strong></div>
 <div class="card"><span>Skipped decoded frames</span><strong id="skipped">—</strong></div>
 <div class="card"><span>Result age on Pi</span><strong id="age">—</strong></div>
+<div class="card"><span>IMU sample rate</span><strong id="imu-rate">—</strong></div>
+<div class="card"><span>Gyro Y turn rate</span><strong id="imu-y">—</strong></div>
+<div class="card"><span>IMU sample age</span><strong id="imu-age">—</strong></div>
 </div>
 <p id="motion">Waiting for a frame…</p>
+<p id="imu-status">IMU is off. Restart Pi preview with <code>--imu</code> to show it.</p>
 <small>Arrow shows scene content shifting, not camera rotation. Arrow length is exaggerated for visibility.
 Browser updates at up to 5 fps. Rates use recent host timestamps; estimator time excludes capture and display.
-Result age excludes SSH/browser delay and is not camera-to-screen latency. No footage is saved.</small>
+Result age excludes SSH/browser delay and is not camera-to-screen latency. IMU rates are in sensor axes;
+these two displays are approximate concurrent observations, not synchronized measurements. No footage is saved.</small>
 </main>
 <script>
 const canvas=document.getElementById('image'),ctx=canvas.getContext('2d');
@@ -43,6 +48,16 @@ function render(data){
   }
   put('capture',fmt(data.capture_fps,'fps'));put('analysis',fmt(data.analysis_fps,'fps'));
   put('cost',fmt(data.analysis_ms,'ms'));put('skipped',String(data.skipped));put('age',fmt(data.result_age_ms,'ms'));
+  const imu=data.imu||{status:'off'};
+  put('imu-rate',fmt(imu.rate_hz,'Hz'));put('imu-age',fmt(imu.age_ms,'ms'));
+  put('imu-y',imu.status==='ready'&&imu.gyro_dps?fmt(imu.gyro_dps[1],'°/s'):'—');
+  const imuText=imu.status==='ready'&&imu.gyro_dps?
+    `IMU ready · sensor X ${imu.gyro_dps[0].toFixed(1)}, Y ${imu.gyro_dps[1].toFixed(1)}, Z ${imu.gyro_dps[2].toFixed(1)} °/s. Offset estimated from first second still.`:
+    imu.status==='calibrating'?'IMU: keep the rig still for the first second to estimate this run’s gyro offset.':
+    imu.status==='stale'?'IMU samples are stale. Camera preview may still be live.':
+    imu.status==='error'?`IMU error: ${imu.error||'unknown'} · camera preview continues.`:
+    'IMU is off. Restart Pi preview with --imu to show it.';
+  put('imu-status',imuText);
   status.className=data.status==='live'?'':'error';
   status.textContent=data.status==='live'?'Live · '+data.motion:data.error||('Camera '+data.status+' — check the Pi terminal and connection.');
   if(data.status!=='live'||data.motion!=='reliable'){
@@ -65,6 +80,8 @@ async function poll(){
   }catch(error){
     arrow.clearRect(0,0,640,360);status.className='error';status.textContent='Disconnected — check the SSH tunnel and Pi program.';
     for(const id of ['capture','analysis','cost','skipped','age'])put(id,'—');
+    for(const id of ['imu-rate','imu-y','imu-age'])put(id,'—');
+    put('imu-status','Disconnected — IMU readings are unavailable.');
     put('motion','Preview is not updating; any visible image is the last received frame.');
   }finally{setTimeout(poll,200);}
 }

@@ -34,6 +34,7 @@ class PreviewTests(unittest.TestCase):
         self.assertEqual(result['skipped'],2)
         self.assertEqual(result['received'],4)
         self.assertEqual(result['motion'],'reliable')
+        self.assertEqual(result['imu']['status'],'off')
         self.assertAlmostEqual(result['result_age_ms'],20)
 
     def test_stale_error_and_unreliable_hide_arrows(self):
