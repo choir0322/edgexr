@@ -16,6 +16,7 @@ import numpy as np
 
 from recording.visual_motion import WIDTH, HEIGHT, image_shift
 from imu.live_reader import LiveImu, poll_imu
+from vision.live_detector import DetectionState, CpuDetector, detect_latest, SOURCE_WIDTH, SOURCE_HEIGHT
 
 
 def read_frame(stream, size=WIDTH*HEIGHT):
@@ -38,7 +39,7 @@ def rate(times):
 
 
 class State:
-    def __init__(self, imu_enabled=False):
+    def __init__(self, imu_enabled=False, detection_enabled=False):
         self.condition = threading.Condition()
         self.stop = threading.Event()
         self.latest = None
@@ -51,11 +52,15 @@ class State:
         self.error = None
         self.started = time.monotonic()
         self.imu = LiveImu(imu_enabled)
+        self.detector = DetectionState(detection_enabled)
+        self.detection_frame = None
 
-    def publish_frame(self, pixels, timestamp):
+    def publish_frame(self, pixels, timestamp, detection_pixels=None):
         with self.condition:
             self.received += 1
             self.latest = (self.received, timestamp, pixels)
+            if detection_pixels is not None and self.detector.enabled:
+                self.detection_frame = (self.received, timestamp, detection_pixels)
             self.capture_times.append(timestamp)
             self.condition.notify_all()
 
@@ -99,6 +104,7 @@ class State:
                 result.update(motion='unavailable',dx=None,dy=None)
             result.pop('captured',None)
             result['imu'] = self.imu.snapshot(now)
+            result['detector'] = self.detector.snapshot(now, status == 'live')
             return result
 
 
@@ -128,18 +134,20 @@ def analyze_latest(state):
             break
 
 
-def camera_command(device=None, demo=False):
+def camera_command(device=None, demo=False, detection=False):
     command = ['ffmpeg','-hide_banner','-nostdin','-loglevel','warning']
     if demo:
-        command += ['-re','-f','lavfi','-i',f'testsrc2=size={WIDTH}x{HEIGHT}:rate=30']
+        size = f'{SOURCE_WIDTH}x{SOURCE_HEIGHT}' if detection else f'{WIDTH}x{HEIGHT}'
+        command += ['-re','-f','lavfi','-i',f'testsrc2=size={size}:rate=30']
     else:
         command += ['-f','v4l2','-input_format','mjpeg','-video_size','1280x720',
                     '-framerate','30','-i',device]
-    return command+['-an','-vf',f'scale={WIDTH}:{HEIGHT}','-pix_fmt','gray',
+    width, height = (SOURCE_WIDTH, SOURCE_HEIGHT) if detection else (WIDTH, HEIGHT)
+    return command+['-an','-vf',f'scale={width}:{height}','-pix_fmt','gray',
                     '-fps_mode','passthrough','-f','rawvideo','-']
 
 
-def start_workers(state, command):
+def start_workers(state, command, cv=None):
     process = subprocess.Popen(command,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
     diagnostics = deque(maxlen=8)
 
@@ -150,12 +158,19 @@ def start_workers(state, command):
     def capture():
         try:
             while not state.stop.is_set():
-                pixels = read_frame(process.stdout)
+                full_size = SOURCE_WIDTH*SOURCE_HEIGHT if state.detector.enabled else WIDTH*HEIGHT
+                pixels = read_frame(process.stdout, full_size)
                 if pixels is None:
                     if not state.stop.is_set():
                         state.fail('FFmpeg stopped. '+ ' | '.join(diagnostics))
                     return
-                state.publish_frame(pixels,time.monotonic())
+                received = time.monotonic()
+                if state.detector.enabled:
+                    gray = np.frombuffer(pixels,dtype=np.uint8).reshape(SOURCE_HEIGHT,SOURCE_WIDTH)
+                    small = cv.resize(gray,(WIDTH,HEIGHT),interpolation=cv.INTER_AREA).tobytes()
+                    state.publish_frame(small,received,pixels)
+                else:
+                    state.publish_frame(pixels,received)
         except Exception as error:
             if not state.stop.is_set():
                 state.fail(f'Capture failed: {error}')
@@ -233,17 +248,33 @@ def main():
     source.add_argument('--demo',action='store_true',help='synthetic video; no camera access')
     parser.add_argument('--port',type=int,default=8765)
     parser.add_argument('--imu',action='store_true',help='read SunFounder SH3001 gyro on a separate thread')
+    parser.add_argument('--detect',action='store_true',help='MobileNet-SSD CPU boxes at a target 2 Hz')
+    parser.add_argument('--prototxt',type=Path,default=Path('models/mobilenet-ssd/deploy.prototxt'))
+    parser.add_argument('--weights',type=Path,default=Path('models/mobilenet-ssd/mobilenet_iter_73000.caffemodel'))
     args = parser.parse_args()
     if not 1024 <= args.port <= 65535:
         parser.error('port must be between 1024 and 65535')
     if not shutil.which('ffmpeg'):
         parser.error('existing FFmpeg installation required')
-    state = State(imu_enabled=args.imu)
+    cv = None
+    if args.detect:
+        try:
+            import cv2 as cv
+            cv.setNumThreads(2)
+            cv.ocl.setUseOpenCL(False)
+        except ImportError:
+            parser.exit(1,'--detect requires OpenCV; see docs/DETECTION_BASELINE.md\n')
+    state = State(imu_enabled=args.imu, detection_enabled=args.detect)
     process = None
     server = None
     try:
         server = make_server(state,args.port)
-        process,threads = start_workers(state,camera_command(args.device,args.demo))
+        process,threads = start_workers(state,camera_command(args.device,args.demo,args.detect),cv)
+        if args.detect:
+            factory = lambda: CpuDetector(cv,args.prototxt,args.weights)
+            worker = threading.Thread(target=detect_latest,args=(state,factory),daemon=True)
+            worker.start()
+            threads.append(worker)
         if args.imu:
             try:
                 from sunfounder_imu import IMU
@@ -258,6 +289,8 @@ def main():
         print(f'Preview: http://127.0.0.1:{args.port} (use SSH forwarding from your Mac).',flush=True)
         print('Camera: synthetic demo' if args.demo else f'Camera: {args.device}, requested 1280x720 MJPEG at 30 fps',flush=True)
         print('Analysis: 320x180 grayscale. No footage saved. Ctrl+C stops.',flush=True)
+        if args.detect:
+            print('Detection: 720p source -> 300x300 model, CPU 2 threads, target 2 Hz. Boxes may lag; age shown.',flush=True)
         if args.imu:
             print('IMU: first second must be still; using per-run raw gyro offset. IMU errors appear in browser.',flush=True)
         while not state.stop.is_set():

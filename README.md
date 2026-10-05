@@ -1,9 +1,13 @@
 # EdgeXR
 
+New: [optional live detection](docs/LIVE_DETECTION.md) adds boxes with source
+age and a target 2 Hz update rate. The [saved-frame Pi baseline](docs/DETECTION_RESULTS.md)
+took about 196 ms per detection; combined live performance is awaiting a Pi run.
+
 Next: [detect objects in a saved camera frame](docs/DETECTION_BASELINE.md)
 using an optional OpenCV CPU baseline. Read the setup before downloading its
 model. The tool produces labelled boxes and a timing report; real Pi detection
-quality and speed are pending. [Recent motion results](docs/MOTION_03_RESULTS.md)
+quality and speed are recorded in the baseline above. [Recent motion results](docs/MOTION_03_RESULTS.md)
 support proceeding beyond the camera/IMU checks.
 
 The SSH browser preview can now show [live IMU readings](docs/LIVE_IMU.md)

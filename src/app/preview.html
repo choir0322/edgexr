@@ -5,15 +5,15 @@
 <style>
 body{margin:0;background:#101820;color:#e5edf2;font:16px system-ui,sans-serif}main{max-width:900px;margin:32px auto;padding:0 20px}
 h1{font-size:26px;margin-bottom:6px}p{color:#aabac6;line-height:1.5}.view{position:relative;background:#05090c;border:1px solid #354957;border-radius:12px;overflow:hidden}
-canvas{display:block;width:100%;height:auto}#overlay{position:absolute;inset:0}.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:12px;margin:20px 0}
+canvas{display:block;width:100%;height:auto}#overlay,#boxes{position:absolute;inset:0}.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:12px;margin:20px 0}
 .card{background:#1b2b38;border-radius:8px;padding:14px}.card span{display:block;font-size:13px;color:#aabac6}.card strong{display:block;font-size:23px;margin-top:5px}
 #status{padding:10px 0;color:#68d6bb;min-height:24px}.error{color:#ffb29c!important}small{color:#aabac6}code{color:#cfdee8}
 </style>
 <main>
 <h1>EdgeXR · Camera motion</h1>
-<p>Live image movement from the Pi. Camera only · analysis at 320 × 180.</p>
+<p>Live image movement at 320 × 180, with optional IMU readings and object detection.</p>
 <div id="status" role="status" aria-live="polite">Connecting…</div>
-<div class="view"><canvas id="image" width="320" height="180" aria-label="Camera preview"></canvas><canvas id="overlay" width="640" height="360" aria-label="Estimated image movement"></canvas></div>
+<div class="view"><canvas id="image" width="320" height="180" aria-label="Camera preview"></canvas><canvas id="boxes" width="640" height="360" aria-label="Older object detections"></canvas><canvas id="overlay" width="640" height="360" aria-label="Estimated image movement"></canvas></div>
 <div class="cards">
 <div class="card"><span>Decoded receipt rate</span><strong id="capture">—</strong></div>
 <div class="card"><span>Analyzed frame rate</span><strong id="analysis">—</strong></div>
@@ -23,9 +23,15 @@ canvas{display:block;width:100%;height:auto}#overlay{position:absolute;inset:0}.
 <div class="card"><span>IMU sample rate</span><strong id="imu-rate">—</strong></div>
 <div class="card"><span>Gyro Y turn rate</span><strong id="imu-y">—</strong></div>
 <div class="card"><span>IMU sample age</span><strong id="imu-age">—</strong></div>
+<div class="card"><span>Detection updates (target 2 Hz)</span><strong id="detect-rate">—</strong></div>
+<div class="card"><span>Latest detection compute</span><strong id="detect-cost">—</strong></div>
+<div class="card"><span>Box source age on Pi</span><strong id="detect-age">—</strong></div>
 </div>
 <p id="motion">Waiting for a frame…</p>
 <p id="imu-status">IMU is off. Restart Pi preview with <code>--imu</code> to show it.</p>
+<p id="detect-status">Detection is off. Add <code>--detect</code> to show boxes.</p>
+<small>Amber boxes describe an older frame and may lag during motion; they are hidden after 1.5 seconds.
+Box age starts at frame receipt on Pi and excludes SSH/browser delay. Boxes are not tracked or motion-compensated.</small>
 <small>Arrow shows scene content shifting, not camera rotation. Arrow length is exaggerated for visibility.
 Browser updates at up to 5 fps. Rates use recent host timestamps; estimator time excludes capture and display.
 Result age excludes SSH/browser delay and is not camera-to-screen latency. IMU rates are in sensor axes;
@@ -34,11 +40,13 @@ these two displays are approximate concurrent observations, not synchronized mea
 <script>
 const canvas=document.getElementById('image'),ctx=canvas.getContext('2d');
 const overlay=document.getElementById('overlay'),arrow=overlay.getContext('2d');
+const boxctx=document.getElementById('boxes').getContext('2d');
 const status=document.getElementById('status');
 const put=(id,value)=>document.getElementById(id).textContent=value;
 const fmt=(v,unit)=>v==null?'—':v.toFixed(1)+' '+unit;
 function render(data){
   arrow.clearRect(0,0,640,360);
+  boxctx.clearRect(0,0,640,360);
   if(data.pixels_b64){
     const bytes=atob(data.pixels_b64),image=ctx.createImageData(320,180);
     for(let i=0;i<bytes.length;i++){
@@ -58,6 +66,25 @@ function render(data){
     imu.status==='error'?`IMU error: ${imu.error||'unknown'} · camera preview continues.`:
     'IMU is off. Restart Pi preview with --imu to show it.';
   put('imu-status',imuText);
+  const detector=data.detector||{status:'off'};
+  put('detect-rate',fmt(detector.rate_hz,'Hz'));
+  put('detect-cost',fmt(detector.compute_ms,'ms'));
+  put('detect-age',fmt(detector.age_ms,'ms'));
+  const ready=detector.status==='ready'&&data.status==='live';
+  put('detect-status',ready?`${detector.boxes.length} detections on source frame ${detector.sequence} · boxes may lag behind this view.`:
+    detector.status==='off'?'Detection is off. Add --detect to show boxes.':
+    detector.status==='error'?detector.error:
+    detector.status==='starting'?'Loading detector / waiting for its first frame…':'Detection unavailable or stale; boxes hidden.');
+  if(ready){
+    boxctx.strokeStyle='#ffd166';boxctx.fillStyle='#ffd166';boxctx.lineWidth=2;
+    boxctx.font='14px sans-serif';boxctx.setLineDash([6,4]);
+    for(const box of detector.boxes){
+      const [left,top,right,bottom]=box.box_xyxy;
+      const x=left*640/detector.width,y=top*360/detector.height;
+      boxctx.strokeRect(x,y,(right-left)*640/detector.width,(bottom-top)*360/detector.height);
+      boxctx.fillText(`${box.label} ${box.confidence.toFixed(2)}`,x,Math.max(15,y-5));
+    }
+  }
   status.className=data.status==='live'?'':'error';
   status.textContent=data.status==='live'?'Live · '+data.motion:data.error||('Camera '+data.status+' — check the Pi terminal and connection.');
   if(data.status!=='live'||data.motion!=='reliable'){
@@ -78,10 +105,13 @@ async function poll(){
     if(!response.ok)throw new Error('Preview response '+response.status);
     render(await response.json());
   }catch(error){
+    boxctx.clearRect(0,0,640,360);
     arrow.clearRect(0,0,640,360);status.className='error';status.textContent='Disconnected — check the SSH tunnel and Pi program.';
     for(const id of ['capture','analysis','cost','skipped','age'])put(id,'—');
     for(const id of ['imu-rate','imu-y','imu-age'])put(id,'—');
     put('imu-status','Disconnected — IMU readings are unavailable.');
+    for(const id of ['detect-rate','detect-cost','detect-age'])put(id,'—');
+    put('detect-status','Disconnected — detection boxes hidden.');
     put('motion','Preview is not updating; any visible image is the last received frame.');
   }finally{setTimeout(poll,200);}
 }

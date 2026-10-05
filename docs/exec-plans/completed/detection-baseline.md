@@ -20,8 +20,9 @@ Model files are an explicit external download and are excluded from Git.
 - [x] 2026-10-05: User confirmed Pi OpenCV 4.11.0 with DNN support.
 - [x] 2026-10-05: Local logic tests and starter structure check pass. Patch
   applicability is checked against the clean Desktop checkout before handoff.
-- [ ] Download the documented model and run real Pi inference.
-- [ ] Review labelled image and Pi report before planning live integration.
+- [x] 2026-10-05: User downloaded the model and ran inference; all 44 tests pass on Pi.
+- [x] 2026-10-05: Reviewed labelled image/report. Table and left chair plausible;
+  right chair missed. Median total 195.90 ms. See docs/DETECTION_RESULTS.md.
 
 ## Plan of work
 
@@ -67,8 +68,8 @@ logged movement defines the phases. See docs/MOTION_03_RESULTS.md.
 
 ## Outcomes and retrospective
 
-Local suite: 44 tests, 42 pass, two skip (OpenCV unavailable in this Mac test
-environment; local socket binding prohibited). Actual preprocessing test should
-run on the Pi with its confirmed OpenCV. No model has been downloaded or actual
-inference run in this task. Pi inference and recognition quality remain
-unmeasured. Live detection scheduling will depend on these data.
+The Pi completed real inference and all 44 tests. Twenty repeats on one frame
+showed median 195.90 ms total compute; this supports trying live detection at
+2 Hz while measuring resource contention. Monochrome recognition is useful but
+incomplete (missed right chair). Confidence is not accuracy and same-frame CPU
+time is not live FPS. Local runtime limitations were resolved by target checks.
