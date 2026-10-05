@@ -23,7 +23,10 @@ and sensor-exposure timing are unknown.
   and concurrent camera throughput with synthetic FFmpeg/fake IMU. 36 unit
   tests run: 35 pass, one local socket test skips because sandbox bind is
   forbidden. UI rendering logic smoke test passes. Pi rates remain unmeasured.
-- [ ] Pi trial and before/after throughput comparison under similar conditions.
+- [x] 2026-10-05: User reported initial Pi/browser check: 30.0–30.4 fps,
+  latest estimator 25–29 ms, zero skipped frames, IMU 19.1 Hz; gyro and arrow
+  reverse on return. See docs/MOTION_03_RESULTS.md. Conditions are incomplete.
+- [ ] Real Pi stale/error behavior and reproducible sustained benchmark.
 
 ## Plan of work
 
@@ -74,7 +77,8 @@ cleaner than a three-second window in motion-02 due to an early disturbance.
 
 Local checks passed, including a fake IMU disconnect while the synthetic camera
 continued near 30 analyzed frames/s. That is not a Pi performance result. Pi
-browser check and throughput comparison remain pending. Record scene, lighting, warm-up,
+browser check and brief throughput comparison now pass by user observation;
+real fault handling and sustained performance remain untested. Record scene, lighting, warm-up,
 camera mode, OS, NumPy/SunFounder versions, power/cooling and run duration for
 any performance comparison; the earlier preview observation lacked some of
 these conditions.

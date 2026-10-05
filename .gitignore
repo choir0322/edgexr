@@ -35,6 +35,7 @@ models/*.tflite
 models/*.pt
 models/*.pth
 models/*.engine
+models/mobilenet-ssd/
 
 # Generated benchmark data; commit concise summaries intentionally.
 benchmarks/results/raw/

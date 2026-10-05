@@ -1,13 +1,20 @@
 # EdgeXR
 
+Next: [detect objects in a saved camera frame](docs/DETECTION_BASELINE.md)
+using an optional OpenCV CPU baseline. Read the setup before downloading its
+model. The tool produces labelled boxes and a timing report; real Pi detection
+quality and speed are pending. [Recent motion results](docs/MOTION_03_RESULTS.md)
+support proceeding beyond the camera/IMU checks.
+
 The SSH browser preview can now show [live IMU readings](docs/LIVE_IMU.md)
 with `--imu`. The gyro gets a fresh stationary offset each run; image and IMU
 readings are displayed together without claiming exact synchronization.
 
 For SSH-only operation, start the [live browser camera preview](docs/LIVE_PREVIEW.md).
 It reuses image-motion analysis and reports processing rates. The Pi binds only
-to loopback; your Mac connects through an SSH tunnel. Pi/browser acceptance is
-still pending; no footage is saved and no IMU or servo control is included.
+to loopback; your Mac connects through an SSH tunnel. Initial Pi/browser checks
+passed with near-30 fps analysis and zero reported skips. Optional IMU readings
+are available; no footage is saved and there is no servo control.
 
 Offline [visual motion versus gyro analysis](docs/VISUAL_MOTION.md) is now
 available for saved recordings. It uses optional NumPy plus FFmpeg, with an
@@ -15,8 +22,8 @@ optional Matplotlib chart; nothing is installed automatically. Read
 [the first results](docs/VISUAL_MOTION_RESULTS.md) before interpreting correlation
 as calibration or synchronization.
 
-The next hardware experiment is [camera and IMU recording](docs/COMBINED_CAPTURE.md).
-It saves local video and timestamp logs at 720p/30 fps using existing dependencies.
+The [camera and IMU recorder](docs/COMBINED_CAPTURE.md)
+saves local video and timestamp logs at 720p/30 fps using existing dependencies.
 Mounted IMU turn/return results are recorded in the active IMU plan; camera/IMU
 synchronization and camera-axis calibration remain unverified.
 
@@ -97,8 +104,8 @@ Run hardware-independent checks with:
 PYTHONPATH=src python3 -m unittest discover -s tests/unit -v
 ```
 
-The Pi must still run this new tool, and the sample image needs visual review.
-After that, verify the exact IMU hardware before camera/IMU integration.
+Camera capture, the sample image, and initial IMU checks have been reviewed.
+See the linked results for what is measured and what remains unverified.
 
 ## IMU raw baseline
 
