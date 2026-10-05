@@ -23,8 +23,15 @@ This is a local development preview, not an internet service.
 - [x] 2026-10-05: Real FFmpeg synthetic capture/analysis/shutdown smoke test
   passed (63 frames processed). JavaScript render logic passed with live,
   stale and error payloads; these are functional checks, not Pi benchmarks.
-- [ ] Browser display and SSH connection verification (local bind is blocked).
-- [ ] User runs on Pi; record camera mode, scene, runtime metrics and usability.
+- [x] 2026-10-05: User opened the Pi preview on Mac through SSH local forwarding
+  after selecting Mac port 8766 (8765 was already occupied). The live image
+  appeared; the arrow appeared on turning, reversed on opposite motion,
+  and disappeared after stopping.
+- [x] 2026-10-05: User reported approximately 30.1 analyzed frames/s, latest
+  estimator times 29.0 ms stationary and 27.3 ms during a slow turn, and zero
+  skipped decoded frames across two observations ten seconds apart and motion.
+  NumPy 1.26.4 was confirmed on the Pi. Scene, lighting, temperature, warm-up,
+  power and cooling were not recorded for this measurement.
 
 ## Plan of work
 
@@ -50,8 +57,10 @@ are saved. Port may be selected locally, but bind address cannot be expanded.
 Local unit tests exercise partial pipe reads, frame replacement, skipped counts,
 valid/unreliable/stale results and route restrictions. A synthetic FFmpeg source
 tests the real reader/analysis/server path and cleanup. Browser check verifies
-the frame, arrow state and metrics render. Pi acceptance remains pending until
-the user confirms stream and records rates/cost under target conditions.
+the frame, arrow state and metrics render. The user confirmed these behaviors
+on the Pi and reported rates/cost under the requested 720p/30 fps mode. Actual
+negotiated mode, long-run stability and complete benchmark conditions remain
+unverified, so these numbers are an initial observation, not a benchmark.
 
 ## Surprises and discoveries
 
@@ -70,9 +79,20 @@ not a bandwidth-optimized video stream. Analysis and browser refresh are separat
 
 ## Outcomes and retrospective
 
-Local non-network checks passed. The execution sandbox rejected binding to
-127.0.0.1 with Operation not permitted, so the actual browser display/SSH
-integration and Pi performance remain unverified. In-memory HTTP route and
-JavaScript rendering tests do not substitute for that integration check.
-This workload differs from offline analysis and earlier capture-only baselines.
-Record scene/lighting, power, cooling, warm-up, versions and metrics on the Pi.
+The real Pi and Mac SSH tunnel passed the first usability check. Initial
+analysis stayed near the requested 30 fps, with zero counted frame skips in
+the short observation. The latest estimator times were 27.3-29.0 ms, leaving
+only about 4-6 ms of the nominal 33.3 ms frame period for the other Pi work.
+That margin is illustrative, not a worst-case bound: the page shows only the
+latest estimator duration, not its distribution, and it excludes decode,
+transport and display. Thus no end-to-end latency or thermal claim follows.
+
+The first Mac tunnel attempt failed because local port 8765 was in use; port
+8766 worked without changing the Pi port. The local development sandbox's
+socket restriction did not apply on the Pi. No camera settings, exact scene,
+power/cooling or temperature were recorded, so benchmark reproducibility is
+incomplete. A sustained run with percentile estimator cost, CPU/temperature,
+and explicit camera mode would be needed for a performance comparison.
+
+The camera-only live-preview milestone is usable. Next compare live gyro
+readings with the image movement, while preserving separate sensor metrics.
