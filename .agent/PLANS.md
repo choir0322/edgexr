@@ -31,3 +31,10 @@ For hardware work, name the exact Raspberry Pi model, OS image, camera mode,
 lighting or scene, and measurement duration. If a plan changes a benchmark,
 state how the old and new results can be distinguished. Do not begin a large
 implementation until the user has had a chance to read the plan.
+
+Every implementation plan must include a Progress checkbox to review/update
+`docs/PIPELINE.md` and the relevant `docs/learning/` guide. Its acceptance checks
+must confirm that inputs, shapes, units, scheduling, freshness and source links
+still match the implementation. Record an explicit reason if the diagram is
+reviewed but does not need a change; this is an ongoing task, not a one-time
+documentation milestone.

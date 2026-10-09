@@ -22,11 +22,28 @@ Display calibrated or clearly labelled raw motion/orientation alongside the
 camera feed. Only then explore whether it helps reject camera-induced motion or
 improve tracking stability.
 
-## Phase 4 — Measure and optimize
+## Phase 4 — Application Processor: measure and optimize
 
 Use the protocol in `BENCHMARKING.md` to establish a baseline. Test one
 optimization at a time: capture mode, model choice, frame skipping, threading,
 or display overhead. Explain each tradeoff in a committed result summary.
+
+Explicit future objective: **find the best detector configuration for this Pi
+and EdgeXR's requirements**, including model efficiency and whole-application
+behavior. MobileNet-SSD is the measured starting baseline, not a final winner.
+Follow [the AP optimization agenda](AP_OPTIMIZATION.md): compare small YOLO and
+other suitable models, runtime/input-size/thread choices, quantization, pruning,
+and fine-tuning on representative monochrome scenes. Define accuracy and
+responsiveness targets before selecting a winner; measure supported optimized
+artifacts on the real Pi. Training/export may occur on a separate computer.
+
+- [ ] Build a labelled evaluation set with separate training/calibration/test data.
+- [ ] Compare baseline and candidate detectors on accuracy and complete Pi workload.
+- [ ] Evaluate model/input/runtime/scheduling efficiency and thread settings.
+- [ ] Evaluate quantization (PTQ; QAT if justified) with measured accuracy changes.
+- [ ] Evaluate deployable pruning; verify actual Pi speedup rather than parameter counts.
+- [ ] Evaluate fine-tuning for the camera's grayscale scenes and required classes.
+- [ ] Document the selected configuration and rejected alternatives reproducibly.
 
 ## Phase 5 — Demonstrate and reflect
 

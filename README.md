@@ -1,5 +1,14 @@
 # EdgeXR
 
+## Learn the implementation
+
+Start with the [current pipeline diagram](docs/PIPELINE.md) and the
+[source-reading guide](docs/learning/README.md). Study
+[image motion](docs/learning/IMAGE_MOTION.md), then
+[object detection](docs/learning/OBJECT_DETECTION.md), then
+[IMU readings](docs/learning/IMU.md). These describe the current code, including
+its timing and limitations; they do not imply tracking or sensor fusion exists.
+
 New: [optional live detection](docs/LIVE_DETECTION.md) adds boxes with source
 age and a target 2 Hz update rate. The [saved-frame Pi baseline](docs/DETECTION_RESULTS.md)
 took about 196 ms per detection; combined live performance is awaiting a Pi run.

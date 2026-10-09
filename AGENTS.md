@@ -21,6 +21,18 @@ check it, and one useful concept for the learner to understand next. If an
 assumption is uncertain, label it and record the confirmation work in the
 relevant documentation.
 
+## Keep the learning map current
+
+`docs/PIPELINE.md` is the current-implementation diagram, not a future design.
+For each implementation task, add an explicit task to review/update this diagram
+and the relevant guide in `docs/learning/`. Check data flow, named functions,
+array shapes, units, rates, timing scope, failure behavior and current versus
+planned features. If nothing changes, record "diagram reviewed; unchanged" with
+a reason in the task's validation summary. Update documentation in the same
+commit as the relevant code. Do not silently add tracking/fusion arrows for
+features that are only planned. Prefer repository-relative links and named
+symbols over brittle line numbers in repository documentation.
+
 ## Source layout
 
 - `src/` contains small, focused application modules.
