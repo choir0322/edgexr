@@ -1,0 +1,38 @@
+{
+  "source": "combined-motion-02/camera.mkv (local recording; excluded from Git)",
+  "frame_indices": [
+    106,
+    107
+  ],
+  "pts_seconds": [
+    3.64,
+    3.672
+  ],
+  "analysis_size": [
+    320,
+    180
+  ],
+  "patch_xywh": [
+    117,
+    62,
+    80,
+    56
+  ],
+  "patch_shift_xy_pixels": [
+    2.9964196215588923,
+    -0.04534928345328904
+  ],
+  "quality": 58.856081291015336,
+  "consensus_shift": [
+    3.748630046859282,
+    -0.023174469306111507,
+    8,
+    30.766153794758523
+  ],
+  "integer_peak_xy": [
+    3,
+    0
+  ],
+  "preparation": "FFmpeg scale=320:180 grayscale; same offline path, live detection mode uses OpenCV resizing.",
+  "note": "Actual recorded adjacent frames; no synthetic movement. Spectrum brightness is log-scaled for display; phase correlation uses normalized cross spectrum."
+}

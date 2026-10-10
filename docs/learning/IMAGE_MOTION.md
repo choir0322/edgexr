@@ -182,6 +182,44 @@ pipes. The preview does not write raw images or recordings.
 
 ## Tests and study exercises
 
+### Illustrated Hann window and FFT example
+
+These figures use actual adjacent frames from the local `combined-motion-02`
+recording at PTS 3.640 and 3.672 seconds. FFmpeg prepares the 320x180 grayscale
+image; the highlighted center patch is 80x56 pixels at `(x=117, y=62)`.
+The original video stays outside Git. The figures and
+[measurement notes](images/hann-fft-example.json) are saved teaching material.
+
+![Nine patches, Hann weights and the weighted center patch](images/hann-window-explained.png)
+
+Read panels A through D to see the patch selection and fading. Panel D multiplies
+raw brightness by the window for an intuitive picture. Panel E shows what the
+code actually transforms: `(patch - patch.mean()) * window`; its colors represent
+positive and negative brightness deviations. The window weights every pixel of
+the patch and tapers its outer border. It does not blur individual pixel borders.
+
+![Two recorded patches, Fourier representations and a displacement peak](images/fft-motion-explained.png)
+
+The second figure distinguishes FFT magnitude (pattern strength) from phase.
+The normalized cross spectrum compares the two frames; its inverse FFT peaks
+at a candidate displacement. For this selected patch, the refined estimate is
+approximately `dx=+3.00`, `dy=-0.05` pixels in the 320x180 analysis image.
+That peak represents displacement, not an object's location. The full image
+estimate separately combines agreeing patches, so it can differ from this one.
+Frequency plots are centered and magnitude is log-scaled for readability.
+
+OpenCV is a general image-processing library: live detection mode uses it both
+to resize the motion image and to prepare/run MobileNet-SSD. NumPy performs
+the Hann and FFT calculations. The detector receives its own unfaded source.
+The figures use offline FFmpeg resizing; the live OpenCV resize may differ
+slightly in its pixel values. This example illustrates the calculation and
+does not establish camera-angle accuracy or exposure synchronization.
+
+Diagram reviewed on 2026-10-10; unchanged because these figures explain existing
+data flow and calculations.
+
+### Exercises
+
 Read [test_visual_motion.py](../../tests/unit/test_visual_motion.py) for known
 shift sign, low texture rejection, outlier consensus and time pairing. Read
 [test_live_preview.py](../../tests/unit/test_live_preview.py) for partial reads,
