@@ -1,112 +1,85 @@
 <!doctype html>
 <html lang="en">
-<!-- UTF-8 preserves degree symbols and the browser scales to the actual device width. -->
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>EdgeXR · Camera motion</title>
 <style>
-/* Preserve the existing appearance; this pass only expands its declarations. */
+/* Page typography and spacing; use local fonts without network requests. */
 body {
-  /* Remove the browser's default outside margin. */
   margin: 0;
-  /* Use the original dark page background and readable foreground. */
   background: #101820;
   color: #e5edf2;
-  /* Use locally available system fonts, not a network font dependency. */
   font: 16px system-ui,sans-serif;
 }
 main {
-  /* Keep wide browser windows from stretching the preview indefinitely. */
   max-width: 900px;
-  /* Center content with the original top/bottom spacing. */
   margin: 32px auto;
-  /* Leave a small gutter on narrow windows. */
   padding: 0 20px;
 }
 h1 {
-  /* Preserve heading scale and spacing. */
   font-size: 26px;
   margin-bottom: 6px;
 }
 p {
-  /* Distinguish explanatory text from the primary measurements. */
   color: #aabac6;
-  /* Keep wrapped explanations readable. */
   line-height: 1.5;
 }
+
+/* Stack independent image, box and arrow canvases in one clipped view.
+   CSS enlarges the view without increasing its analysis resolution. */
 .view {
-  /* Make this container the position reference for both overlay canvases. */
   position: relative;
-  /* Show a neutral empty view before the first image arrives. */
   background: #05090c;
-  /* Preserve the original view outline and corners. */
   border: 1px solid #354957;
   border-radius: 12px;
-  /* Clip canvases to the rounded view boundary. */
   overflow: hidden;
 }
 canvas {
-  /* Avoid the baseline gap normally left under inline content. */
   display: block;
-  /* Scale display size, not the underlying analysis image resolution. */
   width: 100%;
-  /* Preserve the canvas aspect ratio during visual enlargement. */
   height: auto;
 }
 #overlay, #boxes {
-  /* Place arrow and detections over the image without adding layout height. */
   position: absolute;
-  /* Align every overlay edge with the image view. */
   inset: 0;
 }
+
+/* Wrap metric cards responsively and distinguish labels from values. */
 .cards {
-  /* Lay out the separate measurements in a responsive grid. */
   display: grid;
-  /* Wrap to fewer columns rather than squeezing cards below 145 pixels. */
   grid-template-columns: repeat(auto-fit,minmax(145px,1fr));
-  /* Preserve inter-card and surrounding spacing. */
   gap: 12px;
   margin: 20px 0;
 }
 .card {
-  /* Preserve the existing measurement-card surface. */
   background: #1b2b38;
-  /* Keep the original rounded corners and text padding. */
   border-radius: 8px;
   padding: 14px;
 }
 .card span {
-  /* Put the metric name on its own line. */
   display: block;
-  /* Keep the label secondary to its numerical value. */
   font-size: 13px;
   color: #aabac6;
 }
 .card strong {
-  /* Put the numerical value below the label. */
   display: block;
-  /* Preserve the original value scale and separation. */
   font-size: 23px;
   margin-top: 5px;
 }
+
+/* Status colors and reserved height keep connection changes legible. */
 #status {
-  /* Keep spacing stable while connection/state text changes. */
   padding: 10px 0;
-  /* Retain the normal live-state color. */
   color: #68d6bb;
-  /* Reserve space even during startup or short messages. */
   min-height: 24px;
 }
 .error {
-  /* Override the ordinary live color when the status indicates failure. */
   color: #ffb29c!important;
 }
 small {
-  /* Keep measurement-scope caveats visually secondary but readable. */
   color: #aabac6;
 }
 code {
-  /* Distinguish literal command-line options in explanatory text. */
   color: #cfdee8;
 }
 </style>
@@ -114,28 +87,24 @@ code {
 <h1>EdgeXR · Camera motion</h1>
 <p>Live image movement at 320 × 180, with optional IMU readings and object detection.</p>
 <div id="status" role="status" aria-live="polite">Connecting…</div>
-<!-- The displayed image and two independent overlays share one visual rectangle. -->
+<!-- The 320×180 image and 640×360 overlays share one visual rectangle.
+     Boxes refer to older source frames; the arrow is image shift, not a track. -->
 <div class="view">
-  <!-- Source pixels stay at the motion resolution; CSS can enlarge their appearance. -->
   <canvas id="image" width="320" height="180" aria-label="Camera preview"></canvas>
-  <!-- Detector coordinates are scaled to this canvas without moving boxes to a new time. -->
   <canvas id="boxes" width="640" height="360" aria-label="Older object detections"></canvas>
-  <!-- The arrow is a visual indicator, not a camera trajectory or object tracker. -->
   <canvas id="overlay" width="640" height="360" aria-label="Estimated image movement"></canvas>
 </div>
-<!-- These element IDs are the destination fields used by render() below. -->
+<!-- IDs connect these metric groups to render(): camera, IMU, then detector.
+     Rates, durations and source ages are distinct measurements. -->
 <div class="cards">
-<!-- Camera receipt and analysis rates may differ when motion work skips frames. -->
 <div class="card"><span>Decoded receipt rate</span><strong id="capture">—</strong></div>
 <div class="card"><span>Analyzed frame rate</span><strong id="analysis">—</strong></div>
 <div class="card"><span>Latest estimator time</span><strong id="cost">—</strong></div>
 <div class="card"><span>Skipped decoded frames</span><strong id="skipped">—</strong></div>
 <div class="card"><span>Result age on Pi</span><strong id="age">—</strong></div>
-<!-- Frequency is in Hz; angular rate and sample age have different physical units. -->
 <div class="card"><span>IMU sample rate</span><strong id="imu-rate">—</strong></div>
 <div class="card"><span>Gyro Y turn rate</span><strong id="imu-y">—</strong></div>
 <div class="card"><span>IMU sample age</span><strong id="imu-age">—</strong></div>
-<!-- Detector update rate, elapsed compute and source age are separate measurements. -->
 <div class="card"><span>Detection updates (target 2 Hz)</span><strong id="detect-rate">—</strong></div>
 <div class="card"><span>Latest detection compute</span><strong id="detect-cost">—</strong></div>
 <div class="card"><span>Box source age on Pi</span><strong id="detect-age">—</strong></div>
@@ -199,13 +168,11 @@ these two displays are approximate concurrent observations, not synchronized mea
  * @property {DetectorSnapshot} [detector] Latest independently aged detections.
  */
 
-// Draw gray pixels on the small image canvas; CSS handles visual enlargement.
+// Bind independent pixel/arrow/box surfaces and overall camera status once.
+// Updating an overlay never changes the underlying source pixels.
 const canvas = document.getElementById('image'), ctx = canvas.getContext('2d');
-// Use a separate overlay so updating the arrow never changes source image pixels.
 const overlay = document.getElementById('overlay'), arrow = overlay.getContext('2d');
-// Older detection boxes have their own overlay and freshness policy.
 const boxctx = document.getElementById('boxes').getContext('2d');
-// Keep the camera's overall state separate from detector and IMU messages.
 const status = document.getElementById('status');
 
 /**
@@ -230,142 +197,101 @@ const fmt = (v, unit) => v == null ? '—' : v.toFixed(1) + ' ' + unit;
  * @returns {void} Updates canvases/text only; no inference or fusion runs here.
  */
 function render(data) {
-  // Clear the old arrow before evaluating whether a new one is reliable.
+  // Clear overlays first so stale boxes/arrows cannot survive a new snapshot.
+  // Decode grayscale into opaque RGBA only when an image payload is present.
   arrow.clearRect(0, 0, 640, 360);
-  // Remove old boxes rather than retaining them after an error or empty detection.
   boxctx.clearRect(0, 0, 640, 360);
-  // Startup may have no analyzed image yet; do not decode an absent payload.
   if (data.pixels_b64) {
-    // Decode transport text and allocate the browser's RGBA image representation.
     const bytes = atob(data.pixels_b64), image = ctx.createImageData(320, 180);
-    // Each one-byte gray source pixel becomes four browser color/alpha entries.
     for (let i = 0; i < bytes.length; i++) {
-      // Locate this intensity and the matching four-channel destination offset.
       const v = bytes.charCodeAt(i), j = i * 4;
-      // Red, green and blue are identical; no color is recovered from monochrome.
       image.data[j] = v;
-      // Copy the same intensity into green.
       image.data[j + 1] = v;
-      // Copy the same intensity into blue.
       image.data[j + 2] = v;
-      // Set fully opaque alpha rather than leaving the image transparent.
       image.data[j + 3] = 255;
     }
-    // Draw at the original small-canvas origin without changing analysis results.
     ctx.putImageData(image, 0, 0);
   }
-  // Capture receipts and motion completions are different measured frequencies.
+
+  // Show camera/analysis rates and cost separately. Skips belong to motion
+  // analysis, and source age starts at Pi receipt—not exposure or display.
   put('capture', fmt(data.capture_fps, 'fps'));
-  // Display achieved throughput, not the camera's requested frame rate.
   put('analysis', fmt(data.analysis_fps, 'fps'));
-  // Estimator duration excludes exposure, decoding and browser display time.
   put('cost', fmt(data.analysis_ms, 'ms'));
-  // This counter belongs to the motion worker, not deliberate detector sampling.
   put('skipped', String(data.skipped));
-  // This age starts at Pi host receipt, not camera exposure.
   put('age', fmt(data.result_age_ms, 'ms'));
 
-  // Default absent optional IMU data to off, never to zero rotation.
+  // Render independently aged IMU data; missing/stale rates are not zero.
+  // Y is a sensor axis, not a calibrated world heading. Hz and ms differ.
   const imu = data.imu || {status: 'off'};
-  // Frequency and latest sample age have different units and meanings.
   put('imu-rate', fmt(imu.rate_hz, 'Hz'));
-  // Include read/scheduling delay but not subsequent SSH/browser transport time.
   put('imu-age', fmt(imu.age_ms, 'ms'));
-  // Sensor Y is the prominent mounted-pan observation, not calibrated world yaw.
   put('imu-y', imu.status === 'ready' && imu.gyro_dps ? fmt(imu.gyro_dps[1], '°/s') : '—');
-  // Select a status explanation without presenting stale/uncalibrated rates as valid.
   const imuText = imu.status === 'ready' && imu.gyro_dps ?
     `IMU ready · sensor X ${imu.gyro_dps[0].toFixed(1)}, Y ${imu.gyro_dps[1].toFixed(1)}, Z ${imu.gyro_dps[2].toFixed(1)} °/s. Offset estimated from first second still.` :
     imu.status === 'calibrating' ? 'IMU: keep the rig still for the first second to estimate this run’s gyro offset.' :
     imu.status === 'stale' ? 'IMU samples are stale. Camera preview may still be live.' :
     imu.status === 'error' ? `IMU error: ${imu.error || 'unknown'} · camera preview continues.` :
     'IMU is off. Restart Pi preview with --imu to show it.';
-  // Update the independent IMU state message below the camera view.
   put('imu-status', imuText);
 
-  // Model loading/failure remains independent of the camera and IMU status.
+  // Render detector throughput, compute duration and source age independently.
+  // Only ready predictions with a live camera may contribute visible boxes.
   const detector = data.detector || {status: 'off'};
-  // Display completed inference frequency, not browser refresh rate.
   put('detect-rate', fmt(detector.rate_hz, 'Hz'));
-  // Include preprocessing/inference/parsing, but not model loading or drawing.
   put('detect-cost', fmt(detector.compute_ms, 'ms'));
-  // Source age grows between detector updates even if inference cost is stable.
   put('detect-age', fmt(detector.age_ms, 'ms'));
-  // Only a ready detector with a live camera can contribute visible boxes.
   const ready = detector.status === 'ready' && data.status === 'live';
-  // Tell the user which older source sequence the boxes describe.
   put('detect-status', ready ? `${detector.boxes.length} detections on source frame ${detector.sequence} · boxes may lag behind this view.` :
     detector.status === 'off' ? 'Detection is off. Add --detect to show boxes.' :
     detector.status === 'error' ? detector.error :
     detector.status === 'starting' ? 'Loading detector / waiting for its first frame…' : 'Detection unavailable or stale; boxes hidden.');
-  // An empty ready list is allowed and naturally draws no rectangles.
   if (ready) {
-    // Keep the existing amber appearance for older, uncompensated predictions.
+    // Use dashed amber boxes to distinguish older predictions from motion.
+    // Map source-image coordinates to the overlay; no tracking compensates age.
     boxctx.strokeStyle = '#ffd166';
-    // Use the same color for category text.
     boxctx.fillStyle = '#ffd166';
-    // Two overlay pixels keeps box boundaries legible without obscuring the image.
     boxctx.lineWidth = 2;
-    // Labels belong to the overlay canvas, not the detector input tensor.
     boxctx.font = '14px sans-serif';
-    // Dashed edges distinguish detector boxes from the motion arrow.
     boxctx.setLineDash([6, 4]);
-    // Draw each retained model prediction once; there are no track IDs here.
     for (const box of detector.boxes) {
-      // Coordinates are source-image boundaries after confidence filtering.
       const [left, top, right, bottom] = box.box_xyxy;
-      // Map source coordinates independently along each overlay dimension.
       const x = left * 640 / detector.width, y = top * 360 / detector.height;
-      // Scale width and height using the same source-to-overlay mapping.
       boxctx.strokeRect(x, y, (right - left) * 640 / detector.width, (bottom - top) * 360 / detector.height);
-      // Keep category/score text above the box but not above the visible top edge.
       boxctx.fillText(`${box.label} ${box.confidence.toFixed(2)}`, x, Math.max(15, y - 5));
     }
   }
 
-  // Overall camera status controls the main status color independently of other paths.
+  // Camera and patch reliability gate the arrow without hiding independent
+  // detector/IMU status. Retained image pixels are not evidence of fresh motion.
   status.className = data.status === 'live' ? '' : 'error';
-  // Preserve the server's error explanation when camera processing is unavailable.
   status.textContent = data.status === 'live' ? 'Live · ' + data.motion : data.error || ('Camera ' + data.status + ' — check the Pi terminal and connection.');
-  // Never draw an arrow from stale camera data or an unreliable patch estimate.
   if (data.status !== 'live' || data.motion !== 'reliable') {
-    // The last image may remain visible, but it is not evidence of valid new motion.
     put('motion', 'No reliable movement estimate for this frame. The image may still be visible.');
-    // Detector/IMU fields above are still updated even when motion is rejected.
     return;
   }
-  // Calculate displacement magnitude in the 320x180 analysis image's pixels.
+
+  // Report the actual small-image displacement, but suppress near-zero arrows
+  // whose direction would be unstable before dividing by their magnitude.
   const size = Math.hypot(data.dx, data.dy);
-  // Report actual estimated displacement separately from the exaggerated arrow.
   put('motion', `Image shift: X ${data.dx.toFixed(2)} px, Y ${data.dy.toFixed(2)} px · ${data.patches}/9 patches agree. Right/down are positive.`);
-  // Hide tiny displacement rather than drawing an unstable direction near zero.
   if (size < 0.15) {
-    // A valid small movement is different from an unavailable estimate.
     status.textContent = 'Live · little image movement';
-    // Avoid dividing by a near-zero magnitude below.
     return;
   }
-  // Exaggerate and clamp length for visibility, while preserving direction.
+
+  // Exaggerate/clamp arrow length for visibility, then draw a centered shaft
+  // and two wings. Direction is image-content movement, not gyro rotation.
   const length = Math.min(110, Math.max(20, size * 12)), dx = data.dx / size * length, dy = data.dy / size * length;
-  // Direction is in overlay coordinates; it is not gyro angle or camera pose.
   const angle = Math.atan2(dy, dx);
-  // Preserve the cyan motion-arrow appearance.
   arrow.strokeStyle = '#50ffd0';
-  // Draw a legible four-pixel-wide arrow on its independent overlay.
   arrow.lineWidth = 4;
-  // Start a new path so earlier arrows do not accumulate.
   arrow.beginPath();
-  // Anchor at the overlay center, not at a remembered object position.
   arrow.moveTo(320, 180);
-  // Draw the shaft in the estimated image-content direction.
   arrow.lineTo(320 + dx, 180 + dy);
-  // Draw one arrowhead wing at the preserved half-radian angle offset.
   arrow.lineTo(320 + dx - 13 * Math.cos(angle - .5), 180 + dy - 13 * Math.sin(angle - .5));
-  // Return to the tip before drawing the other wing.
   arrow.moveTo(320 + dx, 180 + dy);
-  // Draw the other wing symmetrically.
   arrow.lineTo(320 + dx - 13 * Math.cos(angle + .5), 180 + dy - 13 * Math.sin(angle + .5));
-  // Commit the complete path to the canvas.
   arrow.stroke();
 }
 
@@ -375,53 +301,38 @@ function render(data) {
  * No parameters: the existing same-origin route and page state are used.
  */
 async function poll() {
-  // Handle connection/HTTP/decode/render failure without retaining stale overlays.
   try {
-    // Avoid caches and abandon an unresponsive request after three seconds.
+    // Fetch one uncached snapshot with a timeout, reject HTTP errors and render
+    // before scheduling another request; there is no overlapping poll backlog.
     const response = await fetch('/api/frame', {cache: 'no-store', signal: AbortSignal.timeout(3000)});
-    // Non-success HTTP responses belong to the same visible failure path.
     if (!response.ok) {
-      // Preserve the numeric HTTP status to help diagnose a failed request.
       throw new Error('Preview response ' + response.status);
     }
-    // Decode JSON before passing the snapshot to the synchronous renderer.
     render(await response.json());
   } catch (error) {
-    // Never leave old detections looking valid after transport stops.
+    // On transport failure, clear overlays and all metric groups together.
+    // Keep the last image only with an explicit disconnected/stale explanation.
     boxctx.clearRect(0, 0, 640, 360);
-    // Remove the motion arrow for the same reason.
     arrow.clearRect(0, 0, 640, 360);
-    // Mark the main status visually as a failure.
     status.className = 'error';
-    // The Pi may still be processing; this message concerns the display connection.
     status.textContent = 'Disconnected — check the SSH tunnel and Pi program.';
-    // Replace all camera metrics with unavailable markers, not zeros.
     for (const id of ['capture', 'analysis', 'cost', 'skipped', 'age']) {
-      // Clear this individual camera metric.
       put(id, '—');
     }
-    // Clear IMU fields even if the last received sample had been ready.
     for (const id of ['imu-rate', 'imu-y', 'imu-age']) {
-      // Clear this individual IMU metric.
       put(id, '—');
     }
-    // Explain that no fresh gyro values are arriving at the browser.
     put('imu-status', 'Disconnected — IMU readings are unavailable.');
-    // Clear detector rate/duration/age metrics from the previous response.
     for (const id of ['detect-rate', 'detect-cost', 'detect-age']) {
-      // Clear this individual detector metric.
       put(id, '—');
     }
-    // Explicitly distinguish disconnection from a valid zero-detection result.
     put('detect-status', 'Disconnected — detection boxes hidden.');
-    // The image canvas is intentionally retained as the last received image.
     put('motion', 'Preview is not updating; any visible image is the last received frame.');
   } finally {
-    // Fetch/render time adds to this pause, so display frequency is below 5 Hz.
+    // This pause follows fetch/render time, so browser refresh is at most 5 Hz.
     setTimeout(poll, 200);
   }
 }
-// Start the first request after the page's existing canvases and labels are available.
 poll();
 </script>
 </html>

@@ -23,6 +23,11 @@ relevant documentation.
 
 ## Keep the learning map current
 
+Explain code with comments above cohesive task groups, not line by line. Preserve
+function docstrings and input/return types; retain focused explanations of units,
+shapes, clocks, locks and other non-obvious constraints. Use the convention in
+`docs/learning/CODE_CONVENTIONS.md` for source, tests, browser code and scripts.
+
 `docs/PIPELINE.md` is the current-implementation diagram, not a future design.
 For each implementation task, add an explicit task to review/update this diagram
 and the relevant guide in `docs/learning/`. Check data flow, named functions,

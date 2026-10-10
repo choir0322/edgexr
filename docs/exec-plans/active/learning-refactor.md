@@ -1,5 +1,9 @@
 # EdgeXR learning refactor — implementation and verification
 
+Comment-style follow-up (2026-10-10): the grouped-comments plan supersedes this
+plan's historical per-statement comment convention. Types and function docstrings
+are retained; code explanations now cover cohesive tasks instead of every line.
+
 ## Purpose / big picture
 
 Make the entire first-party codebase readable as a course in the camera-motion,

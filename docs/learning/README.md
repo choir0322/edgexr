@@ -11,7 +11,7 @@ Each guide names exact functions in linked source files. In VS Code, open the
 linked file and use symbol search (`Cmd+Shift+O` on Mac) or search the function
 name. Relative links work after committing to GitHub and when the repo is
 cloned to the Pi. Line numbers are deliberately not hard-coded because the
-planned comments/type refactor will move them.
+comment/layout revisions can move them.
 
 ## How to study a step
 
@@ -39,8 +39,8 @@ The refactor covers first-party Python source and tests, browser JavaScript
 and shell scripts. It does not rewrite OpenCV, FFmpeg, NumPy, SunFounder's driver
 or the pretrained network. Their internals are dependency boundaries, explicitly
 labelled in the guides. Python functions now include input/return annotations,
-Args/Returns docstrings and statement-level explanations. Browser functions use
-JSDoc; shell scripts describe inputs, outputs and executable steps. Read
+Args/Returns docstrings and task-group explanations. Browser functions use
+JSDoc; shell scripts describe inputs, outputs and grouped operations. Read
 [the code conventions](CODE_CONVENTIONS.md) to understand the notation.
 
 Read [the active learning-refactor plan](../exec-plans/active/learning-refactor.md)

@@ -17,9 +17,27 @@ Every named Python function, nested helper and test double has parameter and
 return annotations and an Args/Returns docstring. `self` is implicitly the
 instance of its enclosing class. Physical units and array shapes live in the
 docstring because a plain float/array type cannot express those distinctions.
-Comments explain executable logical statements; continuation lines, parentheses
-and blank lines do not need redundant comments. Existing module docstrings
-remain intact because the command-line help uses them.
+Comments explain **groups of statements that perform one task**, not each line.
+Existing module docstrings remain intact because the command-line help uses them.
+
+## Task-level comments (updated 2026-10-10)
+
+Place one concise explanation above a cohesive operation: parsing command-line
+options, validating input, selecting a latest frame, computing motion, publishing
+shared state, rendering a metric group, or cleaning up resources. Use blank lines
+to make those boundaries visible. Group by purpose, not a fixed number of lines.
+
+Explain why the group exists and any non-obvious constraints: units, array shapes,
+clock origin, lock ownership, freshness policy and deliberate frame skipping.
+Keep a narrowly placed comment when an individual operation genuinely needs one.
+Avoid comments that merely say to assign a value, call a function or return.
+Short self-explanatory helpers may need only their existing function docstring.
+Tests should explain the scenario and expected behavior in groups, without
+narrating each assertion. Preserve docstrings and type annotations as contracts.
+
+For example, all `add_argument(...)` calls and `parse_args()` belong beneath one
+comment about defining/parsing the command-line configuration. Validation and
+hardware startup are separate tasks and deserve separate explanations.
 
 Anonymous lambdas have become ten named callbacks, such as `motion_frame_ready`,
 `build_detector` and `read_hash_block`. A callback is a function passed to other
@@ -69,12 +87,12 @@ names supplied in its namespace; the application does not use that reflection.
 [preview.html](../../src/app/preview.html) uses JSDoc for `put`, `fmt`, `render`
 and `poll`, plus typedefs describing snapshot and detection fields. Its image
 copy, overlay geometry, status branches, timing and failure paths are expanded
-and commented. CSS declarations have explanations but retain their existing
-values. HTML comments explain the canvas and metric-group wiring.
+and commented by task. CSS comments cover layout/style groups rather than every
+declaration. HTML comments explain the canvas and metric-group wiring.
 
 Shell scripts have no user-defined functions. Their top comments specify
 arguments, environment assumptions, outputs and exit behavior; executable
-steps explain why commands are read-only. No command was added to install
+groups explain why commands are read-only. No command was added to install
 software, change permissions or configure hardware.
 
 ## Repeating local checks
@@ -100,5 +118,9 @@ callbacks. Their executable operations matched the original. Shell executable
 lines also matched exactly. A synthetic browser comparison matched DOM text,
 canvas calls and polling behavior in 16 rendering cases plus two polling cases;
 CSS declarations matched ignoring comments/formatting/optional trailing semicolons.
-Those comparisons are evidence for this change, not a promise of identical
+Those comparisons are evidence for the original typed-code refactor, not a promise of identical
 measured Pi performance or a substitute for a real browser/hardware smoke test.
+
+The later grouped-comment pass preserves the entire Python AST, including
+docstrings and types. Comments and whitespace are not executable instructions;
+the function-contract audit remains useful but cannot assess comment quality.
