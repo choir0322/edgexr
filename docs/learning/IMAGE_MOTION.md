@@ -184,29 +184,38 @@ pipes. The preview does not write raw images or recordings.
 
 ### Illustrated Hann window and FFT example
 
-These figures use actual adjacent frames from the local `combined-motion-02`
-recording at PTS 3.640 and 3.672 seconds. FFmpeg prepares the 320x180 grayscale
-image; the highlighted center patch is 80x56 pixels at `(x=117, y=62)`.
+Follow the [complete 11-step Hann/FFT walkthrough](HANN_FFT_WALKTHROUGH.md)
+alongside `patch_shift()`. The revised example uses actual frames 313 and 316
+from `combined-motion-02`, at PTS 10.521 and 10.621 seconds. They are three
+frame intervals apart to make the leftward shift clearer. FFmpeg prepares
+320x180 grayscale; the selected patch is 80x56 at `(x=117, y=119)`.
 The original video stays outside Git. The figures and
-[measurement notes](images/hann-fft-example.json) are saved teaching material.
+[numeric intermediates](images/hann-fft-example.json) are saved teaching material.
 
-![Nine patches, Hann weights and the weighted center patch](images/hann-window-explained.png)
+![Selected patch pair, validation and Hann weighting](images/hann-window-explained.png)
 
-Read panels A through D to see the patch selection and fading. Panel D multiplies
-raw brightness by the window for an intuitive picture. Panel E shows what the
-code actually transforms: `(patch - patch.mean()) * window`; its colors represent
-positive and negative brightness deviations. The window weights every pixel of
-the patch and tapers its outer border. It does not blur individual pixel borders.
+The first board covers input validation, floating-point conversion, texture
+rejection and the actual `(patch - patch.mean()) * window` calculation.
+Its red/blue colors represent positive/negative brightness deviations.
+The window tapers the whole patch's outer border, not individual pixel borders.
 
 ![Two recorded patches, Fourier representations and a displacement peak](images/fft-motion-explained.png)
 
-The second figure distinguishes FFT magnitude (pattern strength) from phase.
-The normalized cross spectrum compares the two frames; its inverse FFT peaks
-at a candidate displacement. For this selected patch, the refined estimate is
-approximately `dx=+3.00`, `dy=-0.05` pixels in the 320x180 analysis image.
-That peak represents displacement, not an object's location. The full image
-estimate separately combines agreeing patches, so it can differ from this one.
+The second board follows FFT, cross-spectrum normalization and inverse FFT.
+The peak represents a candidate displacement, not an object's location.
 Frequency plots are centered and magnitude is log-scaled for readability.
+
+![Wrapped peak exclusion and quality](images/fft-peak-quality.png)
+
+The third board shows the actual wrapped 5x5 exclusion and calculation of
+quality `Q=51.93`. This is not a probability.
+
+![Subpixel refinement and final acceptance](images/fft-subpixel-refinement.png)
+
+The fourth board shows the three-point fit, signed-index unwrapping and final
+rejection checks. The accepted estimate is `dx=-12.63, dy=-0.76` analysis
+pixels per pair, not pixels/second or degrees/second. The full-image estimator
+separately combines agreeing patches, so it can differ from this one.
 
 OpenCV is a general image-processing library: live detection mode uses it both
 to resize the motion image and to prepare/run MobileNet-SSD. NumPy performs

@@ -1,38 +1,63 @@
 {
-  "source": "combined-motion-02/camera.mkv (local recording; excluded from Git)",
-  "frame_indices": [
-    106,
-    107
+  "source": "combined-motion-02/camera.mkv",
+  "frame_indices_zero_based": [
+    313,
+    316
   ],
   "pts_seconds": [
-    3.64,
-    3.672
+    10.521,
+    10.621
   ],
-  "analysis_size": [
-    320,
-    180
-  ],
+  "elapsed_pts_seconds": 0.09999999999999964,
+  "preparation": "FFmpeg scale=320:180; gray; fps_mode passthrough",
   "patch_xywh": [
     117,
-    62,
+    119,
     80,
     56
   ],
-  "patch_shift_xy_pixels": [
-    2.9964196215588923,
-    -0.04534928345328904
+  "mean": [
+    40.34330357142857,
+    33.5109375
   ],
-  "quality": 58.856081291015336,
-  "consensus_shift": [
-    3.748630046859282,
-    -0.023174469306111507,
-    8,
-    30.766153794758523
+  "stddev": [
+    39.85739086974407,
+    35.33277219643796
   ],
-  "integer_peak_xy": [
-    3,
-    0
+  "spectrum_floor_count": 0,
+  "peak_xy": [
+    67,
+    55
   ],
-  "preparation": "FFmpeg scale=320:180 grayscale; same offline path, live detection mode uses OpenCV resizing.",
-  "note": "Actual recorded adjacent frames; no synthetic movement. Spectrum brightness is log-scaled for display; phase correlation uses normalized cross spectrum."
+  "peak": 0.49685824851703886,
+  "excluded_count": 25,
+  "background_count": 4455,
+  "background_mean": 9.174168646398943e-06,
+  "background_std": 0.00956719183920515,
+  "refinement_x": {
+    "index": 67,
+    "length": 80,
+    "left": -0.07409633739893261,
+    "center": 0.49685824851703886,
+    "right": 0.41024303373454946,
+    "denominator": -0.6575698006984607,
+    "fraction": 0.36827981654496916,
+    "signed_integer": -13,
+    "result": -12.63172018345503
+  },
+  "refinement_y": {
+    "index": 55,
+    "length": 56,
+    "left": -0.13146066184677985,
+    "center": 0.49685824851703886,
+    "right": 0.2790944698675038,
+    "denominator": -0.8460826890133539,
+    "fraction": 0.24262116282809548,
+    "signed_integer": -1,
+    "result": -0.7573788371719046
+  },
+  "dx": -12.63172018345503,
+  "dy": -0.7573788371719046,
+  "quality": 51.932592415714645,
+  "verification": "Matches repository patch_shift to absolute tolerance 1e-12"
 }
