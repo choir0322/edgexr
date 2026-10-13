@@ -1,0 +1,262 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>EdgeXR · How the workers share frames</title>
+<style>
+/* The same spatial map remains visible in both modes; only teaching detail changes. */
+:root{color-scheme:light dark;--bg:light-dark(#f5f7fa,#10161e);--paper:light-dark(#fff,#192330);--text:light-dark(#172b40,#e6edf5);--muted:light-dark(#4c6279,#a5b6c8);--line:light-dark(#b7c5d3,#58708a);--blue:light-dark(#176297,#72baff);--green:light-dark(#17694b,#68d5a5);--orange:light-dark(#95521b,#ffb573);--red:light-dark(#a73145,#ff91a5);--tint:light-dark(#eaf1f8,#223348)}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:16px/1.55 system-ui,sans-serif}main{max-width:1180px;margin:auto;padding:32px 24px 60px}h1{font-size:32px;line-height:1.15;letter-spacing:-.025em;margin:8px 0 14px}h2{font-size:20px;margin:0 0 10px}h3{font-size:17px;margin:14px 0 7px}p{margin:8px 0}a{color:var(--blue)}code,pre{font-family:ui-monospace,SFMono-Regular,monospace;font-size:.88em}code{overflow-wrap:anywhere}button,select,input{font:inherit}button,select{background:var(--paper);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:9px 15px;cursor:pointer}button:disabled{opacity:.5;cursor:default}button[aria-pressed=true],button.primary{background:var(--blue);color:light-dark(#fff,#10161e);border-color:var(--blue)}button:focus-visible,summary:focus-visible,input:focus-visible{outline:3px solid var(--orange);outline-offset:3px}.muted,.eyebrow{color:var(--muted)}.eyebrow{font-size:13px;letter-spacing:.1em;text-transform:uppercase}.intro{max-width:850px}.toolbar{display:flex;gap:12px;flex-wrap:wrap;margin:24px 0 14px}.notice{padding:14px 18px;border-left:4px solid var(--blue);background:var(--tint)}.controls{padding:18px 0;display:flex;gap:12px;align-items:center;flex-wrap:wrap}.scrubber{width:100%;display:flex;gap:12px;align-items:center}.scrubber input{flex:1;min-width:80px;accent-color:var(--blue)}output{font-variant-numeric:tabular-nums}.clock{font-size:22px;font-weight:600}.legend{display:flex;gap:18px;flex-wrap:wrap;font-size:14px;margin:12px 0}.badge{display:inline-block;border-radius:5px;padding:2px 7px;background:var(--tint);font-size:13px}.accepted{color:var(--green)}.rejected{color:var(--red)}.skipped{color:var(--muted);text-decoration:line-through}.working{color:var(--blue)}.waiting{color:var(--orange)}
+.flow{position:relative;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:62px 26px;margin:28px 0}.wires{position:absolute;inset:0;pointer-events:none;overflow:visible;width:100%;height:100%;z-index:0}.node{position:relative;z-index:1;min-width:0;background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:22px}.node.busy{border-color:var(--blue);box-shadow:0 0 0 2px color-mix(in srgb,var(--blue) 20%,transparent)}.camera{grid-column:1/3;grid-row:1}.sensor{grid-column:3;grid-row:1}.capture{grid-column:1/3;grid-row:2}.motion{grid-column:1;grid-row:3}.detector{grid-column:2;grid-row:3}.imu{grid-column:3;grid-row:3}.snapshot{grid-column:1/4;grid-row:4}.server{grid-column:1/4;grid-row:5}.browser{grid-column:1/4;grid-row:6}.step{color:var(--blue);font-size:13px;font-weight:650;letter-spacing:.05em;text-transform:uppercase}.rate{font-size:18px;font-weight:600;margin:12px 0}.policy{font-size:14px}.policy ul{padding-left:18px;margin:8px 0}.policy li{margin:7px 0}.policy details{margin:12px 0}.policy summary{cursor:pointer;color:var(--blue)}.function{font-size:13px;color:var(--muted);margin-top:14px}.handoff{border-top:1px solid var(--line);padding-top:12px;margin-top:16px}.progress{height:7px;background:var(--tint);border-radius:4px;overflow:hidden;margin:12px 0}.progress span{display:block;height:100%;background:var(--blue)}.tokens{display:flex;flex-wrap:wrap;gap:6px;min-height:36px;margin:10px 0}.token{background:var(--tint);border-radius:5px;padding:4px 7px;font-size:13px;font-variant-numeric:tabular-nums}.event{min-height:52px}.state-label{font-size:13px;color:var(--muted)}.columns{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px}.columns>div{min-width:0}.columns strong{display:block}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:var(--tint);padding:16px;border-radius:8px;margin-bottom:0}.dynamic-only{display:none}body[data-mode=dynamic] .dynamic-only{display:block}body[data-mode=dynamic] .static-only{display:none}.readout{font-size:15px}footer{color:var(--muted);font-size:14px;border-top:1px solid var(--line);padding-top:22px}#event-description{min-height:52px}.source-links{display:flex;flex-wrap:wrap;gap:12px}
+@media(max-width:760px){main{padding:20px 16px}h1{font-size:27px}.flow{grid-template-columns:1fr;gap:46px}.node{grid-column:1!important;grid-row:auto!important;padding:18px}.camera{order:1}.capture{order:2}.motion{order:3}.detector{order:4}.sensor{order:5}.imu{order:6}.snapshot{order:7}.server{order:8}.browser{order:9}.columns{grid-template-columns:1fr}.wires{display:none}.node::before{content:attr(data-mobile);display:block;color:var(--blue);font-size:12px;margin-bottom:9px}.node::after{content:'↓';position:absolute;bottom:-38px;left:50%;font-size:22px;color:var(--muted)}.motion::after,.detector::after,.browser::after{display:none}.scrubber{flex-wrap:wrap}.scrubber input{min-width:160px}.controls{gap:8px}}
+@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
+@media print{body{background:white;color:black}.controls,.toolbar{display:none}.node{break-inside:avoid}.flow{gap:30px}.wires{display:none}}
+</style>
+</head>
+<body data-mode="static">
+<main>
+  <div class="eyebrow">EdgeXR learning lab · current live-preview architecture</div>
+  <h1>One camera, independent workers</h1>
+  <p class="intro">Follow a complete camera frame into two image branches. Follow the IMU from its own sensor. Then see how the web server gathers their latest results for the browser.</p>
+  <div class="toolbar" role="group" aria-label="Illustration mode">
+    <button id="static-mode" aria-pressed="true" type="button">1 · Static workflow</button>
+    <button id="dynamic-mode" aria-pressed="false" type="button">2 · Dynamic walkthrough</button>
+  </div>
+  <div class="notice static-only">Read downward. Arrows show data handoffs. The camera branches into motion and detection; the IMU has a separate source. The three branches meet when the browser requests a snapshot.</div>
+  <section class="dynamic-only" aria-label="Simulation controls">
+    <div class="notice">Illustrative timings, not a recorded Pi trace. Capture: 33.3 ms apart. Motion: 40 ms/job. Detection: 240 ms/job. IMU: 2.4 ms/read + 50 ms pause. Browser: 20 ms/request-and-render + 200 ms pause. One deliberately weak motion estimate and one low-score box demonstrate rejection.</div>
+    <div class="controls">
+      <button id="play" class="primary" type="button">Play slowly</button><button id="next" type="button">Next checkpoint</button><button id="restart" type="button">Restart</button>
+      <div class="scrubber"><label for="time">Simulation clock</label><input id="time" type="range" min="0" max="1800" step="1" value="0"><output id="clock" for="time" class="clock">0 ms</output></div>
+    </div>
+    <p id="event-description" aria-live="polite">Start with the first complete camera frame. The motion worker needs a second frame before it can calculate a shift.</p>
+    <div class="legend"><span class="accepted">✓ accepted result</span><span class="rejected">! rejected estimate</span><span class="skipped">× bypassed frame</span><span class="working">● processing</span><span class="waiting">○ waiting / calibrating</span></div>
+  </section>
+
+  <div class="flow" id="flow">
+    <svg class="wires" id="wires" aria-hidden="true"></svg>
+    <section class="node camera" id="camera" data-mobile="CAMERA SOURCE → capture worker">
+      <div class="step">1 · Camera and FFmpeg</div><h2>A complete image arrives</h2>
+      <div class="rate">30 fps requested ≈ one frame every 33.3 ms</div>
+      <p>Camera sends 1280×720 MJPEG over USB. FFmpeg decodes it into 1280×720 grayscale when <code>--detect</code> is on.</p>
+      <div class="dynamic-only"><div class="state-label">Most recent camera arrivals · same F-number follows both image sizes</div><div class="tokens" id="camera-tokens"></div></div>
+      <p class="function">Camera exposure → USB → FFmpeg → stdout pipe. Actual arrival spacing may vary.</p>
+    </section>
+    <section class="node sensor" id="sensor" data-mobile="SEPARATE SENSOR SOURCE → IMU worker">
+      <div class="step">Independent source</div><h2>Camera-mounted IMU</h2>
+      <p>The sensor measures physical rotation through I²C. It produces timestamped gyro samples, not camera frames.</p>
+      <p class="rate">Independent of camera fps</p><p class="function">No camera-frame arrow enters this sensor.</p>
+    </section>
+    <section class="node capture" id="capture" data-mobile="FROM camera / FFmpeg → splits to motion AND detection">
+      <div class="step">2 · Capture worker</div><h2>Assemble, resize, publish</h2>
+      <p><code>read_frame()</code> collects exactly 921,600 bytes for one full grayscale frame. Short pipe reads are assembled; a stream ending partway through a frame is an error.</p>
+      <p>OpenCV makes the 320×180 copy. <code>State.publish_frame()</code> gives both sizes one sequence number and one host receipt timestamp.</p>
+      <div class="columns handoff"><div><strong>Motion slot</strong><code>State.latest</code><p>320×180 pixels</p></div><div><strong>Detection slot</strong><code>State.detection_frame</code><p>1280×720 pixels</p></div><div><strong>Latest wins</strong><p>A new frame replaces older waiting work. A worker already processing an older frame can finish it.</p></div></div>
+      <div class="dynamic-only readout" id="capture-status"></div>
+    </section>
+    <section class="node motion" id="motion" data-mobile="BRANCH A: from State.latest → State.result → snapshot">
+      <div class="step">3A · Motion worker</div><h2>Compare two images</h2><div class="rate">As soon as ready</div>
+      <p>Use the previous processed frame and the newest small frame. No fixed rate or intentional pause.</p>
+      <div class="static-only policy">
+        <h3>Choose a frame</h3><ul><li>Wait for a new sequence number.</li><li>First image: warm-up; no shift yet.</li><li>Pair gap ≤500 ms: attempt analysis. Larger gap: reset the reference.</li></ul>
+        <h3>Accept a shift</h3><ul><li>Patch intensity stddev ≥3; peak quality ≥8.</li><li>|dx| ≤20 px and |dy| ≤14 px per 80×56 patch.</li><li>At least four valid patches, then four within 1.5 px of their median displacement.</li></ul>
+        <p>A weak estimate becomes “unreliable”; its image can still be displayed. Wrong array shape or nonfinite image data raises an analysis error.</p>
+      </div>
+      <div class="dynamic-only"><p id="motion-status" class="event"></p><div class="progress"><span id="motion-progress"></span></div><div class="state-label">Recent frames: selected, bypassed or waiting</div><div id="motion-tokens" class="tokens"></div><p id="motion-output"></p></div>
+      <p class="handoff"><code>State.publish_result()</code><br>Image + dx/dy + quality + sequence → <code>State.result</code></p>
+      <a class="function" href="../../src/app/live_preview.py">analyze_latest()</a> · <a class="function" href="../../src/recording/visual_motion.py">image_shift()</a>
+    </section>
+    <section class="node detector" id="detector" data-mobile="BRANCH B: from State.detection_frame → detector.result → snapshot">
+      <div class="step">3B · Detector worker</div><h2>Recognize objects</h2><div class="rate">Starts ≥500 ms apart</div>
+      <p>At most about 2 starts/second. Choose the newest full frame at each start. Slow inference lowers the rate.</p>
+      <div class="static-only policy">
+        <h3>Choose a frame</h3><ul><li>Wait until the next start is due.</li><li>Require a new source sequence.</li><li>Skip a source older than 1.5 seconds.</li><li>Intermediate frames are bypassed intentionally; no detection backlog.</li></ul>
+        <h3>Accept boxes</h3><ul><li>Valid model row and class; background ignored.</li><li>Score ≥0.5; positive box area after clipping to the image.</li></ul><p>Zero accepted boxes is a valid detection result. Malformed model output raises a detector error.</p>
+      </div>
+      <div class="dynamic-only"><p id="detector-status" class="event"></p><div class="progress"><span id="detector-progress"></span></div><div class="state-label">Recent frames: selected, bypassed or waiting</div><div id="detector-tokens" class="tokens"></div><p id="detector-output"></p></div>
+      <p class="handoff"><code>DetectionState.publish()</code><br>Boxes + source sequence/time → <code>state.detector.result</code></p>
+      <a class="function" href="../../src/vision/live_detector.py">detect_latest()</a> · <a class="function" href="../../src/vision/detect_image.py">parse_detections()</a>
+    </section>
+    <section class="node imu" id="imu" data-mobile="BRANCH C: from IMU sensor → imu.latest → snapshot">
+      <div class="step">3C · IMU worker</div><h2>Read angular rate</h2><div class="rate">Read, then pause 50 ms</div>
+      <p>A 2.4 ms read plus the pause gives about 19.1 samples/second. Host timestamps use each read's midpoint.</p>
+      <div class="static-only policy">
+        <h3>Accept a sample</h3><ul><li>Three finite gyro values.</li><li>Finite, strictly increasing timestamp.</li></ul>
+        <h3>Startup offset</h3><ul><li>Keep the rig still for the initial ~1-second window.</li><li>At least 10 samples; per-axis stddev ≤0.5°/s.</li><li>Excessive variation leaves an error requiring a restart.</li></ul><p>After calibration, intentional rotation is valid data. This startup stillness check does not reject ordinary later movement.</p>
+      </div>
+      <div class="dynamic-only"><p id="imu-status" class="event"></p><div class="progress"><span id="imu-progress"></span></div><div class="state-label">Gyro samples have S-numbers here for teaching; no camera F-number</div><div id="imu-tokens" class="tokens"></div><p id="imu-output"></p></div>
+      <p class="handoff"><code>LiveImu.publish()</code><br>Timestamp + gyro XYZ → <code>state.imu.latest</code></p>
+      <a class="function" href="../../src/imu/live_reader.py">poll_imu() / LiveImu</a>
+    </section>
+    <section class="node snapshot" id="snapshot" data-mobile="JOINS latest results from A + B + C when requested">
+      <div class="step">4 · Package the latest available results</div><h2>State.snapshot()</h2>
+      <p>The browser requests <code>GET /api/frame</code>. The web server's handler calls <code>State.snapshot()</code>, which gathers the latest motion result plus <code>detector.snapshot()</code> and <code>imu.snapshot()</code>.</p>
+      <div class="columns static-only"><div><strong>Motion freshness</strong><p>Source age >2 s: stale, hide dx/dy. No analyzed frame after 10 s: startup error.</p></div><div><strong>Box freshness</strong><p>Source age >1.5 s, detector error, or camera unavailable: hide boxes. No initial detector result after 10 s: stale.</p></div><div><strong>IMU freshness</strong><p>Sample age >300 ms: stale, hide gyro. No samples after 2 s: error. Calibration must finish before corrected rates are shown.</p></div></div>
+      <p class="static-only">Locks protect consistent updates to each result. Combining these results does not synchronize their original observations. The motion image and boxes retain their own source sequences.</p>
+      <div class="dynamic-only"><p id="snapshot-status"></p><pre id="packet" aria-label="Abbreviated example JSON snapshot"></pre><p class="muted">Abbreviated fields from one response; synthetic measurements. Gyro has no camera sequence. Ages are calculated on the Pi at snapshot time.</p></div>
+      <a class="function" href="../../src/app/live_preview.py">State.snapshot() / make_handler()</a>
+    </section>
+    <section class="node server" id="server" data-mobile="JSON response → HTTP / SSH tunnel → browser">
+      <div class="step">5 · Web server sends the response</div><h2>Image bytes and measurements travel together</h2>
+      <p>The handler encodes the snapshot dictionary as JSON. Image pixels are base64 text. The response travels from the Pi through your SSH tunnel to the Mac.</p>
+      <p class="dynamic-only" id="server-status"></p>
+    </section>
+    <section class="node browser" id="browser" data-mobile="DISPLAY → wait 200 ms → request another snapshot">
+      <div class="step">6 · Mac browser</div><h2>Draw the image, arrow, boxes and gyro values</h2>
+      <p>After fetch and render complete, wait 200 ms before the next request. This gives fewer than 5 updates/second with overhead. Each display can combine a newer image with older boxes and an independently timed gyro reading.</p>
+      <p class="dynamic-only" id="browser-status"></p>
+      <a class="function" href="../../src/app/preview.html">poll() / render()</a>
+    </section>
+  </div>
+  <footer><p><strong>Three different outcomes:</strong> a bypassed frame was not selected; a rejected estimate failed a quality check; a stale result is too old to display. “Skipped decoded frames” counts motion bypasses, not intentional detector sampling.</p><p>The simulation assumes both <code>--detect</code> and <code>--imu</code>. It shows one valid ordering of concurrent events and simplified compute durations; real scheduling, USB buffering and thread contention vary. No hardware is accessed.</p><div class="source-links"><a href="README.md">Learning index</a><a href="../PIPELINE.md">Live pipeline diagram</a><a href="WORKER_RATES.md">How to use and verify this illustration</a></div></footer>
+</main>
+<script>
+'use strict';
+/** @typedef {{seq:number,time:number}} Frame Arrival at the shared image slots. */
+/** @typedef {{start:number,end:number,seq:number,previous:number,accepted:boolean,warmup:boolean}} MotionJob */
+/** @typedef {{start:number,end:number,seq:number}} DetectionJob */
+/** @typedef {{start:number,end:number,midpoint:number,sample:number}} ImuRead */
+const END=1800, FRAME_MS=1000/30;
+
+/** Build a deterministic teaching scenario; all times are milliseconds. @returns {object} */
+function buildScenario(){
+  const frames=Array.from({length:55},(_,i)=>({seq:i+1,time:i*FRAME_MS}));
+  const motions=[{start:0,end:0,seq:1,previous:0,accepted:false,warmup:true}];
+  let start=FRAME_MS,previous=1,rejected=false;
+  // A busy worker returns for the newest slot; intermediate arrivals never queue.
+  while(start<=END){
+    const seq=Math.floor((start+1e-7)/FRAME_MS)+1;
+    const reject=!rejected&&seq>=8;
+    motions.push({start,end:start+40,seq,previous,accepted:!reject,warmup:false});
+    if(reject)rejected=true;
+    previous=seq;start+=40;
+  }
+  const detections=[0,500,1000,1500].map(t=>({start:t,end:t+240,seq:Math.round(t/FRAME_MS)+1}));
+  const reads=Array.from({length:35},(_,i)=>({start:i*52.4,end:i*52.4+2.4,midpoint:i*52.4+1.2,sample:i+1}));
+  const requests=Array.from({length:9},(_,i)=>({start:i*220,end:i*220+20}));
+  return {frames,motions,detections,reads,requests};
+}
+const scenario=buildScenario();
+
+/** Select the latest completed operation at time t. @param {Array<object>} items @param {number} t @returns {object|undefined} */
+function completed(items,t){return items.filter(item=>item.end<=t+1e-7).at(-1);}
+/** Select an operation currently in progress. @param {Array<object>} items @param {number} t @returns {object|undefined} */
+function running(items,t){return items.find(item=>item.start<=t+1e-7&&item.end>t+1e-7);}
+/** Build a subset of the real API fields with clearly synthetic values. @param {number} t Snapshot time in ms. @returns {object} */
+function packetAt(t){
+  const m=completed(scenario.motions,t),d=completed(scenario.detections,t),u=completed(scenario.reads,t);
+  const calibrated=u&&u.midpoint-scenario.reads[0].midpoint>=1000;
+  return {sequence:m?.seq??null,motion:m?.warmup?'warming up':m?.accepted?'reliable':'unreliable',dx:m?.accepted?2:null,dy:m?.accepted?-.1:null,
+    result_age_ms:m?Math.round(t-(m.seq-1)*FRAME_MS):null,
+    detector:{status:d?'ready':'starting',sequence:d?.seq??null,age_ms:d?Math.round(t-(d.seq-1)*FRAME_MS):null,boxes:d?[{label:'person',confidence:.87}]:[]},
+    imu:{status:calibrated?'ready':'calibrating',samples:u?.sample??0,age_ms:u?Math.round(t-u.midpoint):null,gyro_dps:calibrated?[0,3,0]:null}};
+}
+
+const rejectedJob=scenario.motions.find(j=>!j.warmup&&!j.accepted);
+const checkpoints=[
+  [0,'F1 is complete. Capture posts both sizes. Motion publishes a warm-up image; detection starts F1. The IMU begins its independent first read.'],
+  [3,'IMU sample S1 is stored with its read-midpoint timestamp. The worker now waits 50 ms; it has no camera frame number.'],
+  [34,'F2 arrives about 33.3 ms after F1. Motion starts comparing F1 → F2 while detection is still processing F1.'],
+  [74,'Motion publishes an accepted F1 → F2 shift and starts the newest image. Detection has not finished yet.'],
+  [234,'By now motion has bypassed F7: F8 replaced the waiting slot before motion became free. That is a scheduling skip, not a quality rejection.'],
+  [240,'Detection finishes F1. Score 0.87 is kept; score 0.34 is filtered out. It waits until 500 ms before starting another inference.'],
+  [Math.ceil(rejectedJob.end),'The selected motion pair has only three agreeing patches. Its image is published, but dx/dy are unavailable. This is a rejected estimate.'],
+  [500,'Detection starts F16, the newest frame. F2–F15 were deliberately bypassed by detection. Motion continues independently.'],
+  [740,'Detection publishes F16. The motion worker is already handling a more recent image. Source sequence numbers keep their identities clear.'],
+  [1051,'Twenty-one stationary IMU readings span just over one second. The illustrative baseline passes, so corrected gyro values can now be displayed.'],
+  [1100,'A browser request makes the web server call snapshot(). It gathers the latest completed motion result, detection and gyro values at this time.'],
+  [1120,'The response is displayed after the illustrative 20 ms fetch/render delay. The browser then waits 200 ms before requesting again.'],
+  [1800,'End of this example. Different source IDs and ages remain normal: the preview gathers the latest results without waiting for all workers to match a frame.']
+].sort((a,b)=>a[0]-b[0]);
+let clock=0,playing=false,lastWall=0,raf=0;
+const byId=id=>document.getElementById(id);
+
+/** Update text using textContent, keeping data out of HTML. @param {string} id @param {string} value @returns {void} */
+function text(id,value){byId(id).textContent=value;}
+/** Draw a short frame history, retaining distinctions between choices and quality. @param {string} id @param {Array<Frame>} frames @param {Array<object>} jobs @param {number} t @returns {void} */
+function tokens(id,frames,jobs,t){
+  const parent=byId(id);parent.replaceChildren();
+  const started=jobs.filter(j=>j.start<=t+1e-7),maxSeq=started.at(-1)?.seq??0;
+  for(const frame of frames.slice(-12)){
+    const job=started.find(j=>j.seq===frame.seq),chip=document.createElement('span');
+    let marker='○',state='waiting',reason='newest available / waiting';
+    if(job){
+      if(job.end>t+1e-7){marker='●';state='working';reason='processing';}
+      else if(job.warmup){marker='○';reason='warm-up image';}
+      else if(job.accepted===false){marker='!';state='rejected';reason='motion estimate rejected: fewer than four agreeing patches';}
+      else{marker='✓';state='accepted';reason='processed';}
+    }else if(frame.seq<maxSeq){marker='×';state='skipped';reason='bypassed for a newer source';}
+    chip.className=`token ${state}`;chip.textContent=`${marker} F${frame.seq}`;chip.title=`Frame ${frame.seq}: ${reason}`;parent.appendChild(chip);
+  }
+}
+/** Set work progress and active styling. @param {string} id @param {object|undefined} job @param {number} t @returns {void} */
+function progress(id,job,t){byId(id).classList.toggle('busy',Boolean(job));byId(id+'-progress').style.width=job?`${Math.max(0,Math.min(100,(t-job.start)/(job.end-job.start)*100))}%`:'0%';}
+
+/** Render all workers and the most recently requested/delivered packet for one clock value. @returns {void} */
+function render(){
+  const t=clock,arrived=scenario.frames.filter(f=>f.time<=t+1e-7),last=arrived.at(-1);
+  text('clock',`${Math.round(t)} ms`);byId('time').value=String(Math.round(t));
+  const cameraTokens=byId('camera-tokens');cameraTokens.replaceChildren();
+  for(const f of arrived.slice(-10)){const chip=document.createElement('span');chip.className='token';chip.textContent=`F${f.seq}`;cameraTokens.appendChild(chip);}
+  text('capture-status',`Both latest slots now hold F${last.seq}, received at ${last.time.toFixed(1)} ms. Every arriving image in this scenario is complete.`);
+  const m=running(scenario.motions,t),mo=completed(scenario.motions,t);
+  progress('motion',m,t);
+  text('motion-status',m?`● Comparing F${m.previous} → F${m.seq}. Finish at ${m.end.toFixed(1)} ms.`:'○ Waiting for a second/new image.');
+  text('motion-output',mo.warmup?'Latest output: F1 image, warming up; no shift yet.':mo.accepted?`✓ Published F${mo.previous} → F${mo.seq}: 6/9 patches agree; synthetic shift (+2.0, −0.1) px.`:`! Published F${mo.seq} image; shift rejected: only 3/9 patches agree (need ≥4).`);
+  tokens('motion-tokens',arrived,scenario.motions,t);
+  const d=running(scenario.detections,t),de=completed(scenario.detections,t),nextDue=scenario.detections.find(j=>j.start>t);
+  progress('detector',d,t);
+  text('detector-status',d?`● Detecting objects in F${d.seq}. Finish at ${d.end} ms.`:nextDue?`○ Waiting until ${nextDue.start} ms for the next start.`:'○ Waiting for the next 500 ms start interval.');
+  text('detector-output',de?`✓ Latest output: F${de.seq}, person score 0.87 accepted. Candidate score 0.34 rejected (<0.5).`:'No detector result yet. Other workers continue.');
+  tokens('detector-tokens',arrived,scenario.detections,t);
+  const u=running(scenario.reads,t),ur=completed(scenario.reads,t),imu=packetAt(t).imu;
+  progress('imu',u,t);
+  text('imu-status',u?`● Reading S${u.sample}; completion at ${u.end.toFixed(1)} ms.`:'○ In the 50 ms pause after the previous sensor read.');
+  text('imu-output',imu.status==='ready'?`✓ Baseline accepted. Latest S${ur.sample}: corrected gyro available. This sample has no frame ID.`:`○ Calibrating: ${imu.samples} samples. Need a stationary window spanning ≥1 s, ≥10 samples and stddev ≤0.5°/s per axis.`);
+  const imuTokens=byId('imu-tokens');imuTokens.replaceChildren();
+  for(const sample of scenario.reads.filter(r=>r.end<=t).slice(-8)){const chip=document.createElement('span');chip.className='token accepted';chip.textContent=`✓ S${sample.sample}`;imuTokens.appendChild(chip);}
+  const request=scenario.requests.filter(r=>r.start<=t+1e-7).at(-1),delivered=completed(scenario.requests,t);
+  text('snapshot-status',`Latest GET /api/frame at ${request.start} ms. Packet below freezes the results available at that request—not at the current simulation clock.`);
+  text('packet',JSON.stringify(packetAt(request.start),null,2));
+  text('server-status',t<request.end?`Sending the ${request.start} ms packet; illustrative delivery/render completes at ${request.end} ms.`:`The ${request.start} ms packet has been sent. Workers keep updating their stores.`);
+  text('browser-status',delivered?`Visible packet: requested ${delivered.start} ms, displayed ${delivered.end} ms. Image F${packetAt(delivered.start).sequence}; detection ${packetAt(delivered.start).detector.sequence?'F'+packetAt(delivered.start).detector.sequence:'pending'}; IMU ${packetAt(delivered.start).imu.status}.`:'Waiting for the first response; no image displayed yet.');
+  const checkpoint=checkpoints.filter(c=>c[0]<=t).at(-1);text('event-description',checkpoint[1]);
+  byId('next').disabled=t>=END;drawWires();
+}
+
+/** Connect actual node positions so labels remain readable as the page reflows. @returns {void} */
+function drawWires(){
+  const svg=byId('wires'),flow=byId('flow'),base=flow.getBoundingClientRect();svg.replaceChildren();
+  if(window.innerWidth<=760)return;
+  svg.setAttribute('viewBox',`0 0 ${base.width} ${base.height}`);
+  const ns='http://www.w3.org/2000/svg';
+  const defs=document.createElementNS(ns,'defs');defs.innerHTML='<marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="var(--line)"/></marker>';svg.appendChild(defs);
+  const links=[['camera','capture'],['capture','motion'],['capture','detector'],['sensor','imu'],['motion','snapshot'],['detector','snapshot'],['imu','snapshot'],['snapshot','server'],['server','browser']];
+  for(const [from,to] of links){
+    const a=byId(from).getBoundingClientRect(),b=byId(to).getBoundingClientRect();
+    const x1=a.left-base.left+a.width/2,y1=a.bottom-base.top+2;
+    const x2=to==='snapshot'?x1:b.left-base.left+b.width/2,y2=b.top-base.top-6,mid=(y1+y2)/2;
+    const path=document.createElementNS(ns,'path');path.setAttribute('d',`M${x1},${y1} V${mid} H${x2} V${y2}`);path.setAttribute('fill','none');path.setAttribute('stroke','var(--line)');path.setAttribute('stroke-width','2');path.setAttribute('marker-end','url(#arrow)');svg.appendChild(path);
+  }
+}
+/** Stop playback and restore the play button. @returns {void} */
+function pause(){playing=false;cancelAnimationFrame(raf);text('play','Play slowly');}
+/** Advance simulated time at one tenth of wall time; stop after one run. @param {number} wall Animation timestamp. @returns {void} */
+function tick(wall){if(!playing)return;if(lastWall)clock=Math.min(END,clock+(wall-lastWall)*.1);lastWall=wall;render();if(clock>=END)pause();else raf=requestAnimationFrame(tick);}
+/** Switch between spatial explanation and a paused simulation. @param {string} mode @returns {void} */
+function setMode(mode){pause();document.body.dataset.mode=mode;byId('static-mode').setAttribute('aria-pressed',String(mode==='static'));byId('dynamic-mode').setAttribute('aria-pressed',String(mode==='dynamic'));render();}
+
+// Controls use the same clock and render path, so stepping, scrubbing and playback agree.
+byId('static-mode').addEventListener('click',()=>setMode('static'));
+byId('dynamic-mode').addEventListener('click',()=>setMode('dynamic'));
+byId('play').addEventListener('click',()=>{if(playing){pause();return;}if(clock>=END)clock=0;playing=true;lastWall=0;text('play','Pause');raf=requestAnimationFrame(tick);});
+byId('next').addEventListener('click',()=>{pause();clock=checkpoints.find(c=>c[0]>clock+1e-7)?.[0]??END;render();});
+byId('restart').addEventListener('click',()=>{pause();clock=0;render();});
+byId('time').addEventListener('input',event=>{pause();clock=Number(event.target.value);render();});
+window.addEventListener('resize',drawWires);
+document.addEventListener('visibilitychange',()=>{if(document.hidden)pause();});
+render();
+</script>
+</body>
+</html>
