@@ -30,9 +30,10 @@ as different outcomes. Keep IMU samples distinct from camera frames.
 
 ## Concrete steps
 
-Open `docs/learning/edgexr-worker-rates.html` in a browser. Read static mode,
-switch to dynamic mode, use Next event, scrub and play/pause. Review frame IDs
-in the example JSON response. No hardware, model downloads or network needed.
+Open `docs/learning/edgexr-worker-rates.html` in a browser. Read static mode
+left to right, switch to dynamic mode, walk the checkpoints with ◀/▶ (or the
+←/→ keys), scrub and play/pause. Review frame IDs in the example JSON response.
+No hardware, model downloads or network needed.
 
 ## Validation and acceptance
 
@@ -52,6 +53,37 @@ Those must be taught separately. Snapshot creation happens on a browser request.
 - 2026-10-14: use a standalone HTML document for offline opening and GitHub storage.
 - 2026-10-14: reuse one spatial layout across modes so changing time does not
   change the learner's mental map. No automatic playback.
+- 2026-10-14: lay the five stages out left to right (sources, capture, workers,
+  snapshot, delivery) and trim node prose; below 1100 px the page falls back to
+  one vertical column. Static policy lists keep only the acceptance thresholds.
+- 2026-10-14: slow playback from 0.1× to 0.025× real time so one 40 ms motion
+  job fills 1.6 s on screen (full run 72 s). Replace one-way "Next checkpoint"
+  with ◀/▶ step arrows, a step counter, ←/→ keys and an outline on the node
+  each checkpoint describes. Removed the footer link to the nonexistent
+  `WORKER_RATES.md`. `docs/PIPELINE.md` reviewed; unchanged, because this is a
+  presentation change and the simulated data flow and timings are the same.
+- 2026-10-14: redraw as a directed graph in one SVG (`NODES`/`EDGES` in
+  viewBox units): small circular nodes, curved labelled edges, details hidden
+  until a node is hovered/focused (or clicked to pin). Rate nodes (camera,
+  motion, detector, IMU reader, browser) show a circular progress ring: blue
+  while working, orange during a deliberate wait. Edges animate briefly at
+  handoffs. Narrow screens scroll the graph sideways instead of reflowing.
+  Diagram reviewed; `docs/PIPELINE.md` unchanged for the same reason as above.
+- 2026-10-14: force a dark theme (`color-scheme:dark`). Playback now loops
+  from 1800 ms back to 0 until paused, so the Restart button was removed.
+- 2026-10-14: add three focus modes (`FOCUS`), each with its own choices.
+  Branch (horizontal): Motion, Detection or IMU path, source to browser; only
+  edges inside the path stay lit. Stage (vertical): Sources, Capture, Workers,
+  Snapshot or Delivery, shown with a column band plus the edges in and out.
+  Worker: one node with its direct edges. Unfocused parts dim in place; edge
+  far-ends show at half strength. While a focus is active, ◀/▶ visit only
+  checkpoints about focused nodes ("Focused n / m"); "All" restores the normal
+  13-step walk. A focus with no checkpoints (e.g. Sources) falls back to all.
+- 2026-10-14: move all controls into a sticky left panel (View, Focus,
+  Walkthrough) beside the graph so focus and stepping never need page
+  scrolling; the title, legend and timing note sit in the right column. Checked
+  to fit a 1440×820 window in Worker mode (the most chips). Below 1000 px the
+  panel stacks above the graph.
 
 ## Outcomes and retrospective
 
