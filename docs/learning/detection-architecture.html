@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>EdgeXR · Inside MobileNet–SSD</title>
+    <link rel="stylesheet" href="detection-architecture.css" />
+  </head>
+  <body>
+    <div class="layout">
+      <aside class="sidebar" aria-label="Lesson navigation">
+        <a class="brand" href="README.md">EDGEXR <span>LEARNING LAB</span></a>
+        <img
+          class="source-thumb"
+          src="images/detection-lesson-scene.png"
+          alt="Your recorded Pi view of the kitchen, chair and dining table"
+        />
+        <p class="small">
+          One of your Pi images.<br />Three ideas that turn pixels into boxes.
+        </p>
+        <button id="overview-button" class="overview-button" type="button">
+          See the whole architecture
+        </button>
+        <nav id="chapters" aria-label="Chapters"></nav>
+        <div class="legend">
+          <span class="dot real"></span> Actual project shapes & saved result<br /><span
+            class="dot toy"
+          ></span>
+          Editable teaching calculations
+        </div>
+        <a class="small" href="OBJECT_DETECTION.md">Read the code guide ↗</a>
+      </aside>
+
+      <main>
+        <header class="page-head">
+          <div>
+            <p class="eyebrow">A visual journey inside your detector</p>
+            <h1>From pixels to “chair”</h1>
+          </div>
+          <span class="pill">MobileNet v1 + SSD · 300 × 300</span>
+        </header>
+        <div id="route" class="route" aria-label="Pipeline stages"></div>
+        <section
+          id="overview"
+          class="panel overview"
+          aria-labelledby="overview-title"
+        >
+          <p class="eyebrow">Start with the division of work</p>
+          <h2 id="overview-title">
+            MobileNet finds features. SSD predicts objects from them.
+          </h2>
+          <div class="roles">
+            <button type="button" data-go="0" class="role input-role">
+              <img
+                src="images/detection-lesson-scene.png"
+                alt="Recorded camera input"
+              /><strong>Your camera image</strong
+              ><span>1280×720 gray → 300×300×3</span>
+            </button>
+            <span class="big-arrow" aria-hidden="true">→</span>
+            <button type="button" data-go="5" class="role mobile-role">
+              <span class="feature-stack" aria-hidden="true"
+                ><i></i><i></i><i></i><i></i></span
+              ><strong>MobileNet</strong
+              ><span>Learned feature values at spatial locations</span>
+            </button>
+            <span class="big-arrow" aria-hidden="true">→</span>
+            <button type="button" data-go="6" class="role ssd-role">
+              <span class="anchor-symbol" aria-hidden="true"
+                ><i></i><i></i><i></i></span
+              ><strong>SSD</strong
+              ><span>Extra scales + box offsets + class scores</span>
+            </button>
+            <span class="big-arrow" aria-hidden="true">→</span>
+            <button type="button" data-go="10" class="role result-role">
+              <span class="result-symbol">chair<br /><span>0.943</span></span
+              ><strong>EdgeXR display</strong
+              ><span>Filter, map and display saved predictions</span>
+            </button>
+          </div>
+          <p class="lead">
+            Click a part to inspect it, or start with the image and follow the
+            arithmetic.
+          </p>
+          <button type="button" data-go="0" class="primary">
+            Start the guided lesson →
+          </button>
+          <div class="metaphor-note">
+            <strong>Visual metaphors are intentional.</strong> Sliding windows
+            show which matrix entries participate. Separating image planes
+            reveals channels. Moving numbers show arithmetic dependencies. These
+            are explanations of computation, not physical objects inside OpenCV.
+          </div>
+        </section>
+
+        <section id="lesson" class="panel" hidden aria-labelledby="scene-title">
+          <div class="scene-heading">
+            <div>
+              <p id="scene-kicker" class="eyebrow"></p>
+              <h2 id="scene-title"></h2>
+            </div>
+            <span id="scene-kind" class="pill"></span>
+          </div>
+          <p id="scene-intro" class="lead"></p>
+          <div id="scene-controls" class="controls"></div>
+          <div id="visual" class="visual"></div>
+          <div id="readout" class="readout" aria-live="polite"></div>
+          <div id="extra"></div>
+          <details id="details">
+            <summary>Numbers, meaning and code</summary>
+            <div id="detail-content"></div>
+          </details>
+        </section>
+
+        <div class="transport" aria-label="Playback controls">
+          <button id="back" type="button">← Back</button>
+          <button id="play" type="button" class="primary">
+            Play this scene
+          </button>
+          <button id="step" type="button">One step</button>
+          <button id="reset" type="button">Reset scene</button>
+          <label
+            >Speed
+            <select id="speed">
+              <option value="1000">Slow</option>
+              <option value="500" selected>Normal</option>
+              <option value="200">Fast</option>
+            </select></label
+          >
+          <span id="progress" class="small"></span>
+          <button id="next" type="button">Next →</button>
+        </div>
+        <p id="status" role="status" class="small">Loading the local lesson…</p>
+        <footer>
+          <p>
+            The image and two final detections come from your saved Pi trial.
+            Small numerical examples use illustrative weights. The model
+            architecture matches the graph hash in that trial. Playback speed is
+            a teaching control, not measured inference speed.
+          </p>
+          <p>
+            <a
+              href="https://github.com/chuanqi305/MobileNet-SSD/blob/bb17b6c3eef36d80be441ae8e5339be66e8e3b7a/deploy.prototxt"
+              >Pinned model graph</a
+            >
+            · <a href="https://arxiv.org/abs/1704.04861">MobileNet paper</a> ·
+            <a href="https://arxiv.org/abs/1512.02325">SSD paper</a> ·
+            <a href="https://arxiv.org/abs/1506.01497">Faster R-CNN paper</a> ·
+            <a href="../PIPELINE.md">EdgeXR pipeline</a>
+          </p>
+        </footer>
+      </main>
+    </div>
+    <noscript
+      >Enable JavaScript to use the interactive lesson. The object-detection
+      code guide is available as Markdown.</noscript
+    >
+    <script src="images/detection-lesson-data.js"></script>
+    <script src="detection-math.js"></script>
+    <script src="detection-architecture.js"></script>
+  </body>
+</html>

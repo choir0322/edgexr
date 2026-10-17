@@ -7,6 +7,20 @@ replacement. Start with [the live diagram](../PIPELINE.md). Then study:
 2. [Object detection](OBJECT_DETECTION.md): newest image -> model -> scored boxes -> overlay.
 3. [IMU](IMU.md): driver reading -> timestamp -> offset -> angular-rate display.
 
+For the motion math, open the offline [recorded image-motion website](hann-fft-explorer.html)
+and follow the [written walkthrough](HANN_FFT_WALKTHROUGH.md). Its horizontal
+eight-stage path carries two actual Pi frames through patch sampling, Hann
+weighting, Fourier comparison, consensus and the illustrative browser result.
+The two recorded frame pairs show both a reliable shift and a rejected one.
+No server, camera, model download or internet connection is needed.
+
+For neural-network architecture, open [Inside MobileNet–SSD](detection-architecture.html).
+Use your recorded image to reveal channel planes, slide convolution windows,
+compare standard and depthwise/pointwise connections, trace MobileNet features
+into SSD, and inspect the actual model's default boxes. Editable toy weights
+and predictions are labeled separately from exact model dimensions and saved
+Pi detections. The page works offline with its neighboring CSS, JS and assets.
+
 Each guide names exact functions in linked source files. In VS Code, open the
 linked file and use symbol search (`Cmd+Shift+O` on Mac) or search the function
 name. Relative links work after committing to GitHub and when the repo is

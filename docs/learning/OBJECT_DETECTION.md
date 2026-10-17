@@ -5,6 +5,49 @@ the model's known categories occur in an image and where. It does not preserve
 an object's identity across frames, correct boxes for camera motion, or train
 the model while the preview is running.
 
+Open [Inside MobileNet–SSD](detection-architecture.html) for the interactive
+architecture lesson. Scenes 2–5 explain standard, depthwise and pointwise
+convolution; scene 6 shows the feature-map handoff; scenes 7–11 follow default
+boxes through predictions, filtering and the recorded result. Sliding windows
+and separated planes are visual metaphors for tensor operations. Toy arithmetic
+uses labeled illustrative weights, not captured model activations.
+
+## Where MobileNet ends and SSD prediction begins
+
+The pinned graph's SHA-256 matches the saved Pi baseline report:
+`2d180f723b3109e21f8287f6b3c691390d07b60eed998327cd3259ffa0e50608`.
+MobileNet supplies learned feature tensors, including `conv11` (19×19×512)
+and `conv13` (10×10×1024). SSD attaches prediction heads to those tensors and
+adds further convolutional layers for 5×5×512, 3×3×256, 2×2×256 and 1×1×128
+feature maps. A map is spatially arranged feature values, not an object list
+or a smaller photographic image.
+
+For every selected feature-map location, the heads predict four box offsets
+and 21 class scores per default box. The first grid has three priors per cell;
+the other five grids each have six. This configuration has 1,917 priors in total.
+These dimensions describe this specific MobileNet-SSD graph; other SSD variants
+use different grids and counts. The model includes softmax, CENTER_SIZE box
+decoding, score filtering at 0.25 and class-wise NMS at IoU 0.45. The Python
+application then applies its own 0.5 score filter to the graph's output.
+
+MobileNet and SSD are connected within the model loaded by
+`cv.dnn.readNetFromCaffe`; one `net.forward()` executes the graph. There is no
+separate Python call that hands an image from a MobileNet program to an SSD
+program. The graph definition and pretrained parameters provide those operations.
+
+The lesson's source is split into readable pieces:
+
+- `detection-architecture.html` and `.css`: navigation and visual layout.
+- `detection-architecture.js`: scene controls, visual metaphors and playback.
+- `detection-math.js`: convolution arithmetic, priors, decoding, IoU and teaching NMS.
+- `images/detection-lesson-data.js`: derived image sample and saved final detections.
+- `scripts/build_detection_lesson.py`: validates the saved image/report pairing
+  and regenerates the compact teaching assets with the existing FFmpeg tool.
+
+The teaching NMS makes the concept inspectable; it does not replace the loaded
+graph's runtime implementation. The actual final detections come from the user's
+saved report; hypothetical pre-NMS predictions are explicitly labeled.
+
 ## Source reading route
 
 | Order | File | Symbols to read |

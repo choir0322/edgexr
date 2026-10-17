@@ -184,7 +184,8 @@ pipes. The preview does not write raw images or recordings.
 
 ### Illustrated Hann window and FFT example
 
-Follow the [complete 11-step Hann/FFT walkthrough](HANN_FFT_WALKTHROUGH.md)
+Follow the [recorded image-motion website](hann-fft-explorer.html) for an
+interactive visual path, then the [11-step numerical walkthrough](HANN_FFT_WALKTHROUGH.md)
 alongside `patch_shift()`. The revised example uses actual frames 313 and 316
 from `combined-motion-02`, at PTS 10.521 and 10.621 seconds. They are three
 frame intervals apart to make the leftward shift clearer. FFmpeg prepares
