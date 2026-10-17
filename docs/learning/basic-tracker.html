@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>EdgeXR · From detector frame to tracked result</title>
+  <style>
+    :root { color-scheme:dark; --paper:#09131d; --panel:#10212e; --ink:#e9f4f6;
+      --muted:#adc2cc; --line:#395365; --cyan:#79dcec; --mint:#8ce9bb; --warm:#e8b478; }
+    * { box-sizing:border-box; }
+    body { margin:0; background:var(--paper); color:var(--ink); font:16px/1.5 system-ui,sans-serif; }
+    main { max-width:1680px; margin:auto; padding:32px 20px 55px; }
+    h1 { margin:5px 0 8px; font-size:clamp(1.8rem,3vw,2.7rem); line-height:1.14; }
+    h2 { margin:0 0 10px; font-size:1.25rem; }
+    p { margin:8px 0; }
+    a { color:var(--cyan); }
+    code { color:#b8e4ee; }
+    .eyebrow { color:var(--cyan); font-size:.8rem; font-weight:750; letter-spacing:.1em; text-transform:uppercase; }
+    .intro { max-width:900px; color:var(--muted); }
+    .graph-shell { margin-top:23px; border:1px solid var(--line); border-radius:14px;
+      background:var(--panel); overflow-x:auto; }
+    #graph { display:block; width:100%; min-width:1550px; height:auto; }
+    .edge { fill:none; stroke:#547184; stroke-width:3; }
+    .edge.done { stroke:var(--mint); }
+    .overview { fill:none; stroke:#456173; stroke-width:2; stroke-dasharray:7 8; }
+    .overview-label { fill:var(--muted); font-size:13px; text-anchor:middle; }
+    .node { cursor:pointer; }
+    .node circle { fill:#142b3a; stroke:#7995a5; stroke-width:2; }
+    .node.worker circle { fill:#183647; }
+    .node.done circle { fill:#1b483d; stroke:var(--mint); }
+    .node.current circle { fill:#1a4b5c; stroke:var(--cyan); stroke-width:3; }
+    .node:hover circle, .node:focus-visible circle { stroke:#fff; stroke-width:3; }
+    .node:focus-visible { outline:none; }
+    .node .number { fill:var(--ink); font-size:14px; font-weight:750; text-anchor:middle; dominant-baseline:middle; }
+    .node .label { fill:var(--ink); font-size:15px; font-weight:650; text-anchor:middle; }
+    .node .sub { fill:var(--muted); font-size:11px; text-anchor:middle; }
+    #object-token { transition:transform .45s ease; pointer-events:none; }
+    #object-token rect { fill:var(--cyan); }
+    #object-token text { fill:#10212e; font-size:12px; font-weight:800; text-anchor:middle; dominant-baseline:middle; }
+    .graph-hint { padding:11px 16px; border-top:1px solid var(--line); color:var(--muted); font-size:.85rem; }
+    .controls { display:flex; flex-wrap:wrap; align-items:center; gap:9px; margin:17px 0; }
+    button { background:#173141; border:1px solid #688697; border-radius:8px; color:var(--ink);
+      cursor:pointer; font:inherit; padding:8px 12px; }
+    button:hover { border-color:var(--cyan); }
+    button:focus-visible { outline:3px solid var(--cyan); outline-offset:2px; }
+    button:disabled { opacity:.45; cursor:default; }
+    .primary { background:var(--cyan); color:#092333; border-color:var(--cyan); font-weight:700; }
+    #position { color:var(--muted); font-size:.86rem; margin-left:auto; }
+    .detail { max-width:940px; background:var(--panel); border:1px solid var(--line); border-radius:12px;
+      padding:18px 21px; min-height:170px; }
+    .detail[hidden] { display:none; }
+    .detail .stage { color:var(--cyan); font-size:.79rem; font-weight:750; text-transform:uppercase; letter-spacing:.07em; }
+    .detail .visual { display:flex; flex-wrap:wrap; align-items:center; gap:9px; margin:12px 0; }
+    .visual .chip { border:1px solid var(--line); border-radius:8px; background:#193543;
+      padding:7px 10px; font-size:.84rem; }
+    .visual .chip.accept { border-color:#5eaa85; background:#1b4739; color:var(--mint); }
+    .visual .chip.reject { border-color:#ae7565; background:#4b2d2d; color:#ffd0c3; }
+    .visual .arrow { color:var(--cyan); font-weight:800; }
+    .visual svg { width:300px; max-width:100%; height:116px; }
+    .detail .data { border-left:3px solid var(--cyan); padding:8px 12px; margin:12px 0;
+      background:#173140; overflow-wrap:anywhere; font: .86rem/1.5 ui-monospace,SFMono-Regular,monospace; }
+    .detail .effect { color:var(--mint); font-weight:700; }
+    .detail .code { color:var(--muted); font-size:.85rem; margin-top:15px; }
+    footer { max-width:930px; color:var(--muted); font-size:.85rem; margin-top:21px; }
+    @media (max-width:600px) { main { padding:20px 12px 42px; } #position { width:100%; margin-left:0; } }
+    @media (prefers-reduced-motion:reduce) { #object-token { transition:none; } }
+  </style>
+</head>
+<body>
+<main>
+  <div class="eyebrow">EdgeXR · one connected live-worker path</div>
+  <h1>From newest frame to ID-bearing result</h1>
+  <p class="intro">Follow one detector update from <a href="../../src/vision/live_detector.py"><code>detect_latest()</code></a>
+    through the nine decisions inside <a href="../../src/vision/basic_tracker.py"><code>BasicTracker.update()</code></a>,
+    then back to publication. The dotted top edge is only the <em>collapsed overview</em> of Match IDs → Publish;
+    the solid route shows the actual call through the tracker.</p>
+
+  <div class="graph-shell">
+    <svg id="graph" viewBox="0 0 1700 440" role="group" aria-label="One connected graph: create worker, infer frame, enter the nine tracking decisions, then publish">
+      <defs><marker id="edge-arrow" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9 Z" fill="#6a93a3"/></marker></defs>
+      <g id="edges"></g>
+      <g id="nodes"></g>
+      <g id="object-token" aria-hidden="true"><rect x="-34" y="-15" width="68" height="30" rx="15"/><text id="token-label" y="1">worker</text></g>
+    </svg>
+    <div class="graph-hint">Next or Play follows solid arrows. Select a node for its code and data change. Hover previews; click pins the explanation.</div>
+  </div>
+
+  <div class="controls">
+    <button id="previous" type="button">← Previous</button>
+    <button id="next" type="button" class="primary">Next →</button>
+    <button id="play" type="button">Play</button>
+    <button id="reset" type="button">Reset</button>
+    <span id="position" aria-live="polite"></span>
+  </div>
+
+  <section id="detail" class="detail" aria-live="polite" hidden>
+    <div id="detail-stage" class="stage"></div>
+    <h2 id="detail-title"></h2>
+    <p id="detail-rule"></p>
+    <div id="detail-visual" class="visual" aria-hidden="true"></div>
+    <div id="detail-data" class="data"></div>
+    <p id="detail-effect" class="effect"></p>
+    <p class="code">Code: <a id="detail-link" href="../../src/vision/live_detector.py"></a></p>
+  </section>
+
+  <footer>This is an offline teaching simulation, not live inference. The example boxes and IDs are illustrative.
+    The real tracker processes the whole detection list even though the token follows one detection in its expanded path.
+    An empty detector result still runs <code>update([])</code> and ages old tracks. The live API carries
+    <code>track_id</code>; the browser now shows provisional <code>#ID</code> labels only for ready boxes with a live camera.</footer>
+</main>
+<script src="basic-tracker.js"></script>
+</body>
+</html>

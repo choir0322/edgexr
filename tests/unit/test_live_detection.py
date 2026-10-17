@@ -206,3 +206,143 @@ class LiveDetectionTests(unittest.TestCase):
         self.assertIsNone(state.error)
         self.assertIn("invalid model", state.detector.snapshot(1)["error"])
         self.assertFalse(state.stop.is_set())
+
+    def test_worker_attaches_ids_before_publication_and_ages_empty_updates(self) -> None:
+        """Verify ordered detector results receive IDs before any API publication.
+
+        Args:
+            None.
+
+        Returns:
+            None: unittest assertions fail if the live handoff is incorrect.
+        """
+        # Advance a synthetic clock and replace the newest source frame after each
+        # inference. A valid empty result counts as one missed detector update.
+        clock = [100.0]
+
+        class Stop:
+            stopped = False
+
+            def is_set(self) -> bool:
+                """Report whether this synthetic worker has completed its four calls.
+
+                Args:
+                    None.
+
+                Returns:
+                    bool: Current synthetic stop state.
+                """
+                return self.stopped
+
+            def set(self) -> None:
+                """Stop the synthetic worker after the fourth inference.
+
+                Args:
+                    None.
+
+                Returns:
+                    None: Updates only the test stop state.
+                """
+                self.stopped = True
+
+            def wait(self, seconds: float) -> bool:
+                """Advance synthetic time by a requested worker wait.
+
+                Args:
+                    seconds (float): Requested host seconds.
+
+                Returns:
+                    bool: Current synthetic stop state.
+                """
+                clock[0] += seconds
+                return self.stopped
+
+        def chair(box: list[int]) -> Record:
+            """Build one source-coordinate test detection without an ID.
+
+            Args:
+                box (list[int]): XYXY image coordinates.
+
+            Returns:
+                Record: Synthetic detector output.
+            """
+            return {"class_id": 9, "label": "chair", "confidence": 0.9,
+                    "box_xyxy": box}
+
+        outputs = [
+            [chair([100, 100, 200, 200])],
+            [chair([105, 100, 205, 200]), chair([400, 100, 500, 200])],
+            [],
+            [chair([110, 100, 210, 200])],
+        ]
+        state = State(detection_enabled=True)
+        state.stop = Stop()
+        published: list[list[Record]] = []
+        original_publish = state.detector.publish
+
+        def record_publish(
+            frame: tuple[int, float, bytes], boxes: list[Record],
+            cost_ms: float, finished: float
+        ) -> None:
+            """Observe ID-bearing payloads at the real publication boundary.
+
+            Args:
+                frame (tuple[int, float, bytes]): Source sequence, receipt time, pixels.
+                boxes (list[Record]): ID-bearing current detections.
+                cost_ms (float): Inference milliseconds.
+                finished (float): Synthetic monotonic completion seconds.
+
+            Returns:
+                None: Records the payload and calls the real publisher.
+            """
+            published.append(boxes)
+            original_publish(frame, boxes, cost_ms, finished)
+
+        state.detector.publish = record_publish
+        state.publish_frame(b"", clock[0], b"frame1")
+
+        def fake_detector(pixels: bytes) -> list[Record]:
+            """Return the next complete result while another frame arrives.
+
+            Args:
+                pixels (bytes): Synthetic latest source-frame bytes.
+
+            Returns:
+                list[Record]: Next completed detector output without IDs.
+            """
+            index = len(published)
+            clock[0] += 0.1
+            if index < len(outputs) - 1:
+                state.publish_frame(b"", clock[0], f"frame{index + 2}".encode())
+            else:
+                state.stop.set()
+            return outputs[index]
+
+        def fake_factory() -> Callable[[bytes], list[Record]]:
+            """Provide the synthetic detector to the worker.
+
+            Args:
+                None.
+
+            Returns:
+                Callable[[bytes], list[Record]]: Synthetic inference function.
+            """
+            return fake_detector
+
+        def fake_clock() -> float:
+            """Read synthetic monotonic time without advancing it.
+
+            Args:
+                None.
+
+            Returns:
+                float: Synthetic host seconds.
+            """
+            return clock[0]
+
+        detect_latest(state, fake_factory, fake_clock)
+        self.assertEqual([[box["track_id"] for box in group] for group in published],
+                         [[1], [1, 2], [], [1]])
+        self.assertEqual([box.get("track_id") for box in outputs[1]], [None, None])
+        self.assertEqual(state.detector.snapshot(clock[0])["boxes"][0]["track_id"], 1)
+        self.assertIsNone(state.error)

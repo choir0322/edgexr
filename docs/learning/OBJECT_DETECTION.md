@@ -1,9 +1,20 @@
 # Study 2: object detection, newest image to labelled boxes
 
 This guide follows [the live diagram](../PIPELINE.md). Detection asks which of
-the model's known categories occur in an image and where. It does not preserve
-an object's identity across frames, correct boxes for camera motion, or train
-the model while the preview is running.
+the model's known categories occur in an image and where. A basic tracker now
+assigns provisional IDs across completed detection results using class and
+box overlap. It cannot establish permanent real-world identity, correct boxes
+for camera motion, or train the model while the preview is running.
+
+For the separate first-ID algorithm, open the offline
+[basic tracker graph](basic-tracker.html). One dark connected path shows
+detector creation, inference, a descent from Match IDs through the nine
+`BasicTracker.update()` decisions, and a direct return to publication. Its
+dotted Match IDs → Publish edge is only a collapsed overview, not a skipped
+call. Hovering or selecting a node reveals its input, rule, result, and code.
+The graph exposes the other boxes where they affect matching. Its example
+values are teaching data, not saved detector outputs. The live worker now
+assigns IDs, and browser labels show them for ready boxes with a live camera.
 
 Open [Inside MobileNet–SSD](detection-architecture.html) for the interactive
 architecture lesson. Scenes 2–5 explain standard, depthwise and pointwise
@@ -55,9 +66,10 @@ saved report; hypothetical pre-NMS predictions are explicitly labeled.
 | 1 | [live_preview.py](../../src/app/live_preview.py) | `main`, its `build_detector` callback, `camera_command`, nested `capture`, `State.publish_frame` |
 | 2 | [live_detector.py](../../src/vision/live_detector.py) | `detect_latest`, its `detection_frame_ready` callback, `CpuDetector.__init__`, `CpuDetector.__call__` |
 | 3 | [detect_image.py](../../src/vision/detect_image.py) | `infer_once`, `LABELS`, `parse_detections` |
-| 4 | [live_detector.py](../../src/vision/live_detector.py) | `DetectionState.publish`, `DetectionState.snapshot`, `fail` |
-| 5 | [live_preview.py](../../src/app/live_preview.py) | `State.snapshot`, `make_handler` |
-| 6 | [preview.html](../../src/app/preview.html) | `render` detector status and box loop; `poll` |
+| 4 | [basic_tracker.py](../../src/vision/basic_tracker.py) | `BasicTracker.update`, `box_iou` |
+| 5 | [live_detector.py](../../src/vision/live_detector.py) | `DetectionState.publish`, `DetectionState.snapshot`, `fail` |
+| 6 | [live_preview.py](../../src/app/live_preview.py) | `State.snapshot`, `make_handler` |
+| 7 | [preview.html](../../src/app/preview.html) | `detectionLabel`, `render` detector status and box loop; `poll` |
 
 ## 1. Optional setup and dependency boundary
 
@@ -115,12 +127,16 @@ if started - frame[1] > MAX_AGE:
     continue
 boxes = detector(frame[2])
 finished = clock()
+identified = tracker.update(boxes)
+state.detector.publish(frame, identified, (finished - started) * 1000, finished)
 ```
 
 Line by line: measure this attempt's start; schedule the next eligible start
 500 ms later; reject a source already older than the freshness limit; run the
-detector on its bytes; measure completion. The target limits expensive work
-while the other workers continue. Inference itself is not interrupted at 500 ms.
+detector on its bytes; measure inference completion; match those current boxes
+to remembered tracks and publish the ID-bearing result. The target limits
+expensive work while the other workers continue. Inference itself is not
+interrupted at 500 ms.
 
 For 230 ms compute, there is roughly 270 ms until the next eligible start.
 For 800 ms compute, the next attempt can begin after completion, not in parallel,
@@ -179,12 +195,24 @@ boat, bottle, bus, car, cat, chair, cow, diningtable, dog, horse, motorbike, per
 pottedplant, sheep, sofa, train and tvmonitor. Threshold changes do not add new
 categories such as keyboard or cup.
 
-## 6. Publish a result without pretending it is current
+## 6. Attach provisional IDs, then publish without pretending boxes are current
+
+`detect_latest` creates one `BasicTracker` alongside its detector in the same
+sequential worker. After each completed inference it calls `tracker.update(boxes)`
+before publication. All `box_xyxy` values are in the original 1280×720 source
+pixel system. Same-class pairs with IoU at least 0.3 compete for a one-to-one
+match. An unmatched current box gets the next never-reused integer ID. An empty
+result ages unmatched old tracks once; one miss is hidden but remembered, and
+two consecutive misses retire an old track. This does not use IMU or image
+shift, and a quick camera turn can change the ID of the same physical object.
+See [the tracker graph](basic-tracker.html) for the code-order decision path.
 
 `DetectionState.publish(frame, boxes, cost_ms, finished)` saves the source
-sequence, its receipt time, the boxes and elapsed compute cost. This live cost
-surrounds the detector call, including preprocessing/parser, but excludes model
-construction, camera capture and display. A bounded deque records completions.
+sequence, its receipt time, the ID-bearing boxes and elapsed compute cost. This
+live cost surrounds the detector call, including preprocessing/parser, but
+excludes tracking, model construction, camera capture and display. A bounded
+deque records inference completions. Source receipt time and the 1.5-second
+freshness rule are unchanged by tracking.
 
 `snapshot(now, camera_live)` calculates result-source age from frame receipt,
 not completion, and completion rate from recent timestamps. It hides boxes
@@ -200,9 +228,12 @@ source x coordinates by `640 / detector.width` and y by `360 / detector.height`
 for the overlay canvas. That canvas and the 320x180 image occupy the same visual
 rectangle. Dashed amber boxes mark older predictions; they may lag while turning.
 
-The image shift and gyro do not modify these boxes. No track IDs or remembered
-objects are generated by this inspected implementation. Browser/network delay
-adds to perceived age but is not included in Pi-side source-age numbers.
+The image shift and gyro do not modify these boxes. `track_id` in the API box
+record is displayed as a provisional `#ID` before the category and confidence.
+The browser retains the prior label format if an ID is absent and clamps a long
+label into the canvas. A remembered missing track is not a visible ghost box.
+Browser/network delay adds to perceived age but is not included in Pi-side
+source-age numbers.
 
 ## Separate saved-image benchmark
 

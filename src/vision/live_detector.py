@@ -13,6 +13,7 @@ from collections import deque
 from pathlib import Path
 import threading
 import time
+from vision.basic_tracker import BasicTracker
 from vision.detect_image import infer_once, parse_detections
 
 # Keep detector source dimensions and the source-age cutoff separate from
@@ -48,8 +49,8 @@ class DetectionState:
         Args:
             frame (Frame): Sequence integer, monotonic receipt seconds, and immutable gray
                 bytes.
-            boxes (list[Record]): Detection dictionaries; box_xyxy coordinates refer to the
-                full source image.
+            boxes (list[Record]): Current detection dictionaries with session-local
+                track_id; box_xyxy coordinates refer to the full source image.
             cost_ms (float): Elapsed detector call duration in milliseconds, excluding
                 loading/display.
             finished (float): Host monotonic completion time in seconds for rate
@@ -197,12 +198,15 @@ def detect_latest(
             explicitly named nanosecond stages.
 
     Returns:
-        None: publishes results/errors without queuing frames or catch-up attempts.
+        None: assigns session-local IDs and publishes results/errors without
+            queuing frames or catch-up attempts.
     """
-    # Load once, then wait for the next scheduled attempt or a stop request.
-    # There is no queue of images waiting for detection.
+    # Load the model once and keep one tracker beside it in this sequential
+    # worker. Both see completed detector results in order; no camera-frame
+    # queue or tracker access from another thread is needed.
     try:
         detector = factory()
+        tracker = BasicTracker()
         previous_seq, due = 0, 0.0
         while not state.stop.is_set():
             if state.stop.wait(max(0, due - clock())):
@@ -248,10 +252,14 @@ def detect_latest(
             if started - frame[1] > MAX_AGE:
                 continue
 
-            # Publish boxes with their original frame and elapsed compute time. A model
-            # failure updates only detector status, leaving other workers available.
+            # Measure inference separately from ID matching, then attach IDs before
+            # publishing. Source frame identity and receipt time remain unchanged.
+            # An empty valid result still ages remembered tracks by one update.
             boxes = detector(frame[2])
             finished = clock()
-            state.detector.publish(frame, boxes, (finished - started) * 1000, finished)
+            identified = tracker.update(boxes)
+            state.detector.publish(
+                frame, identified, (finished - started) * 1000, finished
+            )
     except Exception as error:
         state.detector.fail(f"Detector failed: {error}")

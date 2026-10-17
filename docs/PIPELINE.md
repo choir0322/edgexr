@@ -1,9 +1,10 @@
 # Current live pipeline
 
-Reviewed 2026-10-08 for the learning refactor based on Desktop source at
-`6a53d27` plus the user's documentation changes. Diagram reviewed; data flow,
-image sizes, timing targets and freshness policies are unchanged. Named callbacks,
-function contracts and statement explanations add readability, not a new pipeline.
+Updated 2026-10-17 for the first live tracker handoff. The diagram now includes
+`BasicTracker.update()` after detection parsing and before result publication;
+image sizes, timing targets and freshness policies are unchanged. The earlier
+2026-10-08 learning refactor based on Desktop source at `6a53d27` changed
+comments and contracts without changing the runtime path.
 Read [the study index](learning/README.md)
 for the end-to-end code tour. Maintain this file as code changes, as required
 by [AGENTS.md](../AGENTS.md) and [the plan standard](../.agent/PLANS.md).
@@ -26,23 +27,24 @@ flowchart TD
     DET["Detector worker: detect_latest<br/>Target start spacing 0.5 s; no backlog"]
     PRE["infer_once<br/>Gray to 3 channels; resize 300x300<br/>(pixel - 127.5) times 0.007843"]
     NET["OpenCV DNN CPU<br/>MobileNet-SSD; OpenCV thread setting 2"]
-    BOX["parse_detections: score at least 0.5<br/>Source-coordinate boxes; latest result only"]
+    BOX["parse_detections: score at least 0.5<br/>Source-coordinate boxes"]
+    TRACK["BasicTracker.update in detector worker<br/>Same-class IoU; session-local IDs"]
     MODEL["Local deploy.prototxt + caffemodel<br/>Graph and pretrained parameters"]
     IMU["Camera-mounted IMU via I2C<br/>SunFounder SH3001 driver"]
     POLL["poll_imu<br/>Read midpoint timestamp; then wait 50 ms"]
     BIAS["LiveImu<br/>First-second stationary gyro offset<br/>Latest corrected XYZ rates in degrees/s"]
     STATE["State.snapshot<br/>Latest independent results + ages/errors<br/>Not exposure-synchronized sensor fusion"]
     WEB["Loopback HTTP: /api/frame<br/>SSH tunnel to Mac browser"]
-    UI["preview.html<br/>Image + exaggerated motion arrow<br/>Older boxes + gyro and timing cards<br/>Fetch/render then wait 200 ms"]
+    UI["preview.html<br/>Image + exaggerated motion arrow<br/>Older boxes with provisional #IDs<br/>Gyro/timing cards; fetch/render then wait 200 ms"]
     CAMERA --> FF
     DEMO -. alternative .-> FF
     FF --> CAP
     CAP --> SMALL --> MOTION --> RESULT
-    CAP --> FULL --> DET --> PRE --> NET --> BOX
+    CAP --> FULL --> DET --> PRE --> NET --> BOX --> TRACK
     MODEL --> NET
     IMU --> POLL --> BIAS
     RESULT --> STATE
-    BOX --> STATE
+    TRACK --> STATE
     BIAS --> STATE
     STATE --> WEB --> UI
 ```
@@ -50,7 +52,8 @@ flowchart TD
 ## Text fallback and mode differences
 
 Camera -> FFmpeg -> capture reader -> two image branches: small images go to
-motion analysis; full images go to slower object detection. The independent
+motion analysis; full images go to slower object detection and then a sequential
+box tracker before publication. The independent
 I2C IMU reader supplies corrected angular rates. A snapshot combines the latest
 available outputs for display, not for a shared-time estimate of camera pose.
 
@@ -81,8 +84,15 @@ cores and are unrelated to the two-Hz scheduler.
   before the small-image resize. They are not sensor exposure timestamps.
 - IMU timestamps are midpoints of the host interval around `read_raw()`.
 - Detector source age starts at that frame's capture receipt, not inference
-  completion. Old boxes can overlay a newer motion image; no tracking corrects
-  them. Boxes are hidden if older than 1.5 s or the camera state is not live.
+  completion. Old boxes can overlay a newer motion image; tracking only assigns
+  provisional IDs, not motion correction. Boxes are hidden if older than 1.5 s
+  or the camera state is not live.
+- The same detector worker owns `BasicTracker` across completed results. It
+  matches same-class source-pixel boxes at IoU at least 0.3, one-to-one. An
+  unmatched old ID is hidden after one missed result and retired after two;
+  camera frames skipped between results do not age it. IDs last only this run.
+  The API carries `track_id`; ready boxes on a live camera show provisional
+  `#ID` labels. A missing ID falls back to the category/confidence label.
 - IMU values become stale above 300 ms; startup without samples has a separate
   two-second check. Camera results become stale above two seconds and have a
   ten-second no-analyzed-frame startup check.
@@ -106,11 +116,18 @@ image benchmarking are separate commands linked from the study guides.
 
 ## Goal versus implementation
 
-Current: observe scene displacement, recognize object categories and measure
-angular rate concurrently. Future: align timing and coordinate frames, track
-object identities and use camera motion to help distinguish moving objects
-from a moving observer. Object memory, camera pose, IMU-driven box correction
-and full spatial mapping are not implemented by this diagram.
+Current: observe scene displacement, recognize object categories, show basic
+session-local IDs on ready detector boxes, and measure angular rate concurrently.
+Future: align timing and coordinate frames, test those IDs on the Pi, and use
+camera motion to help distinguish moving objects from a moving observer.
+Long-term object memory, camera pose, IMU-driven box correction and full spatial
+mapping are not implemented by this diagram.
+
+Review for the offline [basic tracker lesson](learning/basic-tracker.html):
+`detect_latest` now calls `vision.basic_tracker.BasicTracker` between inference
+and `DetectionState.publish`. The page is still only a teaching simulation; it
+does not add a worker. The new graph arrow represents ID assignment, not
+timestamp synchronization, appearance re-identification or motion correction.
 
 ## Diagram-update checklist for every implementation task
 
