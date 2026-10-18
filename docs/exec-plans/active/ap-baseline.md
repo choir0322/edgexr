@@ -26,12 +26,13 @@ exposure latency. See `docs/BENCHMARKING.md` and `docs/AP_OPTIMIZATION.md`.
 
 - [x] 2026-10-18: Finish and document the first basic-versus-motion-aware
   tracker comparison without claiming an accuracy winner.
-- [ ] Review this baseline protocol with the user before implementation or a
-  long Pi run; confirm cooling/power details and a safe measurement duration.
-- [ ] Add a small read-only collector for CPU, memory, temperature/throttling
-  and existing application telemetry; test parsing without Pi hardware.
-- [ ] Review/update `docs/PIPELINE.md` and the relevant learning guide with
-  exact data sources, units, sampling rates, freshness and limitations.
+- [x] 2026-10-18: User asked to proceed with this plan; implement the collector
+  and documentation. Cooling/power details and safe long-run conditions are
+  still unknown, so do not start the Pi measurement without the user's review.
+- [x] 2026-10-18: Add a read-only collector for CPU, memory,
+  temperature/throttling and existing telemetry, with hardware-free tests.
+- [x] 2026-10-18: Update `docs/PIPELINE.md` and the learning guide with data
+  sources, units, sampling rates, freshness and limitations.
 - [ ] Run a warmed-up sustained baseline on Pi and commit a concise result
   summary; leave raw time-series logs outside Git.
 
@@ -62,12 +63,10 @@ exposure latency. See `docs/BENCHMARKING.md` and `docs/AP_OPTIMIZATION.md`.
 
 Begin by reading the existing timing definitions and checking which Linux
 interfaces are available on this Pi; use fake fixture text for unit tests.
-Run the full hardware-free suite on Mac. After code review/push/pull, start
-the unchanged preview, let it warm up, then run the collector in another SSH
-terminal. Stop if temperature/throttling indicates a safety or stability
-problem. Keep raw logs ignored and share only a concise summary plus any
-anomalies needed for diagnosis. Exact commands will be added once the
-collector's interface is implemented and reviewed.
+Run the full hardware-free suite on Mac. After code review/push/pull, follow
+the exact Pi commands in `docs/AP_BASELINE.md`. Stop if temperature/throttling
+indicates a safety or stability problem. Keep raw logs ignored and share only
+a concise summary plus any anomalies needed for diagnosis.
 
 ## Validation and acceptance
 
@@ -85,6 +84,9 @@ collector's interface is implemented and reviewed.
 The tracking comparison had similar detector compute and motion throughput in
 both modes, but its 60-second hand-moved runs were too short and too different
 in turn rate to establish sustained AP capacity or a tracking winner.
+The user's current motion-aware preview had already run for about 10–15 minutes.
+That is useful stability evidence, but it is not this basic-tracking baseline;
+the collector deliberately rejects motion-aware mode.
 
 ## Decision log
 
@@ -92,9 +94,11 @@ in turn rate to establish sustained AP capacity or a tracking winner.
   variable. Do not infer CPU or thermal behavior from detector compute alone.
 - 2026-10-18: Keep basic tracking as the baseline mode; defer motion-aware
   tuning and appearance re-identification during this AP measurement.
+- 2026-10-18: Add read-only PID telemetry for the exact Python and FFmpeg
+  processes, then observe `/proc`, thermal zone and firmware throttle flags
+  from a second process. Do not save camera pixels or change preview scheduling.
 
 ## Outcomes and retrospective
 
-Pending user review, collector implementation and the Pi measurement. This
-plan is a proposal, not a claim that the current preview meets a sustained
-performance target.
+Collector and learning notes implemented locally; Pi protocol review and the
+actual Pi measurement remain. No sustained performance claim yet.

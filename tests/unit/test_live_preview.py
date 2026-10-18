@@ -234,6 +234,8 @@ class PreviewTests(unittest.TestCase):
             if path == "/api/telemetry" and status == 200:
                 self.assertIn("detector", json.loads(body))
                 self.assertNotIn("pixels_b64", json.loads(body))
+                self.assertIsInstance(json.loads(body)["preview_pid"], int)
+                self.assertIsNone(json.loads(body)["ffmpeg_pid"])
 
     def test_startup_timeout_is_visible(self) -> None:
         """Verify startup timeout is visible.

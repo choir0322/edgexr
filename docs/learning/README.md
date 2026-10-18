@@ -11,6 +11,11 @@ After the baseline paths, read [motion-aware ID matching](MOTION_AWARE_TRACKING.
 for the optional bridge from image-shift history to the detector's box tracker.
 It is not IMU fusion or long-term object re-identification.
 
+For the application-processor measurement path, read [the AP baseline code
+walk-through](AP_BASELINE.md) alongside [the Pi run procedure](../AP_BASELINE.md).
+It shows how metrics-only HTTP and Linux counters are sampled without
+changing the camera, detector, IMU or tracker workers.
+
 For the motion math, open the offline [recorded image-motion website](hann-fft-explorer.html)
 and follow the [written walkthrough](HANN_FFT_WALKTHROUGH.md). Its horizontal
 eight-stage path carries two actual Pi frames through patch sampling, Hann
@@ -90,6 +95,7 @@ install dependencies simply to make all optional tests run.
 | `src/imu/raw_baseline.py`, `rotation_test.py`, `live_reader.py` | Sensor checks and live values; IMU guide |
 | `src/recording/combined_capture.py`, `analyze_capture.py`, `plot_visual_motion.py` | Separate recording/analysis workflow; image-motion and IMU guides |
 | `src/camera/capture_baseline.py` | Initial camera decode/PTS baseline; image-motion guide |
+| `src/profiling/ap_baseline.py` | Read-only sustained AP collector; AP baseline guide |
 | `tests/unit/` | Fake-data contracts, invalid-input and failure checks |
 | `scripts/hardware_inventory.sh`, `check_project.sh` | Read-only inventory and repository layout checks |
 | `src/*/__init__.py` | Package descriptions; no background service starts here |

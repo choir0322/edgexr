@@ -1,6 +1,7 @@
 # Current live pipeline
 
-Updated 2026-10-18 for optional motion-aware ID matching. The diagram includes
+Updated 2026-10-18 for optional motion-aware ID matching and the read-only AP
+collector. The diagram includes
 `BasicTracker.update()` after detection parsing and an optional, bounded history
 of analyzed-frame shifts. Image sizes, timing targets and freshness policies
 are unchanged. The earlier
@@ -37,6 +38,7 @@ flowchart TD
     BIAS["LiveImu<br/>First-second stationary gyro offset<br/>Latest corrected XYZ rates in degrees/s"]
     STATE["State.snapshot<br/>Latest independent results + ages/errors<br/>Not exposure-synchronized sensor fusion"]
     TRIAL["Optional second SSH process: tracking_trial<br/>/api/telemetry omits image bytes<br/>JSONL + summary under ignored recordings/"]
+    AP["Optional second SSH process: ap_baseline<br/>HTTP metrics + exact-PID /proc counters<br/>Thermal zone + raw throttle flag<br/>Ignored JSONL + summary"]
     WEB["Loopback HTTP: /api/frame<br/>SSH tunnel to Mac browser"]
     UI["preview.html<br/>Image + exaggerated motion arrow<br/>Older boxes with provisional #IDs<br/>Gyro/timing cards; fetch/render then wait 200 ms"]
     CAMERA --> FF
@@ -53,6 +55,7 @@ flowchart TD
     BIAS --> STATE
     STATE --> WEB --> UI
     STATE -. "metrics-only HTTP" .-> TRIAL
+    STATE -. "metrics-only HTTP, PIDs" .-> AP
 ```
 
 ## Text fallback and mode differences
@@ -131,6 +134,15 @@ files. `/api/telemetry` omits `pixels_b64` from the usual snapshot. The optional
 `vision.tracking_trial` process polls that route and saves local metrics/boxes,
 not image frames. It is not another camera reader or tracking worker, and
 polling may miss a detector update between requests.
+
+The optional `profiling.ap_baseline` process also polls that route, which adds
+the preview and FFmpeg PIDs without image bytes. It samples those exact
+processes' CPU ticks/RSS through `/proc`, aggregate host CPU, thermal zone 0
+and the raw firmware throttle flag after a warm-up. One-second polls are
+sequential host observations and may repeat the same detector result; the
+summary counts distinct detector sequences. It does not change frame, IMU or
+detector worker rates or measure electrical power/exposure-to-display delay.
+See [the run protocol](AP_BASELINE.md) and [code guide](learning/AP_BASELINE.md).
 
 The live preview saves no footage, commands no servo and reads no usable
 magnetometer/barometer stream. Acceleration and temperature returned with the

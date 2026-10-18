@@ -12,6 +12,7 @@ import base64
 from collections import deque
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
+import os
 from pathlib import Path
 import shutil
 import subprocess
@@ -104,6 +105,7 @@ class State:
         self.result = None
         self.error = None
         self.started = time.monotonic()
+        self.ffmpeg_pid: int | None = None
 
         # Give IMU and detection their own status stores; either may fail independently.
         self.imu = LiveImu(imu_enabled)
@@ -419,6 +421,7 @@ def start_workers(
     """
     # Start FFmpeg with separate pixel/diagnostic pipes and bound its error history.
     process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    state.ffmpeg_pid = process.pid
     diagnostics = deque(maxlen=8)
 
     def log_errors() -> None:
@@ -574,6 +577,8 @@ def make_handler(state: State) -> type[BaseHTTPRequestHandler]:
             elif path == "/api/telemetry":
                 snapshot = state.snapshot()
                 snapshot.pop("pixels_b64", None)
+                snapshot["preview_pid"] = os.getpid()
+                snapshot["ffmpeg_pid"] = state.ffmpeg_pid
                 content = json.dumps(snapshot, allow_nan=False).encode()
                 kind = "application/json"
             else:

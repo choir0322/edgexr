@@ -20,9 +20,10 @@ took about 196 ms per detection. The first
 found no necessary motion-assisted ID hold in two exploratory 60-second runs;
 the turns were not speed-matched, so this is not an accuracy ranking.
 
-Next proposed step: review the
-[sustained AP baseline plan](docs/exec-plans/active/ap-baseline.md) before
-changing models, threads or camera settings. The earlier
+Next step: follow the [sustained AP baseline procedure](docs/AP_BASELINE.md)
+and its [active plan](docs/exec-plans/active/ap-baseline.md) before changing
+models, threads or camera settings. The collector is read-only and requires
+the basic `--detect --imu` preview, not the motion-aware trial. The earlier
 [saved-frame detector baseline](docs/DETECTION_BASELINE.md) remains available
 for studying model output and single-image timing.
 
