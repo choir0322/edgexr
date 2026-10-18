@@ -26,9 +26,12 @@ No server, camera, model download or internet connection is needed.
 For neural-network architecture, open [Inside MobileNet–SSD](detection-architecture.html).
 Use your recorded image to reveal channel planes, slide convolution windows,
 compare standard and depthwise/pointwise connections, trace MobileNet features
-into SSD, and inspect the actual model's default boxes. Editable toy weights
-and predictions are labeled separately from exact model dimensions and saved
-Pi detections. The page works offline with its neighboring CSS, JS and assets.
+into SSD, and inspect the actual model's default boxes. The SSD Back/Next
+sequence shows feature maps, priors, scores/offsets, decoding, filtering and
+source-pixel output. A compact Faster R-CNN comparison explains proposals and
+RoI features alongside the measured Pi workload. Illustrative weights and
+predictions are labelled separately from exact model dimensions and saved Pi
+detections. The page works offline with its neighboring CSS, JS and assets.
 
 Each guide names exact functions in linked source files. In VS Code, open the
 linked file and use symbol search (`Cmd+Shift+O` on Mac) or search the function

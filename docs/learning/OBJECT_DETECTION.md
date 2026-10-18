@@ -23,8 +23,8 @@ Open [Inside MobileNet–SSD](detection-architecture.html) for the interactive
 architecture lesson. Standard convolution and depthwise-plus-pointwise appear
 side by side, sharing one playback sequence. Three channel colors, grouped
 kernels and two output filters show exactly where channel mixing occurs.
-Select a filter to inspect its arithmetic. The compact continuation below shows
-MobileNet features feeding SSD and the recorded Pi result. The fixed 4×4
+Select a filter to inspect its arithmetic. The six-stage continuation below
+traces a prior through SSD and ends with the recorded Pi result. The fixed 4×4
 teaching grids subsample the saved chair-region sample; weights and activations
 are illustrative. Bias is added once per output value with one shared scalar
 per output channel. These teaching biases are enabled for explanation; the
@@ -56,19 +56,38 @@ program. The graph definition and pretrained parameters provide those operations
 
 The lesson's source is split into readable pieces:
 
-- `detection-architecture.html` and `.css`: side-by-side layout and SSD overview.
+- `detection-architecture.html` and `.css`: side-by-side convolution layout,
+  six-stage SSD walkthrough and a compact comparison with Faster R-CNN.
 - `detection-architecture.js`: fixed convolution arithmetic, SVG diagrams and
   shared playback with filter selection.
-- `detection-math.js`: retained standalone teaching math helpers for priors,
-  decoding, convolution and NMS; the simplified page does not load this module.
+- `detection-ssd.js`: independent SSD stage/scale/prior selection, image
+  overlays and teaching score/box calculations. `current()` chooses a prior,
+  `draw()` renders its geometry, and `explanation()` exposes the corresponding
+  values. The final stage renders the saved Pi detections instead of toy boxes.
+- `detection-math.js`: shared teaching helpers for priors, CENTER_SIZE decoding,
+  softmax and class-wise NMS, now loaded by the SSD section.
 - `images/detection-lesson-data.js`: derived image sample and saved final detections.
 - `scripts/build_detection_lesson.py`: validates the saved image/report pairing
   and regenerates the compact teaching assets with the existing FFmpeg tool.
 
-The actual final detections come from the user's saved report. The simplified
-page summarizes duplicate suppression; it does not run inference or NMS on the
-displayed image. The standalone math helpers remain checked by the existing
-math tests.
+The actual final detections come from the user's saved report. The SSD section
+lets you select one of six grids and one reference shape, inspect four fixed
+illustrative offsets plus 21 example scores, decode the candidate and inspect
+filtering decisions. NMS runs on four illustrative candidates; no pretrained
+network runs in the browser. The photograph is the user's Pi image, while the
+grid overlay is a spatial guide rather than captured feature activations.
+
+The final stage explains normalized-to-source coordinates and the later tracker
+handoff. The proposal comparison shows Faster R-CNN sharing backbone features:
+an RPN predicts objectness/regions, then RoI features feed classification and
+box refinement. Its reference anchors and learned region proposals are distinct.
+The Pi suitability card links the measured five-minute workload; there is no
+claim of superiority over an untested detector. Primary references are linked
+in the page. Use `node tests/learning/test_detection_math.cjs` to check the
+underlying arithmetic.
+
+2026-10-18 diagram review: `docs/PIPELINE.md` reviewed; unchanged because this
+offline lesson adds no live inference, worker, threshold or scheduling change.
 
 ## Source reading route
 

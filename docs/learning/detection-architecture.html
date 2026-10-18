@@ -21,12 +21,53 @@
 <p class="muted boundary">Stride 1 · no padding · illustrative biases enabled · 4×4 inputs → 2×2 outputs. Each output channel has one bias, reused alongside its weights at all four positions. Different architectures and weights can produce different outputs.</p>
 <details><summary>Connect this teaching example to the actual MobileNet model</summary><p>The real model begins with a standard 3×3 convolution: 300×300×3 → 150×150×32. Its next depthwise layer has 32 separate 3×3 kernels; pointwise uses 64 filters, each 1×1×32, producing 150×150×64. These extra channels are learned feature maps, not extra camera colors.</p><p>The actual MobileNet backbone disables convolution biases and follows its convolutions with BatchNorm/Scale and ReLU. Biases are enabled here only to teach the general convolution operation. This comparison omits those operations to isolate convolution arithmetic. Depthwise uses one kernel per input channel (depth multiplier 1). Some libraries use “kernel” to mean the whole filter tensor; this page calls its 2D slices kernels.</p><p>54 versus 33 counts stored kernel weights; adding 2 versus 5 biases gives 56 versus 38 teaching parameters. Across four output positions the weight calculations require 216 versus 132 multiply-accumulate operations, plus 8 versus 20 bias additions. Fewer operations do not guarantee the same speedup on the Pi.</p></details>
 <section class="ssd"><p class="eyebrow">02 / WHERE SSD FITS</p><h2>MobileNet builds features. SSD turns features into detections.</h2>
-<div class="ssd-flow">
-<div><div class="stack" aria-hidden="true"><i></i><i></i><i></i></div><h3>MobileNet</h3><p>Learned feature grids<br>conv11: 19×19×512<br>conv13: 10×10×1024</p></div><span class="flow-arrow">→</span>
-<div><div class="scales" aria-hidden="true"><i></i><i></i><i></i></div><h3>SSD, several scales</h3><p>19×19, 10×10, 5×5,<br>3×3, 2×2 and 1×1 grids</p></div><span class="flow-arrow">→</span>
-<div><div class="anchors" aria-hidden="true"><i></i><i></i></div><h3>Box + class predictions</h3><p>Adjust default reference boxes.<br>Score 20 classes + background.<br>Suppress duplicate predictions.</p></div><span class="flow-arrow">→</span>
-<div><div class="saved-image"><img src="images/detection-lesson-scene.png" alt="Saved Pi image with actual detector boxes"><svg id="saved-boxes" viewBox="0 0 1280 720" aria-label="Actual saved detector boxes"></svg></div><h3>Your saved result</h3><p>Map boxes to source pixels;<br>show scores ≥ 0.5.</p></div>
-</div><p class="muted">Reference boxes span sizes and aspect ratios; no scale is exclusively reserved for one object size. SSD’s extra layers derive smaller grids from MobileNet features. Feature-stack drawings are schematic, not captured network activations.</p></section>
-<details><summary>Source code and model details</summary><p><a href="../../src/vision/detect_image.py">infer_once() in detect_image.py</a> prepares the input and calls OpenCV’s <code>net.forward()</code>. The graph executes MobileNet and SSD together. <code>parse_detections()</code> maps accepted predictions into source-image coordinates.</p><p><a href="OBJECT_DETECTION.md">Full object detection code guide</a> · <a href="../PIPELINE.md">Live pipeline</a></p></details>
+<p class="ssd-intro muted">Follow one reference box. Each stop reveals one operation inside the model, then the final hand-off to EdgeXR.</p>
+<nav class="ssd-stages" aria-label="SSD computation stages">
+<button type="button" data-ssd-stage="0" aria-current="step"><span>01</span>Feature maps</button><span aria-hidden="true">→</span>
+<button type="button" data-ssd-stage="1"><span>02</span>Default boxes</button><span aria-hidden="true">→</span>
+<button type="button" data-ssd-stage="2"><span>03</span>Predict</button><span aria-hidden="true">→</span>
+<button type="button" data-ssd-stage="3"><span>04</span>Decode</button><span aria-hidden="true">→</span>
+<button type="button" data-ssd-stage="4"><span>05</span>Filter</button><span aria-hidden="true">→</span>
+<button type="button" data-ssd-stage="5"><span>06</span>Source pixels</button>
+</nav>
+<div class="ssd-workbench">
+  <div class="ssd-visual">
+    <div class="ssd-caption"><span id="ssd-image-label">MODEL INPUT / 300×300</span><span id="ssd-evidence">Real Pi image · schematic overlay</span></div>
+    <svg id="ssd-picture" viewBox="0 0 300 300" role="img" aria-label="Selected SSD stage on the saved Pi image"></svg>
+    <p id="ssd-image-note" class="muted"></p>
+    <div id="ssd-scales" class="ssd-scales" role="group" aria-label="Feature-map scale"></div>
+    <div id="ssd-priors" class="ssd-priors" role="group" aria-label="Default-box shape" hidden></div>
+  </div>
+  <div class="ssd-explanation"><p class="eyebrow" id="ssd-stage-label"></p><h3 id="ssd-title"></h3><div id="ssd-explain"></div></div>
+</div>
+<div class="transport ssd-transport"><div><button id="ssd-back" type="button">← Back</button> <button id="ssd-next" type="button">Next step →</button></div><p id="ssd-progress" aria-live="polite" aria-atomic="true"></p></div>
+<p class="muted boundary">This is an inference lesson. The pretrained network learned its weights earlier from labelled training images. The illustration computes box arithmetic locally; it does not run MobileNet-SSD in your browser.</p>
+</section>
+
+<section class="proposal-comparison" aria-labelledby="proposal-title">
+<p class="eyebrow">03 / WHY THIS ROUTE ON THE PI?</p><h2 id="proposal-title">Predict directly, or propose regions first.</h2>
+<p class="muted ssd-intro">Both approaches learn image features. The difference is how those features become object detections.</p>
+<div class="comparison">
+  <article class="path separable"><div class="path-title"><span>A</span><h3>MobileNet + SSD</h3></div><p>One-stage detector · our current implementation</p>
+    <div class="architecture-route" role="img" aria-label="MobileNet features to dense class and offset predictions to decoding and NMS">
+      <div class="route-node"><div class="route-glyph feature-glyph" aria-hidden="true"><i></i><i></i><i></i></div><b>MobileNet features</b><small>Several spatial scales</small></div><span aria-hidden="true">↓</span>
+      <div class="route-node"><div class="route-glyph dense-glyph" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></div><b>Class + box offsets</b><small>For every default box</small></div><span aria-hidden="true">↓</span>
+      <div class="route-node"><b>Decode → filter → NMS</b><small>Final class-labelled boxes</small></div>
+    </div><p class="route-takeaway">A default box is a fixed reference shape. Class prediction and position adjustment come directly from feature maps.</p>
+  </article>
+  <article class="path standard"><div class="path-title"><span>B</span><h3>Faster R-CNN</h3></div><p>Two-stage detector · conceptual comparison</p>
+    <div class="architecture-route" role="img" aria-label="Shared backbone features to region proposal network to RoI features and classification and box refinement">
+      <div class="route-node"><div class="route-glyph feature-glyph" aria-hidden="true"><i></i><i></i><i></i></div><b>Shared backbone features</b><small>Used by both stages below</small></div><span aria-hidden="true">↓</span>
+      <div class="route-node"><div class="route-glyph proposal-glyph" aria-hidden="true"><i></i><i></i><i></i></div><b>1. Propose regions — RPN</b><small>“An object may be here.”<br>Predict objectness + candidate regions</small></div><span aria-hidden="true">↓</span>
+      <div class="route-node"><b>2. Gather RoI features</b><small>Pool each proposed region from shared features,<br>then classify + refine its box → NMS</small></div>
+    </div><p class="route-takeaway">A proposal is predicted from this image. Region-of-interest (RoI) pooling prepares features for the second stage.</p>
+  </article>
+</div>
+<p class="muted boundary">Faster R-CNN also uses reference anchors in its RPN. The distinction is its proposal-and-RoI stage, not whether anchors exist. Both can execute within one network; “two-stage” does not mean two camera images or a full backbone rerun for each crop.</p>
+<div class="pi-evidence"><div><span class="eyebrow">YOUR PI 4 / MEASURED</span><h3>A practical starting point for the shared CPU.</h3><p>MobileNet reduces the cost of feature extraction with depthwise separable convolutions. SSD avoids a separate region proposal / RoI detection stage. This makes the combination a reasonable candidate for a Pi that also decodes video, estimates motion and reads the IMU.</p></div><div class="pi-metrics"><div><strong>226 ms</strong><span>median detector compute</span></div><div><strong>2.00 Hz</strong><span>achieved detection updates</span></div><div><strong>26.16 fps</strong><span>concurrent motion analysis</span></div></div>
+<p class="muted">Measured with 720p MJPEG/30 fps, 300×300 MobileNet-SSD input, CPU/OpenCV two threads, basic tracking and IMU on Pi 4. Five-minute static run after two-minute warm-up; passive heatsink, no fan. Temperature rose during the run. See <a href="../../benchmarks/results/ap-baseline-basic-2026-10-18.md">conditions and results</a>. The 2 Hz target is our scheduler choice, not the network’s maximum speed.</p>
+<p class="muted">We have not measured Faster R-CNN or an alternative detector on this setup. Architecture alone cannot establish a speed or accuracy winner. Small objects, missed detections and grayscale scenes still need evaluation; <a href="../AP_OPTIMIZATION.md">model comparisons remain planned</a>.</p></div>
+</section>
+<details><summary>Source code, model details and further reading</summary><p><a href="../../src/vision/detect_image.py">infer_once() in detect_image.py</a> prepares the input and calls OpenCV’s <code>net.forward()</code>. The graph executes MobileNet and SSD together, including decoding and NMS. <code>parse_detections()</code> applies EdgeXR’s score cutoff and maps accepted predictions into source-image coordinates.</p><p>Grid sizes and thresholds follow the <a href="https://github.com/chuanqi305/MobileNet-SSD/blob/bb17b6c3eef36d80be441ae8e5339be66e8e3b7a/deploy.prototxt">pinned model graph</a>, not every SSD variant. Architecture references: <a href="https://arxiv.org/abs/1512.02325">SSD paper</a>, <a href="https://arxiv.org/abs/1506.01497">Faster R-CNN paper</a>, <a href="https://arxiv.org/abs/1704.04861">MobileNet paper</a>.</p><p><a href="OBJECT_DETECTION.md">Full object detection code guide</a> · <a href="../PIPELINE.md">Live pipeline</a></p></details>
 <footer>Sliding windows and channel stacks illustrate tensor operations. Pixel samples and final detections come from your saved Pi trial; teaching weights are illustrative. Playback speed is unrelated to inference speed.</footer>
-</main><script src="images/detection-lesson-data.js"></script><script src="detection-architecture.js"></script></body></html>
+</main><script src="images/detection-lesson-data.js"></script><script src="detection-architecture.js"></script><script src="detection-math.js"></script><script src="detection-ssd.js"></script></body></html>

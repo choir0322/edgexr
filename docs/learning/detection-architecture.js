@@ -204,11 +204,6 @@
   $("reset").addEventListener("click", () => { pause(); tick = 0; selected = "s0"; render(); });
   document.addEventListener("visibilitychange", () => { if (document.hidden) { pause(); render(); } });
 
-  // Draw only saved measured detections here; teaching tensors never become boxes.
-  $("saved-boxes").innerHTML = data.detections.map(box => {
-    const [x,y,right,bottom] = box.box_xyxy;
-    return '<rect x="'+x+'" y="'+y+'" width="'+(right-x)+'" height="'+(bottom-y)+'" fill="none" stroke="#65d8bb" stroke-width="7"/>' +
-      text(Math.max(8,x),Math.max(32,y-10),box.label+" "+box.confidence.toFixed(2),"#65d8bb",30);
-  }).join("");
+  // The SSD module owns its separate stage view and the saved detection overlay.
   render();
 })();
