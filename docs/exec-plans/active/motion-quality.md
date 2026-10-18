@@ -21,9 +21,18 @@ tracking/detector changes, servo commands, model downloads or new dependencies.
   conditions and implement an offline comparison without changing the live path.
 - [x] 2026-10-19: Review `docs/PIPELINE.md` and `docs/learning/IMAGE_MOTION.md`;
   add offline-test links/limits if they need clarification.
-- [ ] Run four Pi recordings and analyze them; record conditions and outcomes.
-- [ ] Identify one evidenced failure mode and decide whether to change the
-  estimator, scene protocol, or neither. Do not tune thresholds beforehand.
+- [x] 2026-10-19: Run and analyze four Pi recordings. The five analysis folders
+  are now under ignored `recordings/`; summarize findings in
+  `benchmarks/results/motion-quality-2026-10-19.md`.
+- [x] 2026-10-19: Review the fast video. Several sharp sweeps coincide with
+  visible blur/large view changes and four clusters of rejected pairs. Keep
+  the estimator unchanged; a speed-controlled repeat or per-patch diagnostic
+  is needed before selecting a threshold/algorithm change.
+- [x] 2026-10-19: Add offline per-patch diagnostics; reproduce all 28 visual
+  rejections in the fast clip. Most patch failures are weak correlation peaks,
+  not low texture. Review/update `docs/PIPELINE.md` and the image-motion guide.
+- [ ] Run a controlled turn-speed series, then select at most one targeted
+  estimator change if a repeatable boundary justifies it.
 
 ## Plan of work
 
@@ -58,9 +67,22 @@ files remain ignored by Git; share summaries and notes, not raw video by default
 
 ## Surprises and discoveries
 
-None from the new Pi trials yet. Earlier AP measurements showed a sustained
-~26 fps live motion-analysis rate, but this offline video analysis is a
-different workload and must not be compared as a speed benchmark.
+The user reports roughly three or four quick sharp movements in the fast-turn
+clip, not the single turn suggested in the protocol. Its 28 visual rejections
+all occur around 5.04–7.30 s after the recording cue. This is a useful stress
+test but not a one-turn comparison. The slow-turn clip also contains multiple
+sign reversals, so its movement phases must be interpreted from the recorded
+signals rather than the planned action alone. Earlier AP measurements showed
+a sustained ~26 fps live motion-analysis rate, but this offline video analysis
+is a different workload and must not be compared as a speed benchmark.
+Visual review of the copied fast video shows blur, large scene replacement
+between frames and a nearby object sweeping across the view. Corrected gyro Y
+reaches about 794 degrees/s in one rejection cluster. These factors co-occur;
+the present output cannot isolate the cause of each patch's rejection.
+The offline patch report attributes 24 pair rejections to too few individually
+valid patches and four to disagreement. Weak peaks appear in 219/252 patch
+checks; no patch failed low texture. Some weak candidates also exceed the
+displacement guard, but should not be treated as true displacement.
 
 ## Decision log
 
@@ -68,8 +90,19 @@ different workload and must not be compared as a speed benchmark.
   motion logic. Report failures explicitly rather than filtering them away.
 - 2026-10-19: A >1-pixel per-pair magnitude is a reporting aid for fixed-camera
   trials, not a correctness threshold or an algorithm setting.
+- 2026-10-19: Keep a rejected extreme-motion estimate as unknown rather than
+  relaxing thresholds without evidence. Use a speed-controlled repeat or
+  per-patch rejection diagnostics for the next quality step.
+- 2026-10-19: Reuse the exact existing patch gates with an optional detail
+  record and run the report offline on saved video. Do not add per-patch
+  serialization to the live worker or alter thresholds in this diagnostic step.
 
 ## Outcomes and retrospective
 
-Awaiting the four Pi recordings. The test can describe consistency and failure
-modes, but no ground-truth camera pose or synchronized sensor latency.
+All four analysis outputs are available locally. The initial pattern supports
+near-zero global shift for the still/person trials and strong coverage for a
+slow turn. The repeated-fast-turn stress clip has four localized rejection
+clusters. Its video has been reviewed, but there is still no measured camera
+pose or causal attribution per rejected patch. The diagnostic narrowed the
+failure to weak peak quality in most patches. No live estimator decision was
+changed. Next is a controlled speed series, not immediate threshold tuning.

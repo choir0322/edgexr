@@ -81,6 +81,14 @@ accepted shift or an explicit rejection; `motion_quality.py` compares four
 trial CSVs. It uses saved camera PTS and approximate host IMU pairing, not the
 live preview's latest-only scheduling. The experiment does not change the
 diagrammed live path or its rates.
+The optional [per-patch diagnostic](PATCH_DIAGNOSTICS.md) decodes the saved
+video again and explains rejected pairs using the same patch gates; it is
+not another live worker or a replacement displacement estimate.
+The optional [servo-speed experiment](SERVO_MOTION_QUALITY.md) is likewise
+outside the live diagram. It commands small, separate pan/tilt sweeps with the
+Fusion HAT, runs `combined_capture.py`, then the two offline analyzers. Its
+command times are host observations; its PTS-gap flag is not proven camera
+frame loss. The live preview still does not command servos.
 
 ## Rates are separate controls
 

@@ -46,6 +46,12 @@ optional Matplotlib chart; nothing is installed automatically. Read
 [the first results](docs/VISUAL_MOTION_RESULTS.md) before interpreting correlation
 as calibration or synchronization.
 
+An optional [servo-driven motion-quality experiment](docs/SERVO_MOTION_QUALITY.md)
+now has a dry-run preview and a supervised, explicitly armed Pi workflow. It
+uses small, sequential pan/tilt sweeps and the existing saved-video analyses;
+the live browser preview still does not control servos. Verify the actual HAT
+channels and physical center before any real movement.
+
 The [camera and IMU recorder](docs/COMBINED_CAPTURE.md)
 saves local video and timestamp logs at 720p/30 fps using existing dependencies.
 Mounted IMU turn/return results are recorded in the active IMU plan; camera/IMU

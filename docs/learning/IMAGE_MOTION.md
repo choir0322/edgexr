@@ -187,6 +187,19 @@ pipes. The preview does not write raw images or recordings.
   compares four offline trial CSVs. It counts rejected pairs as a loss of
   visual coverage, never as zero shift. The >1-pixel diagnostic count is not
   an estimator acceptance rule. See the [Pi test procedure](../MOTION_QUALITY.md).
+- [patch_diagnostics.py](../../src/recording/patch_diagnostics.py): `inspect`
+  rechecks only visually rejected pairs in an existing saved clip, and
+  `diagnose_pair` records why each of the nine patches passed or failed.
+  `patch_shift(..., diagnostics=detail)` fills an optional explanation record
+  but keeps the live call's return value and gates unchanged. See the
+  [diagnostic guide](../PATCH_DIAGNOSTICS.md); weak-peak candidates are not
+  trusted motion measurements.
+- [servo_motion_quality.py](../../src/recording/servo_motion_quality.py):
+  optional dry-run-first, physically armed experiment. `build_schedule()`
+  defines small commanded pan/tilt sweeps; `execute_commands()` logs monotonic
+  command times; `phase_report()` separately counts rejected visual pairs and
+  camera-PTS timing gaps. It reuses the offline camera/IMU/patch path and is
+  **not** part of `live_preview.py`. See the [supervised Pi guide](../SERVO_MOTION_QUALITY.md).
 
 ## Tests and study exercises
 

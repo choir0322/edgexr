@@ -25,10 +25,15 @@ from .analyze_capture import analyze, numeric_csv, timing
 
 
 WIDTH, HEIGHT = 320, 180
+PATCH_HEIGHT, PATCH_WIDTH = 56, 80
+PATCH_ORIGINS = tuple((x, y) for y in (5, 62, 119) for x in (5, 117, 229))
 
 
 def patch_shift(
-    first: np.ndarray, second: np.ndarray
+    first: np.ndarray,
+    second: np.ndarray,
+    *,
+    diagnostics: dict[str, object] | None = None,
 ) -> tuple[float, float, float] | None:
     """Estimate scene-content translation from one pair of textured image patches.
 
@@ -43,18 +48,28 @@ def patch_shift(
             on each side; the caller normally selects a (56, 80) patch.
         second (np.ndarray): Later grayscale 2D numeric array with the same shape as
             first.
+        diagnostics (dict[str, object] | None): Optional caller-owned record of
+            texture, candidate shift, quality and failed checks. Leave None in
+            the live path; this does not alter acceptance or thresholds.
 
     Returns:
         tuple[float, float, float] | None: dx/dy pixels and peak quality, or None for
             ambiguous/large shifts.
     """
     # Reject incompatible, nonfinite or nearly textureless patches before FFT work.
+    if diagnostics is not None:
+        diagnostics.clear()
     if first.shape != second.shape or first.ndim != 2 or min(first.shape) < 16:
         raise ValueError("Need equal 2D patches at least 16 pixels wide/high")
     a, b = first.astype(float), second.astype(float)
     if not np.isfinite(a).all() or not np.isfinite(b).all():
         raise ValueError("Nonfinite image data")
-    if min(a.std(), b.std()) < 3:
+    std_first, std_second = a.std(), b.std()
+    if diagnostics is not None:
+        diagnostics.update(std_first=float(std_first), std_second=float(std_second))
+    if min(std_first, std_second) < 3:
+        if diagnostics is not None:
+            diagnostics.update(accepted=False, failed_checks=["low_texture"])
         return None
 
     # Center and taper each patch, then normalize the cross-power spectrum.
@@ -103,7 +118,27 @@ def patch_shift(
 
     # Refine both axes and reject weak peaks or shifts larger than a quarter patch.
     dx, dy = refine(x, surface[y, :]), refine(y, surface[:, x])
-    if quality < 8 or abs(dx) > a.shape[1] / 4 or abs(dy) > a.shape[0] / 4:
+    weak_peak = quality < 8
+    large_horizontal_shift = abs(dx) > a.shape[1] / 4
+    large_vertical_shift = abs(dy) > a.shape[0] / 4
+    if diagnostics is not None:
+        failed_checks = [
+            name
+            for name, failed in (
+                ("weak_peak", weak_peak),
+                ("large_horizontal_shift", large_horizontal_shift),
+                ("large_vertical_shift", large_vertical_shift),
+            )
+            if failed
+        ]
+        diagnostics.update(
+            candidate_dx_pixels=float(dx),
+            candidate_dy_pixels=float(dy),
+            peak_quality=float(quality),
+            accepted=not (weak_peak or large_horizontal_shift or large_vertical_shift),
+            failed_checks=failed_checks,
+        )
+    if weak_peak or large_horizontal_shift or large_vertical_shift:
         return None
     return dx, dy, float(quality)
 
@@ -126,13 +161,13 @@ def image_shift(first: np.ndarray, second: np.ndarray) -> MotionShift | None:
     if first.shape != (HEIGHT, WIDTH) or second.shape != first.shape:
         raise ValueError("Images must be 320x180 grayscale")
     matches = []
-    for y in (5, 62, 119):
-        for x in (5, 117, 229):
-            match = patch_shift(
-                first[y : y + 56, x : x + 80], second[y : y + 56, x : x + 80]
-            )
-            if match is not None:
-                matches.append(match)
+    for x, y in PATCH_ORIGINS:
+        match = patch_shift(
+            first[y : y + PATCH_HEIGHT, x : x + PATCH_WIDTH],
+            second[y : y + PATCH_HEIGHT, x : x + PATCH_WIDTH],
+        )
+        if match is not None:
+            matches.append(match)
     if len(matches) < 4:
         return None
 
