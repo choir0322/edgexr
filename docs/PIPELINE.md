@@ -36,6 +36,7 @@ flowchart TD
     POLL["poll_imu<br/>Read midpoint timestamp; then wait 50 ms"]
     BIAS["LiveImu<br/>First-second stationary gyro offset<br/>Latest corrected XYZ rates in degrees/s"]
     STATE["State.snapshot<br/>Latest independent results + ages/errors<br/>Not exposure-synchronized sensor fusion"]
+    TRIAL["Optional second SSH process: tracking_trial<br/>/api/telemetry omits image bytes<br/>JSONL + summary under ignored recordings/"]
     WEB["Loopback HTTP: /api/frame<br/>SSH tunnel to Mac browser"]
     UI["preview.html<br/>Image + exaggerated motion arrow<br/>Older boxes with provisional #IDs<br/>Gyro/timing cards; fetch/render then wait 200 ms"]
     CAMERA --> FF
@@ -51,6 +52,7 @@ flowchart TD
     TRACK --> STATE
     BIAS --> STATE
     STATE --> WEB --> UI
+    STATE -. "metrics-only HTTP" .-> TRIAL
 ```
 
 ## Text fallback and mode differences
@@ -124,7 +126,11 @@ cores and are unrelated to the two-Hz scheduler.
 Model files and command-line options configure execution. Host clocks supply
 timing measurements. FFmpeg stderr is drained by a diagnostic thread; it is
 not mixed with raw pixels. Ctrl+C and the shared stop event end workers. The
-HTTP server serves only the page and snapshot, not arbitrary files.
+HTTP server serves only the page and two fixed snapshot routes, not arbitrary
+files. `/api/telemetry` omits `pixels_b64` from the usual snapshot. The optional
+`vision.tracking_trial` process polls that route and saves local metrics/boxes,
+not image frames. It is not another camera reader or tracking worker, and
+polling may miss a detector update between requests.
 
 The live preview saves no footage, commands no servo and reads no usable
 magnetometer/barometer stream. Acceleration and temperature returned with the

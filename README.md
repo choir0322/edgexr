@@ -10,6 +10,8 @@ Start with the [current pipeline diagram](docs/PIPELINE.md) and the
 its timing and limitations. Basic session-local tracking and optional
 [motion-aware ID matching](docs/learning/MOTION_AWARE_TRACKING.md) exist;
 sensor fusion and long-term re-identification do not.
+For a repeatable Pi comparison of basic and motion-aware tracking, follow the
+[metrics-only tracking trial](docs/TRACKING_TRIAL.md).
 
 New: [optional live detection](docs/LIVE_DETECTION.md) adds boxes with source
 age and a target 2 Hz update rate. The [saved-frame Pi baseline](docs/DETECTION_RESULTS.md)

@@ -562,12 +562,19 @@ def make_handler(state: State) -> type[BaseHTTPRequestHandler]:
                 self.send_error(403)
                 return
 
-            # Serve only the page and a JSON snapshot; all other paths are rejected.
+            # The trial endpoint excludes image bytes so high-frequency telemetry
+            # polling does not repeatedly move a Base64 camera frame over HTTP.
+            # It retains the same timing, detector boxes and IMU snapshot.
             path = urlsplit(self.path).path
             if path == "/":
                 content, kind = page, "text/html; charset=utf-8"
             elif path == "/api/frame":
                 content = json.dumps(state.snapshot(), allow_nan=False).encode()
+                kind = "application/json"
+            elif path == "/api/telemetry":
+                snapshot = state.snapshot()
+                snapshot.pop("pixels_b64", None)
+                content = json.dumps(snapshot, allow_nan=False).encode()
                 kind = "application/json"
             else:
                 self.send_error(404)

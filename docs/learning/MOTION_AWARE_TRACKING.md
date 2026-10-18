@@ -67,3 +67,10 @@ For hardware-free checks, read
 [`test_motion_history.py`](../../tests/unit/test_motion_history.py),
 [`test_basic_tracker.py`](../../tests/unit/test_basic_tracker.py), and
 [`test_live_detection.py`](../../tests/unit/test_live_detection.py).
+
+To compare the two modes on the Pi, use the separate
+[trial recorder and protocol](../TRACKING_TRIAL.md). The recorder polls
+`/api/telemetry`, which excludes the Base64 preview image. It counts
+`motion_matches` separately from `motion_only_matches`: the former means
+predicted overlap won, while only the latter means raw overlap was below the
+threshold. Neither count establishes physical identity correctness by itself.

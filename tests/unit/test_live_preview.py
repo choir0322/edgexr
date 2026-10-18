@@ -214,9 +214,11 @@ class PreviewTests(unittest.TestCase):
         # Send allowed and rejected requests through the handler and inspect raw HTTP
         # status, JSON and cache policy rather than mocking its routing decisions.
         state = State()
+        state.publish_result((1, state.started, b"pixels"), 0, None, 1.0, state.started)
         for path, host, status in [
             ("/", "localhost:8765", 200),
             ("/api/frame", "127.0.0.1:8765", 200),
+            ("/api/telemetry", "127.0.0.1:8765", 200),
             ("/../../AGENTS.md", "localhost:8765", 404),
             ("/api/frame", "external.example", 403),
         ]:
@@ -227,8 +229,11 @@ class PreviewTests(unittest.TestCase):
             header, body = bytes(connection.output).split(b"\r\n\r\n", 1)
             self.assertIn(f" {status} ".encode(), header.split(b"\r\n")[0])
             if path == "/api/frame" and status == 200:
-                self.assertEqual(json.loads(body)["status"], "starting")
+                self.assertIn("pixels_b64", json.loads(body))
                 self.assertIn(b"Cache-Control: no-store", header)
+            if path == "/api/telemetry" and status == 200:
+                self.assertIn("detector", json.loads(body))
+                self.assertNotIn("pixels_b64", json.loads(body))
 
     def test_startup_timeout_is_visible(self) -> None:
         """Verify startup timeout is visible.

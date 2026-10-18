@@ -57,6 +57,14 @@ extend ID lifetime after departure from view.
   unchanged and why.
 - [x] 2026-10-18: Run local unit/browser checks and `git diff --check`.
 - [ ] Run controlled Pi comparison and record actual outcomes.
+- [x] 2026-10-18: User observed stable IDs in both modes during ordinary turns;
+  motion-aware coverage was nonzero but the browser's motion-only match count
+  stayed at zero. Add a metrics-only two-run recorder before making any
+  performance or accuracy claim.
+- [x] 2026-10-18: Implement and hardware-free test the trial recorder, the
+  no-image telemetry route, and side-by-side report reader. Review/update
+  `docs/PIPELINE.md` and the motion-aware learning guide for this extra process.
+- [ ] Run the recorded basic and motion-aware Pi trials and inspect samples.
 
 ## Plan of work
 
@@ -128,6 +136,11 @@ The motion worker currently publishes only its latest browser result; the
 detector needs an interval of shifts, not that one dx/dy. Detector source frames
 also need not have been selected by the motion worker. These timing boundaries
 must be solved and measured before the matcher can safely consume motion.
+The user's initial Pi observation showed that reliable motion coverage alone
+is not an improvement: during ordinary turns the raw IoU baseline also kept
+IDs, so `motion_only_matches` stayed zero. A separate metrics-only endpoint
+avoids fetching image bytes at a higher logging rate, though HTTP polling can
+still miss a result and adds some CPU work.
 
 ## Decision log
 
@@ -141,6 +154,11 @@ must be solved and measured before the matcher can safely consume motion.
   prediction exists, because independently moving foreground can violate
   background image shift. Reject nonfinite or over-frame-size source shifts.
   These are conservative starting policies, not measured optima.
+- 2026-10-18: Compare two separate 60-second trials through `/api/telemetry`,
+  excluding image bytes. Log every successful poll plus a summary of distinct
+  observed detector sequences. Use one unique target category; ambiguity or a
+  missing target breaks the ID-change chain. Counts are observational proxies,
+  not labelled ground-truth accuracy.
 
 ## Outcomes and retrospective
 
@@ -153,3 +171,8 @@ hardware comparison is still pending; do not mark complete until it is recorded.
 The learning-contract audit reports one pre-existing missing docstring section in
 `scripts/build_hann_fft_lesson.py`; this unrelated lesson-builder file was not
 changed for tracking. New tracking code and tests satisfy that audit.
+The new read-only comparison tooling passes the full Mac unit suite (70 tests,
+two environment-dependent skips), including fake telemetry and the no-image
+HTTP route. `git diff --check` passes. It has **not** yet been run on the Pi;
+the remaining acceptance step is the paired 60-second user trial documented
+in `docs/TRACKING_TRIAL.md` and manual review of any false ID holds.
