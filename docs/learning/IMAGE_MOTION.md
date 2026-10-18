@@ -183,6 +183,10 @@ pipes. The preview does not write raw images or recordings.
   camera PTS intervals; live arrow dx does not. Host pairing is approximate.
 - [plot_visual_motion.py](../../src/recording/plot_visual_motion.py):
   `plot_comparisons` visualizes already calculated comparison results.
+- [motion_quality.py](../../src/recording/motion_quality.py): `summarize`
+  compares four offline trial CSVs. It counts rejected pairs as a loss of
+  visual coverage, never as zero shift. The >1-pixel diagnostic count is not
+  an estimator acceptance rule. See the [Pi test procedure](../MOTION_QUALITY.md).
 
 ## Tests and study exercises
 

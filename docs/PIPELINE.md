@@ -74,6 +74,14 @@ image slot or detector worker. With IMU off, no IMU reader is started. `--demo`
 substitutes synthetic imagery only; it does not simulate gyro or detections.
 Enabling `--imu` with demo still attempts a real sensor read.
 
+The [motion-quality experiment](MOTION_QUALITY.md) is a **separate offline
+path**, not an extra live worker: `combined_capture.py` records a video and IMU
+log; `visual_motion.py` decodes each adjacent pair to 320×180 and records an
+accepted shift or an explicit rejection; `motion_quality.py` compares four
+trial CSVs. It uses saved camera PTS and approximate host IMU pairing, not the
+live preview's latest-only scheduling. The experiment does not change the
+diagrammed live path or its rates.
+
 ## Rates are separate controls
 
 | Stage | Policy in code | What it does not guarantee |

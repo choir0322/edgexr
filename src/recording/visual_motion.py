@@ -335,16 +335,14 @@ def inspect_recording(folder: Path) -> tuple[Record, list[Record]]:
         row["accepted"] = shift is not None and gyro is not None
         rows.append(row)
 
-    # Require enough accepted pairs before exploratory correlation. Constant or
-    # nearly constant signals do not provide a useful correlation estimate.
+    # A difficult clip may reject almost every pair. Keep that failure measurable;
+    # only calculate correlation and visual summaries when samples support them.
     accepted = [r for r in rows if r["accepted"]]
-    if len(accepted) < 10:
-        raise ValueError("Too few reliable visual/gyro pairs; inspect texture and logs")
     visual = np.asarray([r["horizontal_pixels_s"] for r in accepted])
     gyro_y = np.asarray([r["gy_dps"] for r in accepted])
     correlation = (
         float(np.corrcoef(visual, gyro_y)[0, 1])
-        if min(visual.std(), gyro_y.std()) > 0.5
+        if len(accepted) >= 10 and min(visual.std(), gyro_y.std()) > 0.5
         else None
     )
 
@@ -381,8 +379,12 @@ def inspect_recording(folder: Path) -> tuple[Record, list[Record]]:
         compared_pairs=len(rows),
         accepted_pairs=len(accepted),
         rejected_pairs=len(rows) - len(accepted),
-        median_abs_horizontal_pixels_s=float(np.median(np.abs(visual))),
-        p95_abs_horizontal_pixels_s=float(np.percentile(np.abs(visual), 95)),
+        median_abs_horizontal_pixels_s=float(np.median(np.abs(visual)))
+        if len(accepted)
+        else None,
+        p95_abs_horizontal_pixels_s=float(np.percentile(np.abs(visual), 95))
+        if len(accepted)
+        else None,
         horizontal_vs_gyro_y_correlation=correlation,
         per_second=bins,
         limitations="Patch translation is not camera rotation. Moving objects/parallax can affect motion. Correlation is exploratory, not measured synchronization or angle calibration.",
