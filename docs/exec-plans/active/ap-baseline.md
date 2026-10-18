@@ -33,8 +33,11 @@ exposure latency. See `docs/BENCHMARKING.md` and `docs/AP_OPTIMIZATION.md`.
   temperature/throttling and existing telemetry, with hardware-free tests.
 - [x] 2026-10-18: Update `docs/PIPELINE.md` and the learning guide with data
   sources, units, sampling rates, freshness and limitations.
-- [ ] Run a warmed-up sustained baseline on Pi and commit a concise result
-  summary; leave raw time-series logs outside Git.
+- [x] 2026-10-18: User ran the 120-second warm-up and 300-second basic-tracking
+  Pi measurement; add its concise result under `benchmarks/results/`. Raw
+  time-series logs remain outside Git.
+- [ ] Confirm power supply, inspect thermal trend and decide whether a
+  thermally stabilized repeat is needed before the first tuning comparison.
 
 ## Plan of work
 
@@ -87,6 +90,12 @@ in turn rate to establish sustained AP capacity or a tracking winner.
 The user's current motion-aware preview had already run for about 10–15 minutes.
 That is useful stability evidence, but it is not this basic-tracking baseline;
 the collector deliberately rejects motion-aware mode.
+The first basic run sustained about 30.09 capture fps, 26.16 motion fps and
+2.00 detector Hz, with 1,203 skipped decoded frames during 300 seconds. Its
+thermal-zone median rose about 4.38°C from the first to last measured minute;
+all 297 sampled throttle flags were `0x0`. The user subsequently identified
+passive metal-heatsink cooling with no fan; power supply, ambient and Pi RAM
+remain unreported. See `benchmarks/results/ap-baseline-basic-2026-10-18.md`.
 
 ## Decision log
 
@@ -97,8 +106,13 @@ the collector deliberately rejects motion-aware mode.
 - 2026-10-18: Add read-only PID telemetry for the exact Python and FFmpeg
   processes, then observe `/proc`, thermal zone and firmware throttle flags
   from a second process. Do not save camera pixels or change preview scheduling.
+- 2026-10-18: Preserve the completed first run with its incomplete conditions;
+  do not treat rising temperature as a settled thermal baseline or compare
+  future thread settings against it without matching/stabilizing conditions.
 
 ## Outcomes and retrospective
 
-Collector and learning notes implemented locally; Pi protocol review and the
-actual Pi measurement remain. No sustained performance claim yet.
+Collector, learning notes and first Pi result are recorded. It verifies one
+five-minute operating window, not thermal equilibrium. Confirm remaining physical
+conditions and decide on a stabilized repeat before closing this plan or
+starting the OpenCV-thread comparison.
