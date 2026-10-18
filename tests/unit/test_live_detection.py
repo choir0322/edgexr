@@ -48,6 +48,115 @@ class DetectionStateTests(unittest.TestCase):
 
 @unittest.skipIf(np is None, "NumPy required for preview")
 class LiveDetectionTests(unittest.TestCase):
+    def test_worker_uses_scaled_motion_and_reports_motion_only_id_hold(self) -> None:
+        """Join 320×180 pair shifts to 1280×720 detector boxes by receipt time.
+
+        Args:
+            None.
+
+        Returns:
+            None: Assertions check a motion-only ID hold and diagnostic counts.
+        """
+        clock = [100.0]
+
+        class Stop:
+            """Advance synthetic time without sleeping."""
+
+            stopped = False
+
+            def is_set(self) -> bool:
+                """Return the test worker's stop flag.
+
+                Args:
+                    None.
+
+                Returns:
+                    bool: Whether synthetic work has stopped.
+                """
+                return self.stopped
+
+            def set(self) -> None:
+                """Stop after the second inference.
+
+                Args:
+                    None.
+
+                Returns:
+                    None: Marks this test worker stopped.
+                """
+                self.stopped = True
+
+            def wait(self, seconds: float) -> bool:
+                """Advance the fake clock by the requested seconds.
+
+                Args:
+                    seconds (float): Synthetic wait duration.
+
+                Returns:
+                    bool: Whether the test worker has stopped.
+                """
+                clock[0] += seconds
+                return self.stopped
+
+        state = State(detection_enabled=True, motion_aware_tracking=True)
+        state.stop = Stop()
+        state.publish_frame(b"", 100.0, b"first")
+        calls = [0]
+
+        def detect(pixels: bytes) -> list[Record]:
+            """Offer a second frame after reliable motion has been recorded.
+
+            Args:
+                pixels (bytes): Selected source frame bytes, unused by this fake.
+
+            Returns:
+                list[Record]: Synthetic person box for the chosen source time.
+            """
+            calls[0] += 1
+            clock[0] += 0.2
+            if calls[0] == 1:
+                for index in range(1, 11):
+                    timestamp = 100.0 + index * 0.05
+                    state.publish_frame(b"", timestamp, b"latest")
+                    state.motion_history.add(
+                        index, 100.0 + (index - 1) * 0.05,
+                        index + 1, timestamp, (5.0, 0.0),
+                    )
+                return [{"class_id": 15, "label": "person", "box_xyxy": [100, 0, 200, 100]}]
+            state.stop.set()
+            return [{"class_id": 15, "label": "person", "box_xyxy": [300, 0, 400, 100]}]
+
+        def factory() -> Callable[[bytes], list[Record]]:
+            """Build the synthetic detector only once.
+
+            Args:
+                None.
+
+            Returns:
+                Callable: Fake detector accepting source bytes.
+            """
+            return detect
+
+        def fake_clock() -> float:
+            """Read synthetic monotonic seconds.
+
+            Args:
+                None.
+
+            Returns:
+                float: Synthetic monotonic seconds.
+            """
+            return clock[0]
+
+        detect_latest(state, factory, fake_clock)
+        result = state.detector.snapshot(clock[0])
+        self.assertEqual(result["status"], "ready")
+        self.assertEqual(result["boxes"][0]["track_id"], 1)
+        self.assertEqual(result["tracking_mode"], "motion-aware")
+        self.assertEqual(result["tracking_stats"]["covered_tracks"], 1)
+        self.assertEqual(result["tracking_stats"]["motion_only_matches"], 1)
+        self.assertIsNone(state.error)
+
     def test_full_frame_is_separate_from_motion_and_latest_replaces_older(self) -> None:
         """Verify full frame is separate from motion and latest replaces older.
 
@@ -282,7 +391,7 @@ class LiveDetectionTests(unittest.TestCase):
 
         def record_publish(
             frame: tuple[int, float, bytes], boxes: list[Record],
-            cost_ms: float, finished: float
+            cost_ms: float, finished: float, tracking_stats: Record | None = None
         ) -> None:
             """Observe ID-bearing payloads at the real publication boundary.
 
@@ -291,12 +400,13 @@ class LiveDetectionTests(unittest.TestCase):
                 boxes (list[Record]): ID-bearing current detections.
                 cost_ms (float): Inference milliseconds.
                 finished (float): Synthetic monotonic completion seconds.
+                tracking_stats (Record | None): Tracker's latest coverage counts.
 
             Returns:
                 None: Records the payload and calls the real publisher.
             """
             published.append(boxes)
-            original_publish(frame, boxes, cost_ms, finished)
+            original_publish(frame, boxes, cost_ms, finished, tracking_stats)
 
         state.detector.publish = record_publish
         state.publish_frame(b"", clock[0], b"frame1")

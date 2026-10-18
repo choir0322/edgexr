@@ -47,8 +47,8 @@ than starting a second copy.
 ## What the display means
 
 Amber dashed boxes are the latest completed detections; green arrow is image
-movement. Boxes describe an older frame and can lag during motion. They are
-not tracked, warped or fused with IMU. Stationary subjects should be easier to
+movement. Boxes describe an older frame and can lag during motion. They have
+provisional session-local IDs but are not warped or fused with IMU. Stationary subjects should be easier to
 inspect. The model may miss the right chair, as it did in the saved image.
 
 - Detection updates: completed detections per second over a recent five-second
@@ -58,6 +58,33 @@ inspect. The model may miss the right chair, as it did in the saved image.
 - Box source age on Pi: time since that input frame arrived from FFmpeg,
   including compute and time waiting on screen for a replacement. It excludes
   exposure-to-pipe and SSH/browser delay, so is not end-to-end latency.
+
+## Compare optional motion-aware ID matching
+
+The default command above remains the IoU-only baseline. After stopping it
+with Ctrl+C, launch the opt-in mode with the **same** camera, scene and model:
+
+```bash
+PYTHONPATH=src python3 -m app.live_preview --device /dev/video0 --imu --detect --motion-aware-tracking
+```
+
+Keep the rig still during the first second for the IMU's run-local offset.
+In each mode, observe at least 30 seconds still and 30 seconds of gentle
+whole-base turns while keeping the same person or chair visible. Do not force
+the servo or tug at wiring. Count obvious ID switches and false ID holds; note
+lighting or movement differences between runs. Also report the software commit,
+achieved detector and motion rates, box-source age, and the new per-update
+"tracks with motion coverage" and "ID matches needing motion" readings.
+The status line reports fallback tracks. An unchanged ID with zero motion-only
+matches does **not** show that compensation helped; a motion-only match only
+shows this algorithm used the prediction, not that identity was truly correct.
+
+The mode uses a bounded history of 320×180 image shifts scaled to 1280×720 box
+coordinates. It compares raw and shifted overlap; unavailable or implausible
+motion falls back to raw overlap. Displayed box positions are unchanged.
+The IMU is still a separate readout, and an object returning after its track
+retires will receive a new ID. Read the [code-order guide](learning/MOTION_AWARE_TRACKING.md)
+before interpreting this as camera-pose estimation or re-identification.
 
 No backlog or catch-up bursts: if inference takes longer than 0.5 seconds,
 the next run uses whatever frame is newest when it becomes available. Boxes

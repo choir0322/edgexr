@@ -3,8 +3,9 @@
 This guide follows [the live diagram](../PIPELINE.md). Detection asks which of
 the model's known categories occur in an image and where. A basic tracker now
 assigns provisional IDs across completed detection results using class and
-box overlap. It cannot establish permanent real-world identity, correct boxes
-for camera motion, or train the model while the preview is running.
+box overlap. An optional mode uses measured image shift to help ID association
+during turns. Neither mode establishes permanent identity, moves displayed
+boxes to compensate for motion, or trains the model while preview is running.
 
 For the separate first-ID algorithm, open the offline
 [basic tracker graph](basic-tracker.html). One dark connected path shows
@@ -15,13 +16,20 @@ call. Hovering or selecting a node reveals its input, rule, result, and code.
 The graph exposes the other boxes where they affect matching. Its example
 values are teaching data, not saved detector outputs. The live worker now
 assigns IDs, and browser labels show them for ready boxes with a live camera.
+The graph depicts **baseline** matching; study the optional
+[motion-aware code path](MOTION_AWARE_TRACKING.md) separately.
 
 Open [Inside MobileNet–SSD](detection-architecture.html) for the interactive
-architecture lesson. Scenes 2–5 explain standard, depthwise and pointwise
-convolution; scene 6 shows the feature-map handoff; scenes 7–11 follow default
-boxes through predictions, filtering and the recorded result. Sliding windows
-and separated planes are visual metaphors for tensor operations. Toy arithmetic
-uses labeled illustrative weights, not captured model activations.
+architecture lesson. Standard convolution and depthwise-plus-pointwise appear
+side by side, sharing one playback sequence. Three channel colors, grouped
+kernels and two output filters show exactly where channel mixing occurs.
+Select a filter to inspect its arithmetic. The compact continuation below shows
+MobileNet features feeding SSD and the recorded Pi result. The fixed 4×4
+teaching grids subsample the saved chair-region sample; weights and activations
+are illustrative. Bias is added once per output value with one shared scalar
+per output channel. These teaching biases are enabled for explanation; the
+actual backbone disables convolution biases. Actual model dimensions appear
+in an expandable explanation.
 
 ## Where MobileNet ends and SSD prediction begins
 
@@ -48,16 +56,19 @@ program. The graph definition and pretrained parameters provide those operations
 
 The lesson's source is split into readable pieces:
 
-- `detection-architecture.html` and `.css`: navigation and visual layout.
-- `detection-architecture.js`: scene controls, visual metaphors and playback.
-- `detection-math.js`: convolution arithmetic, priors, decoding, IoU and teaching NMS.
+- `detection-architecture.html` and `.css`: side-by-side layout and SSD overview.
+- `detection-architecture.js`: fixed convolution arithmetic, SVG diagrams and
+  shared playback with filter selection.
+- `detection-math.js`: retained standalone teaching math helpers for priors,
+  decoding, convolution and NMS; the simplified page does not load this module.
 - `images/detection-lesson-data.js`: derived image sample and saved final detections.
 - `scripts/build_detection_lesson.py`: validates the saved image/report pairing
   and regenerates the compact teaching assets with the existing FFmpeg tool.
 
-The teaching NMS makes the concept inspectable; it does not replace the loaded
-graph's runtime implementation. The actual final detections come from the user's
-saved report; hypothetical pre-NMS predictions are explicitly labeled.
+The actual final detections come from the user's saved report. The simplified
+page summarizes duplicate suppression; it does not run inference or NMS on the
+displayed image. The standalone math helpers remain checked by the existing
+math tests.
 
 ## Source reading route
 
@@ -67,6 +78,7 @@ saved report; hypothetical pre-NMS predictions are explicitly labeled.
 | 2 | [live_detector.py](../../src/vision/live_detector.py) | `detect_latest`, its `detection_frame_ready` callback, `CpuDetector.__init__`, `CpuDetector.__call__` |
 | 3 | [detect_image.py](../../src/vision/detect_image.py) | `infer_once`, `LABELS`, `parse_detections` |
 | 4 | [basic_tracker.py](../../src/vision/basic_tracker.py) | `BasicTracker.update`, `box_iou` |
+| Optional | [motion_history.py](../../src/vision/motion_history.py) and [live_preview.py](../../src/app/live_preview.py) | `MotionHistory.displacement`, `State.motion_between`, `State.publish_result` |
 | 5 | [live_detector.py](../../src/vision/live_detector.py) | `DetectionState.publish`, `DetectionState.snapshot`, `fail` |
 | 6 | [live_preview.py](../../src/app/live_preview.py) | `State.snapshot`, `make_handler` |
 | 7 | [preview.html](../../src/app/preview.html) | `detectionLabel`, `render` detector status and box loop; `poll` |
@@ -127,14 +139,18 @@ if started - frame[1] > MAX_AGE:
     continue
 boxes = detector(frame[2])
 finished = clock()
-identified = tracker.update(boxes)
-state.detector.publish(frame, identified, (finished - started) * 1000, finished)
+identified = tracker.update(boxes, frame[1], source_shift if motion_mode else None)
+state.detector.publish(frame, identified, (finished - started) * 1000,
+                       finished, tracker.last_stats)
 ```
 
 Line by line: measure this attempt's start; schedule the next eligible start
 500 ms later; reject a source already older than the freshness limit; run the
 detector on its bytes; measure inference completion; match those current boxes
-to remembered tracks and publish the ID-bearing result. The target limits
+to remembered tracks (optionally looking up image shift) and publish the
+ID-bearing result with match counts. `motion_mode` abbreviates the actual
+`state.motion_aware_tracking` flag here; `source_shift` is the callback inside
+`detect_latest`, not a second detector. The target limits
 expensive work while the other workers continue. Inference itself is not
 interrupted at 500 ms.
 
@@ -198,17 +214,21 @@ categories such as keyboard or cup.
 ## 6. Attach provisional IDs, then publish without pretending boxes are current
 
 `detect_latest` creates one `BasicTracker` alongside its detector in the same
-sequential worker. After each completed inference it calls `tracker.update(boxes)`
+sequential worker. After each completed inference it calls `tracker.update`
 before publication. All `box_xyxy` values are in the original 1280×720 source
 pixel system. Same-class pairs with IoU at least 0.3 compete for a one-to-one
 match. An unmatched current box gets the next never-reused integer ID. An empty
 result ages unmatched old tracks once; one miss is hidden but remembered, and
-two consecutive misses retire an old track. This does not use IMU or image
-shift, and a quick camera turn can change the ID of the same physical object.
-See [the tracker graph](basic-tracker.html) for the code-order decision path.
+two consecutive misses retire an old track. In baseline mode this uses raw
+overlap only. `--motion-aware-tracking` additionally allows a predicted overlap
+from the timestamped image-shift history; missing shift falls back to raw
+overlap. Neither mode uses the IMU. See [the tracker graph](basic-tracker.html)
+for baseline decisions and [the optional-mode guide](MOTION_AWARE_TRACKING.md)
+for interval lookup, units, prediction, and limitations.
 
-`DetectionState.publish(frame, boxes, cost_ms, finished)` saves the source
-sequence, its receipt time, the ID-bearing boxes and elapsed compute cost. This
+`DetectionState.publish(frame, boxes, cost_ms, finished, tracking_stats)` saves
+the source sequence, receipt time, ID-bearing boxes, elapsed compute cost and
+latest match counts. This
 live cost surrounds the detector call, including preprocessing/parser, but
 excludes tracking, model construction, camera capture and display. A bounded
 deque records inference completions. Source receipt time and the 1.5-second
@@ -228,7 +248,8 @@ source x coordinates by `640 / detector.width` and y by `360 / detector.height`
 for the overlay canvas. That canvas and the 320x180 image occupy the same visual
 rectangle. Dashed amber boxes mark older predictions; they may lag while turning.
 
-The image shift and gyro do not modify these boxes. `track_id` in the API box
+The image shift and gyro do not modify the displayed box coordinates. Optional
+image shift can affect **which ID** the box receives; gyro does not. `track_id` in the API box
 record is displayed as a provisional `#ID` before the category and confidence.
 The browser retains the prior label format if an ID is absent and clamps a long
 label into the canvas. A remembered missing track is not a visible ghost box.

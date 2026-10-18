@@ -1,8 +1,9 @@
 # Current live pipeline
 
-Updated 2026-10-17 for the first live tracker handoff. The diagram now includes
-`BasicTracker.update()` after detection parsing and before result publication;
-image sizes, timing targets and freshness policies are unchanged. The earlier
+Updated 2026-10-18 for optional motion-aware ID matching. The diagram includes
+`BasicTracker.update()` after detection parsing and an optional, bounded history
+of analyzed-frame shifts. Image sizes, timing targets and freshness policies
+are unchanged. The earlier
 2026-10-08 learning refactor based on Desktop source at `6a53d27` changed
 comments and contracts without changing the runtime path.
 Read [the study index](learning/README.md)
@@ -23,12 +24,13 @@ flowchart TD
     SMALL["cv.resize: 320x180 uint8<br/>State.latest replaces previous slot"]
     MOTION["Motion worker: analyze_latest<br/>Previous processed frame + newest frame<br/>image_shift: nine-patch consensus"]
     RESULT["Latest analyzed image + dx/dy<br/>Quality, rate and skipped-frame count"]
+    HISTORY["Optional MotionHistory<br/>Up to 180 timestamped analyzed pairs<br/>Reliable shift or unknown marker"]
     FULL["State.detection_frame<br/>Latest 1280x720 grayscale bytes"]
     DET["Detector worker: detect_latest<br/>Target start spacing 0.5 s; no backlog"]
     PRE["infer_once<br/>Gray to 3 channels; resize 300x300<br/>(pixel - 127.5) times 0.007843"]
     NET["OpenCV DNN CPU<br/>MobileNet-SSD; OpenCV thread setting 2"]
     BOX["parse_detections: score at least 0.5<br/>Source-coordinate boxes"]
-    TRACK["BasicTracker.update in detector worker<br/>Same-class IoU; session-local IDs"]
+    TRACK["BasicTracker.update in detector worker<br/>Same-class raw/predicted IoU; session-local IDs"]
     MODEL["Local deploy.prototxt + caffemodel<br/>Graph and pretrained parameters"]
     IMU["Camera-mounted IMU via I2C<br/>SunFounder SH3001 driver"]
     POLL["poll_imu<br/>Read midpoint timestamp; then wait 50 ms"]
@@ -40,8 +42,10 @@ flowchart TD
     DEMO -. alternative .-> FF
     FF --> CAP
     CAP --> SMALL --> MOTION --> RESULT
+    MOTION -. "--motion-aware-tracking" .-> HISTORY
     CAP --> FULL --> DET --> PRE --> NET --> BOX --> TRACK
     MODEL --> NET
+    HISTORY -. "interval shift x4 into source pixels" .-> TRACK
     IMU --> POLL --> BIAS
     RESULT --> STATE
     TRACK --> STATE
@@ -53,7 +57,10 @@ flowchart TD
 
 Camera -> FFmpeg -> capture reader -> two image branches: small images go to
 motion analysis; full images go to slower object detection and then a sequential
-box tracker before publication. The independent
+box tracker before publication. With `--motion-aware-tracking`, the motion worker
+also records reliable or missing shift estimates for analyzed pairs. The detector
+worker asks that history for the interval between a track's last matched source
+receipt and the current source receipt. The independent
 I2C IMU reader supplies corrected angular rates. A snapshot combines the latest
 available outputs for display, not for a shared-time estimate of camera pose.
 
@@ -84,8 +91,8 @@ cores and are unrelated to the two-Hz scheduler.
   before the small-image resize. They are not sensor exposure timestamps.
 - IMU timestamps are midpoints of the host interval around `read_raw()`.
 - Detector source age starts at that frame's capture receipt, not inference
-  completion. Old boxes can overlay a newer motion image; tracking only assigns
-  provisional IDs, not motion correction. Boxes are hidden if older than 1.5 s
+  completion. Old boxes can overlay a newer motion image; tracking assigns
+  provisional IDs but does not move displayed boxes. Boxes are hidden if older than 1.5 s
   or the camera state is not live.
 - The same detector worker owns `BasicTracker` across completed results. It
   matches same-class source-pixel boxes at IoU at least 0.3, one-to-one. An
@@ -93,6 +100,16 @@ cores and are unrelated to the two-Hz scheduler.
   camera frames skipped between results do not age it. IDs last only this run.
   The API carries `track_id`; ready boxes on a live camera show provisional
   `#ID` labels. A missing ID falls back to the category/confidence label.
+- Motion-aware matching is opt-in and requires `--detect`. The history holds at
+  most 180 analyzed pairs; an unreliable result or a pair gap over 0.12 s is
+  unknown, not zero shift. Interval lookup requires continuous coverage and
+  prorates partial endpoint pairs. It translates an old box by image-content
+  shift scaled from 320x180 to 1280x720 pixels (factor four), then compares
+  predicted and raw IoU. The higher overlap can claim an ID under the same
+  class/0.3/one-to-one rules. Missing or implausible motion falls back to raw
+  overlap. Snapshot counts show covered old tracks, fallbacks and ID matches
+  that specifically needed motion. This is scene translation, not camera pose;
+  neither gyro nor appearance features enter this matcher.
 - IMU values become stale above 300 ms; startup without samples has a separate
   two-second check. Camera results become stale above two seconds and have a
   ten-second no-analyzed-frame startup check.
@@ -116,18 +133,19 @@ image benchmarking are separate commands linked from the study guides.
 
 ## Goal versus implementation
 
-Current: observe scene displacement, recognize object categories, show basic
-session-local IDs on ready detector boxes, and measure angular rate concurrently.
-Future: align timing and coordinate frames, test those IDs on the Pi, and use
-camera motion to help distinguish moving objects from a moving observer.
+Current: observe scene displacement, recognize object categories, show
+session-local IDs, optionally use measured image shift to help match IDs during
+moderate turns, and measure angular rate concurrently. Future: validate this
+mode on the Pi, align sensor timing and coordinate frames, and better distinguish
+moving objects from a moving observer.
 Long-term object memory, camera pose, IMU-driven box correction and full spatial
 mapping are not implemented by this diagram.
 
 Review for the offline [basic tracker lesson](learning/basic-tracker.html):
 `detect_latest` now calls `vision.basic_tracker.BasicTracker` between inference
 and `DetectionState.publish`. The page is still only a teaching simulation; it
-does not add a worker. The new graph arrow represents ID assignment, not
-timestamp synchronization, appearance re-identification or motion correction.
+does not add a worker or depict optional history-assisted comparison. See
+[the motion-aware lesson](learning/MOTION_AWARE_TRACKING.md).
 
 ## Diagram-update checklist for every implementation task
 

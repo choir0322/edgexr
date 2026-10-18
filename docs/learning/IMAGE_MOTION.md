@@ -3,6 +3,10 @@
 Read [the pipeline diagram](../PIPELINE.md) first. This path answers "how did
 visible image content move?" It does not identify objects or recover camera
 rotation. No IMU value is an input to the live image-shift estimator.
+With optional `--motion-aware-tracking`, analyzed-frame shifts also enter a
+bounded [motion history](MOTION_AWARE_TRACKING.md) for detector ID association.
+That reuse does not change how `image_shift()` computes dx/dy or the browser
+arrow. Unreliable pairs are recorded as unknown, not as zero displacement.
 
 ## Source reading route
 
@@ -185,7 +189,8 @@ pipes. The preview does not write raw images or recordings.
 ### Illustrated Hann window and FFT example
 
 Follow the [recorded image-motion website](hann-fft-explorer.html) for an
-interactive visual path, then the [11-step numerical walkthrough](HANN_FFT_WALKTHROUGH.md)
+eight-stage visual path with shared playback and fixed before/after comparisons,
+then the [11-step numerical walkthrough](HANN_FFT_WALKTHROUGH.md)
 alongside `patch_shift()`. The revised example uses actual frames 313 and 316
 from `combined-motion-02`, at PTS 10.521 and 10.621 seconds. They are three
 frame intervals apart to make the leftward shift clearer. FFmpeg prepares

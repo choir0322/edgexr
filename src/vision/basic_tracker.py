@@ -1,13 +1,13 @@
-"""Match boxes from successive detections; not yet connected to the live worker.
+"""Match boxes from successive detections, optionally predicting scene shift.
 
-Planned input path: camera frame -> CpuDetector.__call__ in live_detector.py ->
+Live input path: camera frame -> CpuDetector.__call__ in live_detector.py ->
 infer_once and parse_detections in detect_image.py -> BasicTracker.update here.
 parse_detections produces a list of dictionaries with class_id, label,
 confidence and box_xyxy. This module does not see image pixels or run the model.
 """
 
 from __future__ import annotations
-from typing import Sequence, TYPE_CHECKING
+from typing import Callable, Sequence, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from _contracts import Record
@@ -29,6 +29,7 @@ class _Track:
     class_id: int
     box: tuple[float, float, float, float]
     missed: int = 0
+    seen_at: float | None = None
 
 
 def box_iou(first: Sequence[float], second: Sequence[float]) -> float:
@@ -80,8 +81,14 @@ class BasicTracker:
         self.max_missed = max_missed
         self._next_id = 1
         self._tracks: dict[int, _Track] = {}
+        self.last_stats = {"covered_tracks": 0, "fallback_tracks": 0, "motion_matches": 0, "motion_only_matches": 0}
 
-    def update(self, detections: Sequence[Record]) -> list[Record]:
+    def update(
+        self,
+        detections: Sequence[Record],
+        source_time: float | None = None,
+        shift_lookup: Callable[[float, float], tuple[float, float] | None] | None = None,
+    ) -> list[Record]:
         """Attach IDs to the boxes from one completed detector inference.
 
         Args:
@@ -91,6 +98,11 @@ class BasicTracker:
                 are from the original 1280x720 frame, not the 300x300 network
                 input or 320x180 motion preview. An empty list means inference
                 finished and found no accepted boxes; it still ages tracks.
+            source_time (float | None): This detector frame's monotonic host
+                receipt seconds. Required to use shift_lookup.
+            shift_lookup (Callable | None): Optional displacement between two
+                receipt times, in 1280x720 source pixels. None means unknown;
+                ordinary box overlap remains available.
 
         Returns:
             list[Record]: New dictionaries in the detector's original order,
@@ -101,6 +113,8 @@ class BasicTracker:
         # neither generates boxes nor edits that input. Extract each current
         # box as four floats. Validate all boxes before touching saved tracks,
         # so one bad record cannot leave memory half-updated.
+        if source_time is not None and not math.isfinite(source_time):
+            raise ValueError("source_time must be finite")
         boxes: list[tuple[float, float, float, float]] = []
         for detection in detections:
             class_id = detection.get("class_id")
@@ -126,24 +140,50 @@ class BasicTracker:
         # old/new pair of the same class, compute overlap. ``candidates`` holds
         # (-IoU, old ID, current-list position); the minus sign makes sorting
         # put the largest overlap first. Below-threshold pairs are not matches.
-        candidates: list[tuple[float, int, int]] = []
+        candidates: list[tuple[float, int, int, bool, bool]] = []
+        covered = fallback = 0
         for track_id, track in self._tracks.items():
+            offset = None
+            if shift_lookup is not None and source_time is not None and track.seen_at is not None:
+                offset = shift_lookup(track.seen_at, source_time)
+                if offset is not None and (
+                    len(offset) != 2
+                    or not all(math.isfinite(value) for value in offset)
+                    or abs(offset[0]) > 320
+                    or abs(offset[1]) > 180
+                ):
+                    offset = None
+                if offset is None:
+                    fallback += 1
+                else:
+                    covered += 1
             for index, detection in enumerate(detections):
                 if track.class_id != detection["class_id"]:
                     continue
-                overlap = box_iou(track.box, boxes[index])
+                raw_overlap = box_iou(track.box, boxes[index])
+                predicted_overlap = 0.0
+                if offset is not None:
+                    predicted = (
+                        track.box[0] + offset[0], track.box[1] + offset[1],
+                        track.box[2] + offset[0], track.box[3] + offset[1],
+                    )
+                    predicted_overlap = box_iou(predicted, boxes[index])
+                use_motion = predicted_overlap > raw_overlap
+                overlap = predicted_overlap if use_motion else raw_overlap
                 if overlap >= self.min_iou:
-                    candidates.append((-overlap, track_id, index))
-        assignments: dict[int, int] = {}
+                    candidates.append(
+                        (-overlap, track_id, index, use_motion, raw_overlap < self.min_iou)
+                    )
+        assignments: dict[int, tuple[int, bool, bool]] = {}
         matched_tracks: set[int] = set()
         # ``assignments`` maps a current-list position to an old ID. Accept the
         # strongest available pair first; refuse a pair if either side already
         # won one. On equal overlap, sorting prefers the lower (older) ID and
         # then the earlier current-list position. This is greedy, not a global
         # optimal assignment across all boxes.
-        for _, track_id, index in sorted(candidates):
+        for _, track_id, index, use_motion, motion_only in sorted(candidates):
             if track_id not in matched_tracks and index not in assignments:
-                assignments[index] = track_id
+                assignments[index] = (track_id, use_motion, motion_only)
                 matched_tracks.add(track_id)
 
         # Each old ID not chosen above missed this completed inference result.
@@ -161,18 +201,26 @@ class BasicTracker:
         # Walk the current detections in their original order. A matched one
         # refreshes its saved box and clears ``missed``; an unmatched one gets
         # ``self._next_id``, which only increases. Return copies with track_id.
-        # This does not publish to DetectionState or the browser yet: step 2
-        # will call update() from the live detector worker.
+        # The detector worker publishes the returned boxes; remembered tracks
+        # remain internal when absent from this result.
         identified: list[Record] = []
         for index, detection in enumerate(detections):
-            track_id = assignments.get(index)
-            if track_id is None:
+            assignment = assignments.get(index)
+            if assignment is None:
                 track_id = self._next_id
                 self._next_id += 1
-                self._tracks[track_id] = _Track(detection["class_id"], boxes[index])
+                self._tracks[track_id] = _Track(detection["class_id"], boxes[index], seen_at=source_time)
             else:
+                track_id = assignment[0]
                 track = self._tracks[track_id]
                 track.box = boxes[index]
                 track.missed = 0
+                track.seen_at = source_time
             identified.append({**detection, "track_id": track_id})
+        self.last_stats = {
+            "covered_tracks": covered,
+            "fallback_tracks": fallback,
+            "motion_matches": sum(assignment[1] for assignment in assignments.values()),
+            "motion_only_matches": sum(assignment[1] and assignment[2] for assignment in assignments.values()),
+        }
         return identified

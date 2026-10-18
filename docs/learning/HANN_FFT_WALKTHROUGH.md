@@ -1,14 +1,16 @@
 # From a real image pair to a subpixel motion estimate
 
 Open [the recorded image-motion website](hann-fft-explorer.html) locally in a
-browser. Start with Overview, then Walk through the horizontal stages. The
-site shows the actual Pi frames and patches, lets you fade their boundaries
-with the Hann slider, inspect their measured Fourier/correlation maps, and
-compare a candidate displacement with the strongest measured one. Switch
+browser. The full eight-stage visual pipeline stays visible above one selected
+stage. Use Play, Next step or Restart, or select a stage directly. Actual Pi
+patches show original → mean-centered → Hann-weighted values, with a fixed
+before/after seam comparison. The Fourier/correlation maps retain their measured
+values; the alignment view compares zero shift with the strongest integer
+candidate. A single recorded-example selector switches
 between frames 313→314 (eight patches agree; reliable whole-image shift) and
 313→316 (the selected patch is strong, but only three agree; no published
 whole-image shift). The website is an offline calculation replay, not a live
-camera feed. Keep the HTML, JavaScript, and `images/hann-fft-data.js` with the
+camera feed. Keep the HTML, CSS, JavaScript, and `images/hann-fft-data.js` with the
 derived PNGs in this directory. GitHub displays HTML source; download/clone
 the repository to run the lesson.
 

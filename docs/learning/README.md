@@ -7,6 +7,10 @@ replacement. Start with [the live diagram](../PIPELINE.md). Then study:
 2. [Object detection](OBJECT_DETECTION.md): newest image -> model -> scored boxes -> overlay.
 3. [IMU](IMU.md): driver reading -> timestamp -> offset -> angular-rate display.
 
+After the baseline paths, read [motion-aware ID matching](MOTION_AWARE_TRACKING.md)
+for the optional bridge from image-shift history to the detector's box tracker.
+It is not IMU fusion or long-term object re-identification.
+
 For the motion math, open the offline [recorded image-motion website](hann-fft-explorer.html)
 and follow the [written walkthrough](HANN_FFT_WALKTHROUGH.md). Its horizontal
 eight-stage path carries two actual Pi frames through patch sampling, Hann
@@ -82,7 +86,7 @@ install dependencies simply to make all optional tests run.
 |---|---|
 | `src/app/live_preview.py`, `preview.html` | Shared live orchestration and browser; all three guides |
 | `src/recording/visual_motion.py` | Shared motion math plus offline comparisons; image-motion guide |
-| `src/vision/detect_image.py`, `live_detector.py` | Saved/live detection; object-detection guide |
+| `src/vision/detect_image.py`, `live_detector.py`, `basic_tracker.py`, `motion_history.py` | Saved/live detection and optional matching; object-detection and motion-aware guides |
 | `src/imu/raw_baseline.py`, `rotation_test.py`, `live_reader.py` | Sensor checks and live values; IMU guide |
 | `src/recording/combined_capture.py`, `analyze_capture.py`, `plot_visual_motion.py` | Separate recording/analysis workflow; image-motion and IMU guides |
 | `src/camera/capture_baseline.py` | Initial camera decode/PTS baseline; image-motion guide |

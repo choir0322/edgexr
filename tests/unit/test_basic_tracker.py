@@ -24,7 +24,158 @@ def detection(class_id: int, box: list[int]) -> Record:
     return {"class_id": class_id, "label": f"class-{class_id}", "box_xyxy": box}
 
 
+def shift_right(start: float, end: float) -> tuple[float, float]:
+    """Supply a known rightward scene shift for a synthetic interval.
+
+    Args:
+        start (float): Old source receipt time, unused in this fixed fixture.
+        end (float): New source receipt time, unused in this fixed fixture.
+
+    Returns:
+        tuple[float, float]: Source-pixel dx/dy.
+    """
+    return (200.0, 0.0)
+
+
+def shift_left(start: float, end: float) -> tuple[float, float]:
+    """Supply a known leftward scene shift for a synthetic interval.
+
+    Args:
+        start (float): Old source receipt time, unused in this fixed fixture.
+        end (float): New source receipt time, unused in this fixed fixture.
+
+    Returns:
+        tuple[float, float]: Source-pixel dx/dy.
+    """
+    return (-200.0, 0.0)
+
+
+def shift_missing(start: float, end: float) -> None:
+    """Represent an interval with no reliable image-motion estimate.
+
+    Args:
+        start (float): Old source receipt time, unused in this fixed fixture.
+        end (float): New source receipt time, unused in this fixed fixture.
+
+    Returns:
+        None: Unknown shift, not a measured zero.
+    """
+    return None
+
+
+def shift_zero(start: float, end: float) -> tuple[float, float]:
+    """Supply measured zero displacement after the old track has retired.
+
+    Args:
+        start (float): Old source receipt time, unused in this fixed fixture.
+        end (float): New source receipt time, unused in this fixed fixture.
+
+    Returns:
+        tuple[float, float]: Zero source-pixel dx/dy.
+    """
+    return (0.0, 0.0)
+
+
+def shift_implausible(start: float, end: float) -> tuple[float, float]:
+    """Supply a shift beyond the tracker's source-width safety bound.
+
+    Args:
+        start (float): Old source receipt time, unused in this fixed fixture.
+        end (float): New source receipt time, unused in this fixed fixture.
+
+    Returns:
+        tuple[float, float]: An intentionally implausible source-pixel shift.
+    """
+    return (1000.0, 0.0)
+
+
 class BasicTrackerTests(unittest.TestCase):
+    def test_motion_prediction_holds_an_id_that_raw_overlap_would_lose(self) -> None:
+        """Use source-pixel scene shift; changing direction changes the sign.
+
+        Args:
+            None.
+
+        Returns:
+            None: Assertions check ID continuity in both directions.
+        """
+        tracker = BasicTracker()
+        tracker.update([detection(15, [100, 0, 200, 100])], 1.0)
+        moved = tracker.update(
+            [detection(15, [300, 0, 400, 100])], 1.5,
+            shift_right,
+        )
+        self.assertEqual(moved[0]["track_id"], 1)
+        self.assertEqual(tracker.last_stats["motion_only_matches"], 1)
+        returned = tracker.update(
+            [detection(15, [100, 0, 200, 100])], 2.0,
+            shift_left,
+        )
+        self.assertEqual(returned[0]["track_id"], 1)
+
+    def test_raw_overlap_remains_available_for_independent_object_motion(self) -> None:
+        """A stationary person's box keeps its ID despite moving background.
+
+        Args:
+            None.
+
+        Returns:
+            None: Assertions check the raw-overlap path.
+        """
+        tracker = BasicTracker()
+        tracker.update([detection(15, [100, 0, 200, 100])], 1.0)
+        result = tracker.update(
+            [detection(15, [101, 0, 201, 100])], 1.5,
+            shift_right,
+        )
+        self.assertEqual(result[0]["track_id"], 1)
+        self.assertEqual(tracker.last_stats["motion_only_matches"], 0)
+
+    def test_unknown_motion_miss_and_retirement_keep_baseline_rules(self) -> None:
+        """Fallback, one missed result and two missed results remain distinct.
+
+        Args:
+            None.
+
+        Returns:
+            None: Assertions check fallback, survival and retirement.
+        """
+        tracker = BasicTracker()
+        tracker.update([detection(15, [100, 0, 200, 100])], 1.0)
+        tracker.update([], 1.5, shift_missing)
+        self.assertEqual(tracker.last_stats["fallback_tracks"], 1)
+        self.assertEqual(
+            tracker.update([detection(15, [300, 0, 400, 100])], 2.0,
+                           shift_right)[0]["track_id"], 1
+        )
+        tracker.update([], 2.5)
+        tracker.update([], 3.0)
+        self.assertEqual(
+            tracker.update([detection(15, [300, 0, 400, 100])], 3.5,
+                           shift_zero)[0]["track_id"], 2
+        )
+
+    def test_implausible_prediction_and_competing_boxes(self) -> None:
+        """Reject enormous motion and never assign one old ID to two boxes.
+
+        Args:
+            None.
+
+        Returns:
+            None: Assertions check safety and one-to-one claims.
+        """
+        tracker = BasicTracker()
+        tracker.update([detection(15, [100, 0, 200, 100])], 1.0)
+        first = tracker.update([detection(15, [100, 0, 200, 100])], 1.5,
+                               shift_implausible)
+        self.assertEqual(first[0]["track_id"], 1)
+        self.assertEqual(tracker.last_stats["fallback_tracks"], 1)
+        contenders = tracker.update(
+            [detection(15, [300, 0, 400, 100]), detection(15, [305, 0, 405, 100])],
+            2.0, shift_right,
+        )
+        self.assertEqual([box["track_id"] for box in contenders], [1, 2])
+
     def test_learning_page_examples_match_real_tracker(self) -> None:
         """Verify the page's competition and miss fixtures use real algorithm IDs.
 

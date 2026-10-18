@@ -7,11 +7,14 @@ Start with the [current pipeline diagram](docs/PIPELINE.md) and the
 [image motion](docs/learning/IMAGE_MOTION.md), then
 [object detection](docs/learning/OBJECT_DETECTION.md), then
 [IMU readings](docs/learning/IMU.md). These describe the current code, including
-its timing and limitations; they do not imply tracking or sensor fusion exists.
+its timing and limitations. Basic session-local tracking and optional
+[motion-aware ID matching](docs/learning/MOTION_AWARE_TRACKING.md) exist;
+sensor fusion and long-term re-identification do not.
 
 New: [optional live detection](docs/LIVE_DETECTION.md) adds boxes with source
 age and a target 2 Hz update rate. The [saved-frame Pi baseline](docs/DETECTION_RESULTS.md)
-took about 196 ms per detection; combined live performance is awaiting a Pi run.
+took about 196 ms per detection. Motion-aware tracking now has local tests but
+still needs a controlled Pi comparison with the IoU-only baseline.
 
 Next: [detect objects in a saved camera frame](docs/DETECTION_BASELINE.md)
 using an optional OpenCV CPU baseline. Read the setup before downloading its

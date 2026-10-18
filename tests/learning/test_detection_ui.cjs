@@ -1,213 +1,79 @@
-/** Offline event smoke test; DOM/canvas doubles do not verify browser layout. */
+/** Offline checks of the real lesson script. DOM doubles do not verify layout. */
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const vm = require("node:vm");
 const folder = path.resolve(__dirname, "../../docs/learning");
-const elements = new Map(),
-  nodes = [];
-let drawingCalls = 0,
-  timerCallback;
-
-/** Minimal visible-element behavior used by the lesson. @param {string} tag @param {object} attrs @returns {object} */
-function element(tag, attrs = {}) {
-  const classes = new Set(),
-    events = new Map();
-  const e = {
-    tag,
-    attrs,
-    dataset: {},
-    children: [],
-    connected: true,
-    value: attrs.value || "",
-    textContent: "",
-    hidden: false,
-    style: {},
-    classList: {
-      toggle(name, on) {
-        if (on) classes.add(name);
-        else classes.delete(name);
-      },
-      contains(name) {
-        return classes.has(name);
-      },
-    },
-    setAttribute(name, value) {
-      this.attrs[name] = String(value);
-    },
-    removeAttribute(name) {
-      delete this.attrs[name];
-    },
-    addEventListener(name, handler) {
-      events.set(name, handler);
-    },
-    dispatch(name, event = {}) {
-      assert.ok(events.has(name), `${attrs.id || tag} event ${name}`);
-      events.get(name)({ currentTarget: e, ...event });
-    },
-    replaceChildren() {
-      this.children.forEach((child) => {
-        child.connected = false;
-      });
-      this.children = [];
-    },
-    getBoundingClientRect() {
-      return { left: 0, top: 0, width: 1000, height: 570 };
-    },
-    getContext() {
-      return new Proxy(
-        {},
-        {
-          get(_target, key) {
-            return (...args) => {
-              drawingCalls += 1;
-              for (const value of args) {
-                if (typeof value === "number")
-                  assert.ok(
-                    Number.isFinite(value),
-                    `Nonfinite canvas ${String(key)}`,
-                  );
-              }
-            };
-          },
-          set() {
-            return true;
-          },
-        },
-      );
-    },
-  };
-  for (const [name, value] of Object.entries(attrs))
-    if (name.startsWith("data-")) e.dataset[name.slice(5)] = value;
-  Object.defineProperty(e, "innerHTML", {
-    set(html) {
-      this.replaceChildren();
-      this.children = parse(html);
-    },
-    get() {
-      return "";
-    },
-  });
-  if (attrs.id) elements.set(attrs.id, e);
-  nodes.push(e);
-  return e;
+const html = fs.readFileSync(path.join(folder, "detection-architecture.html"), "utf8");
+const elements = new Map();
+let callback = null, focused = null;
+/** Minimal DOM node for the actual event handlers. @param {string} id Node identifier. @returns {object} */
+function element(id) {
+  return {innerHTML:"", textContent:"", disabled:false, events:{},
+    addEventListener(name, fn) { this.events[name] = fn; },
+    dispatch(name, event = {}) { this.events[name](event); },
+    focus() { focused = id; }};
 }
-
-/** Parse only the static tags/attributes needed to bind actual event code. @param {string} html @returns {object[]} */
-function parse(html) {
-  const result = [];
-  for (const match of html.matchAll(/<([a-z][\w-]*)\b([^>]*)>/gi)) {
-    const attrs = {};
-    for (const a of match[2].matchAll(/([\w-]+)="([^"]*)"/g))
-      attrs[a[1]] = a[2];
-    result.push(element(match[1], attrs));
-  }
-  return result;
-}
-parse(
-  fs.readFileSync(path.join(folder, "detection-architecture.html"), "utf8"),
-);
-elements.get("speed").value = "500";
+for (const match of html.matchAll(/id="([^"]+)"/g)) elements.set(match[1], element(match[1]));
+const comparison = element("comparison");
 const document = {
-  getElementById(id) {
-    assert.ok(elements.has(id), `Element exists: ${id}`);
-    return elements.get(id);
+  hidden:false, events:{},
+  getElementById(id) { assert(elements.has(id), "Known DOM id: "+id); return elements.get(id); },
+  querySelector(selector) {
+    if (selector === ".comparison") return comparison;
+    assert.match(selector, /^\[data-select=/);
+    return element(selector);
   },
-  querySelectorAll(selector) {
-    const name = selector.match(/^\[([^\]]+)\]$/)[1];
-    return nodes.filter((e) => e.connected && Object.hasOwn(e.attrs, name));
-  },
+  addEventListener(name, fn) { this.events[name] = fn; }
 };
-class FakeImage {
-  set src(value) {
-    this.path = value;
-    if (this.onload) this.onload();
-  }
-}
-const context = vm.createContext({
-  window: {
-    DetectionMath: require("../../docs/learning/detection-math.js"),
-    setInterval(callback) {
-      timerCallback = callback;
-      return 1;
-    },
-    clearInterval() {
-      timerCallback = undefined;
-    },
-  },
-  document,
-  Image: FakeImage,
+const context = vm.createContext({window:{}, document,
+  setInterval(fn) { assert.equal(callback,null,"Only one timer"); callback = fn; return 1; },
+  clearInterval() { callback = null; }
 });
-vm.runInContext(
-  fs.readFileSync(path.join(folder, "images/detection-lesson-data.js"), "utf8"),
-  context,
-);
-vm.runInContext(
-  fs.readFileSync(path.join(folder, "detection-architecture.js"), "utf8"),
-  context,
-);
-const get = (id) => document.getElementById(id);
-const go = (i) =>
-  document
-    .querySelectorAll("[data-scene]")
-    .find((e) => Number(e.dataset.scene) === i)
-    .dispatch("click");
-const input = (id, value) => {
-  get(id).value = String(value);
-  get(id).dispatch("input");
-};
-assert.match(get("status").textContent, /Ready/);
-for (let i = 0; i < 11; i += 1) {
-  go(i);
-  assert.equal(get("lesson").hidden, false);
-  assert.ok(get("scene-title").textContent.length > 10);
-  get("step").dispatch("click");
-  get("play").dispatch("click");
-  assert.ok(timerCallback);
-  timerCallback();
-  get("play").dispatch("click");
-  get("reset").dispatch("click");
+vm.runInContext(fs.readFileSync(path.join(folder,"images/detection-lesson-data.js"),"utf8"), context);
+let script = fs.readFileSync(path.join(folder,"detection-architecture.js"),"utf8");
+// Inspect the calculated tensors without adding a test API to the published page.
+script = script.replace(/\}\)\(\);\s*$/, "window.testResults = results; })();");
+vm.runInContext(script, context);
+const get = id => elements.get(id);
+const click = id => get(id).dispatch("click");
+const choose = (id, keyboard = false) => comparison.dispatch(keyboard ? "keydown" : "click", {
+  key:"Enter", preventDefault(){}, target:{closest:() => ({dataset:{select:id}})}
+});
+
+// Hand-calculated fixtures check channel summation and pointwise mixing.
+const results = JSON.parse(JSON.stringify(context.window.testResults));
+assert.deepEqual(results.depth, [[4,6,5,6],[4,5,3,4],[4,4,2,4]]);
+assert.deepEqual(results.dense, [[13,16,11,15],[11,15,8,11]]);
+assert.deepEqual(results.separate, [[10,14,11,12],[7,6,1,5]]);
+assert.match(get("detail-title").textContent, /Standard filter 1/);
+choose("p0");
+assert.match(get("detail-body").innerHTML, /4×\(1\) \+ 4×\(2\) \+ 4×\(-1\) \+ bias \(2\)/);
+choose("d2", true);
+assert.match(get("detail-title").textContent, /Depthwise C3/);
+assert.equal(focused, '[data-select="d2"]');
+
+// Playback must progress, pause on inspection, end, replay and reset deterministically.
+click("play"); assert(callback);
+callback(); assert.match(get("progress").textContent, /Multiply/);
+choose("s1"); assert.equal(callback,null);
+click("step"); assert.match(get("progress").textContent, /Sum spatial/);
+click("play");
+for (let i=0; i<17; i++) { assert(callback); callback(); }
+assert.equal(callback,null);
+assert.equal(get("step").disabled,true);
+assert.match(get("progress").textContent,/Cell 4\/4/);
+assert.equal(get("play").textContent,"Replay");
+for (const id of ["standard-diagram","separable-diagram","saved-boxes"]) {
+  assert(!/NaN|undefined|Infinity/.test(get(id).innerHTML));
+  assert(get(id).innerHTML.includes("<"));
 }
-go(0);
-get("split-source").dispatch("click");
-assert.ok(get("channel-stack").classList.contains("expanded"));
-input("sample-index", 35);
-go(1);
-input("filter", 2);
-input("bias", 5);
-get("padding").value = "1";
-get("padding").dispatch("change");
-get("stride").value = "2";
-get("stride").dispatch("change");
-get("finish-cell").dispatch("click");
-go(3);
-get("channel-count").value = "32";
-get("channel-count").dispatch("change");
-input("point-output", 63);
-input("point-channel", 31);
-input("point-weight", 2);
-input("point-position", 15);
-go(5);
-input("bridge-head", 5);
-go(6);
-input("anchor-head", 5);
-input("anchor-shape", 5);
-get("all-centers").dispatch("click");
-get("diagram").dispatch("click", { clientX: 300, clientY: 300 });
-go(7);
-input("offset-0", 4);
-input("offset-2", -4);
-get("class-id").value = "0";
-get("class-id").dispatch("change");
-input("class-logit", 8);
-go(8);
-input("nms-stage", 3);
-input("nms-iou", 0);
-input("app-score", 1);
-input("candidate", 6);
-go(10);
-get("saved-chair").dispatch("click");
-assert.ok(drawingCalls > 1000);
-console.log(
-  "PASS: all 11 scenes, image split, arithmetic controls, 32-channel view, SSD selectors and playback execute. Browser layout remains a separate check.",
-);
+click("play"); assert(callback);
+document.hidden = true; document.events.visibilitychange();
+assert.equal(callback,null);
+click("reset");
+assert.equal(get("step").disabled,false);
+assert.match(get("progress").textContent,/Cell 1\/4/);
+assert.match(get("detail-title").textContent,/Standard filter 1/);
+assert.equal((html.match(/<button /g)||[]).length,3);
+console.log("PASS: known convolution results, both paths, selection/keyboard, playback, pause, completion and reset. Browser layout remains unverified.");

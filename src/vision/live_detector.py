@@ -23,11 +23,12 @@ MAX_AGE = 1.5
 
 
 class DetectionState:
-    def __init__(self, enabled: bool = False) -> None:
+    def __init__(self, enabled: bool = False, motion_aware: bool = False) -> None:
         """Initialize a single latest detector result and bounded completion history.
 
         Args:
             enabled (bool): Whether this optional live subsystem is requested.
+            motion_aware (bool): Whether box matching may use recent image shifts.
 
         Returns:
             None: does not load a model or start inference.
@@ -35,6 +36,7 @@ class DetectionState:
         # Protect a single result and a bounded completion history shared with HTTP
         # readers; startup time is used to detect a detector that never produces data.
         self.enabled = enabled
+        self.motion_aware = motion_aware
         self.lock = threading.Lock()
         self.started = time.monotonic()
         self.result = None
@@ -42,7 +44,8 @@ class DetectionState:
         self.finished = deque(maxlen=20)
 
     def publish(
-        self, frame: Frame, boxes: list[Record], cost_ms: float, finished: float
+        self, frame: Frame, boxes: list[Record], cost_ms: float, finished: float,
+        tracking_stats: Record | None = None,
     ) -> None:
         """Store detections together with their source frame time and elapsed compute.
 
@@ -55,6 +58,8 @@ class DetectionState:
                 loading/display.
             finished (float): Host monotonic completion time in seconds for rate
                 measurement.
+            tracking_stats (Record | None): Counts from the sequential tracker
+                update; no inference time is added to cost_ms.
 
         Returns:
             None: replaces older detections and records a completion for the rate estimate.
@@ -63,7 +68,8 @@ class DetectionState:
         # history. Frame receipt time—not inference completion—defines box freshness.
         with self.lock:
             self.result = dict(
-                sequence=frame[0], captured=frame[1], boxes=boxes, compute_ms=cost_ms
+                sequence=frame[0], captured=frame[1], boxes=boxes, compute_ms=cost_ms,
+                tracking_stats=dict(tracking_stats or {}),
             )
             self.finished.append(finished)
 
@@ -129,6 +135,7 @@ class DetectionState:
                 age_ms=age * 1000 if age is not None else None,
                 width=SOURCE_WIDTH,
                 height=SOURCE_HEIGHT,
+                tracking_mode="motion-aware" if self.motion_aware else "basic",
             )
             if status != "ready":
                 result["boxes"] = []
@@ -207,6 +214,22 @@ def detect_latest(
     try:
         detector = factory()
         tracker = BasicTracker()
+
+        def source_shift(start: float, end: float) -> tuple[float, float] | None:
+            """Scale reliable scene displacement to full detector-image pixels.
+
+            Args:
+                start (float): Old track's last matched source receipt seconds.
+                end (float): Current detector source receipt seconds.
+
+            Returns:
+                tuple[float, float] | None: Source dx/dy pixels, or unknown.
+            """
+            small = state.motion_between(start, end)
+            if small is None:
+                return None
+            return small[0] * (SOURCE_WIDTH / 320), small[1] * (SOURCE_HEIGHT / 180)
+
         previous_seq, due = 0, 0.0
         while not state.stop.is_set():
             if state.stop.wait(max(0, due - clock())):
@@ -257,9 +280,12 @@ def detect_latest(
             # An empty valid result still ages remembered tracks by one update.
             boxes = detector(frame[2])
             finished = clock()
-            identified = tracker.update(boxes)
+            identified = tracker.update(
+                boxes, frame[1], source_shift if state.motion_aware_tracking else None
+            )
             state.detector.publish(
-                frame, identified, (finished - started) * 1000, finished
+                frame, identified, (finished - started) * 1000, finished,
+                tracker.last_stats,
             )
     except Exception as error:
         state.detector.fail(f"Detector failed: {error}")

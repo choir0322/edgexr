@@ -5,6 +5,8 @@ The gyroscope measures angular rate around the board's axes. The live path
 shows bias-corrected rates; it does not yet calculate camera orientation or
 feed a motion-compensation algorithm. Rigid attachment means camera and IMU
 move together, not that their coordinate axes are automatically identical.
+The optional [motion-aware tracker](MOTION_AWARE_TRACKING.md) uses image shifts,
+not gyro values; the IMU remains a separate readout in that mode.
 
 ## Source reading route
 

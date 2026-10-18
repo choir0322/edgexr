@@ -16,9 +16,9 @@
   const clamp = (v, low, high) => Math.max(low, Math.min(high, v));
   let pairKey = 'adjacent';
   let stage = 0;
-  let mode = 'overview';
   let playing = null;
-  let selectedPatch = 7;
+  const selectedPatch = 7;
+  const frameImages = {};
 
   /** Return the measured arrays for the selected pair of recorded frames. */
   function pair() { return data.pairs[pairKey]; }
@@ -33,10 +33,8 @@
   /** Select the same source photographs in every stage of the lesson. */
   function setImageSources() {
     const later = pairKey === 'adjacent' ? '314' : '316';
-    for (const id of ['overview-a', 'input-a', 'grid-a']) $(id).src = data.framePaths['313'];
-    for (const id of ['overview-b', 'input-b', 'grid-b', 'consensus-frame', 'browser-frame']) {
-      $(id).src = data.framePaths[later];
-    }
+    for (const id of ['input-a', 'grid-a']) $(id).src = data.framePaths['313'];
+    for (const id of ['input-b', 'grid-b', 'consensus-frame', 'browser-frame']) $(id).src = data.framePaths[later];
     $('raw-a').src = data.patchPaths['313'];
     $('raw-b').src = data.patchPaths[later];
   }
@@ -81,38 +79,19 @@
       : 'Whole image: unreliable. Patch 8 has a clear shift, but only three of nine patches agree closely enough; the browser must not draw a motion arrow.', !result);
   }
 
-  /** Outline the nine actual sample coordinates; selecting a box changes its readout. */
+  /** Outline all nine sample regions and fix patch 8 as the detailed example. */
   function renderPatchGrid() {
     const p = pair();
     for (const id of ['grid-overlay-a', 'grid-overlay-b']) {
-      const svg = $(id);
-      svg.replaceChildren();
+      const svg = $(id); svg.replaceChildren();
       p.patches.forEach((patch, index) => {
-        const rect = shape('rect', { x: patch.x, y: patch.y, width: W, height: H,
-          class: `patch-box${selectedPatch === index ? '' : ' dim'}` });
-        const label = shape('text', { x: patch.x + 3, y: patch.y + 11, class: 'patch-num' });
-        label.textContent = String(index + 1);
-        svg.append(rect, label);
+        const rect = shape('rect', {x:patch.x,y:patch.y,width:W,height:H,
+          class:'patch-box' + (index === selectedPatch ? '' : ' dim')});
+        const label = shape('text', {x:patch.x+3,y:patch.y+11,class:'patch-num'});
+        label.textContent = String(index+1); svg.append(rect,label);
       });
     }
-    const buttons = $('patch-buttons');
-    buttons.replaceChildren();
-    p.patches.forEach((patch, index) => {
-      const button = document.createElement('button');
-      button.type = 'button';
-      button.className = `${patch.agrees ? 'agree' : 'outlier'}${selectedPatch === index ? ' selected' : ''}`;
-      button.setAttribute('aria-pressed', String(selectedPatch === index));
-      button.textContent = `Patch ${index + 1} · (${patch.x}, ${patch.y})`;
-      const detail = document.createElement('span');
-      detail.textContent = patch.match
-        ? `${fmt(patch.match[0], 1)}, ${fmt(patch.match[1], 1)} px · ${patch.agrees ? 'agrees' : 'differs'}`
-        : 'no usable shift';
-      button.append(detail);
-      button.addEventListener('click', () => { selectedPatch = index; renderPatchGrid(); });
-      buttons.append(button);
-    });
-    const selected = p.patches[selectedPatch];
-    callout('patch-selection', `Patch ${selectedPatch + 1} samples x=${selected.x}…${selected.x + W - 1}, y=${selected.y}…${selected.y + H - 1} in each 320×180 frame. ${selected.match ? `Its measured content shift is (${fmt(selected.match[0])}, ${fmt(selected.match[1])}) px with Q=${selected.match[2].toFixed(1)}.` : 'Its shift was rejected.'} The next math stages follow patch 8.`, !selected.agrees);
+    callout('patch-selection', 'Follow patch 8: x=117…196, y=119…174 in both frames. The detailed images below all come from this same 80×56 region.', false);
   }
 
   /** Reproduce the 2D Hann weight used by NumPy's hanning on this patch. */
@@ -124,48 +103,33 @@
   /** Fade the recorded patch toward zero at each boundary, showing the seam. */
   function renderHann() {
     const p = pair();
-    const amount = Number($('hann-amount').value) / 100;
-    $('hann-percent').textContent = `${Math.round(amount * 100)}%`;
-    const value = (array, mean, x, y) => (array[y * W + x] - mean) * (1 - amount + amount * hann(x, y));
-    paint('hann-map', W, H, (x, y) => Array(3).fill(255 * hann(x, y)));
-    paint('weighted-a', W, H, (x, y) => Array(3).fill(128 + 1.4 * value(p.a, p.meanA, x, y)));
-    paint('weighted-b', W, H, (x, y) => Array(3).fill(128 + 1.4 * value(p.b, p.meanB, x, y)));
-    const context = paint('repeated-a', 3 * W, H, (x, y) => Array(3).fill(
-      128 + 1.4 * value(p.a, p.meanA, x % W, y)));
-    context.fillStyle = '#72baff';
-    context.fillRect(W, 0, 1, H);
-    context.fillRect(2 * W, 0, 1, H);
-    let seam = 0;
-    for (let y = 0; y < H; y += 1) {
-      seam += Math.abs(value(p.a, p.meanA, 0, y) - value(p.a, p.meanA, W - 1, y));
+    const value = (array,mean,x,y,weighted) => (array[y*W+x]-mean)*(weighted ? hann(x,y) : 1);
+    paint('hann-map',W,H,(x,y)=>Array(3).fill(255*hann(x,y)));
+    for (const [id,array,mean,weighted] of [
+      ['centered-a',p.a,p.meanA,false],['centered-b',p.b,p.meanB,false],
+      ['weighted-a',p.a,p.meanA,true],['weighted-b',p.b,p.meanB,true]]) {
+      paint(id,W,H,(x,y)=>Array(3).fill(128+1.4*value(array,mean,x,y,weighted)));
     }
-    callout('hann-readout', `Actual patch A mean: ${p.meanA.toFixed(2)}; patch B mean: ${p.meanB.toFixed(2)} gray levels. Mean absolute left/right seam in A: ${(seam / H).toFixed(3)} levels. The estimator always uses 100% Hann; this slider only reveals the transition.`, false);
+    for (const [id,weighted] of [['repeated-before',false],['repeated-a',true]]) {
+      const ctx=paint(id,3*W,H,(x,y)=>Array(3).fill(128+1.4*value(p.a,p.meanA,x%W,y,weighted)));
+      ctx.fillStyle='#72baff'; ctx.fillRect(W,0,1,H);ctx.fillRect(2*W,0,1,H);
+    }
+    const seam = Array.from({length:H},(_,y)=>Math.abs(p.a[y*W]-p.a[y*W+W-1])).reduce((a,b)=>a+b,0)/H;
+    callout('hann-readout', 'Mean A: '+p.meanA.toFixed(2)+'; mean B: '+p.meanB.toFixed(2)+
+      '. Mean absolute left/right seam in A: '+seam.toFixed(3)+' → 0.000 levels after full Hann weighting. Zero is middle gray in the signed displays. The weight covers the entire patch; it is not a blur around each pixel.',false);
   }
 
   /** Render log-magnitude and cross-phase maps computed from this recorded pair. */
   function renderFFT() {
-    const p = pair();
-    const max = Math.max(...p.spectrumA, ...p.spectrumB);
-    const fx = Number($('freq-x').value);
-    const fy = Number($('freq-y').value);
-    $('freq-x-label').textContent = String(fx);
-    $('freq-y-label').textContent = String(fy);
-    const marker = (x, y) => x === fx || y === fy;
-    for (const [id, values] of [['fft-a', p.spectrumA], ['fft-b', p.spectrumB]]) {
-      paint(id, W, H, (x, y) => {
-        const brightness = 255 * values[y * W + x] / max;
-        return marker(x, y) ? [80, 160, 255] : [brightness, brightness, brightness];
-      });
+    const p=pair(), max=Math.max(...p.spectrumA,...p.spectrumB);
+    for (const [id,values] of [['fft-a',p.spectrumA],['fft-b',p.spectrumB]]) {
+      paint(id,W,H,(x,y)=>Array(3).fill(255*values[y*W+x]/max));
     }
-    paint('fft-phase', W, H, (x, y) => {
-      const angle = p.phase[y * W + x];
-      return marker(x, y) ? [255, 255, 255] : [
-        128 + 110 * Math.cos(angle),
-        128 + 110 * Math.cos(angle - 2 * Math.PI / 3),
-        128 + 110 * Math.cos(angle + 2 * Math.PI / 3)];
+    paint('fft-phase',W,H,(x,y)=>{
+      const angle=p.phase[y*W+x];
+      return [128+110*Math.cos(angle),128+110*Math.cos(angle-2*Math.PI/3),128+110*Math.cos(angle+2*Math.PI/3)];
     });
-    const index = fy * W + fx;
-    callout('frequency-readout', `Selected display bin (${fx}, ${fy}): log-magnitude A ${p.spectrumA[index].toFixed(2)}, B ${p.spectrumB[index].toFixed(2)}; phase of B × conjugate(A) ${p.phase[index].toFixed(2)} rad. White/blue crosshairs are teaching markers, not pixels in the FFT.`, false);
+    $('frequency-readout').textContent='Both magnitude maps share one log display scale. Phase hue encodes angle (−π to +π, wrapping around); it is not brightness or object color. The array is normalized before inverse FFT. These display maps center zero frequency; the estimator uses original array order.';
   }
 
   /** Convert the centered teaching map to NumPy's unshifted FFT indices. */
@@ -173,32 +137,26 @@
     return p.surface[((displayY + H / 2) % H) * W + ((displayX + W / 2) % W)];
   }
 
-  /** Let the learner compare any integer shift with the actual correlation peak. */
+  /** Compare zero shift with the strongest measured integer candidate. */
   function renderInverse() {
-    const p = pair();
-    const dx = Number($('candidate-x').value);
-    const dy = Number($('candidate-y').value);
-    $('candidate-x-label').textContent = String(dx);
-    $('candidate-y-label').textContent = String(dy);
-    const peakValue = p.surface[p.peak[1] * W + p.peak[0]];
-    paint('correlation', W, H, (x, y) => {
-      const brightness = clamp(90 + 165 * surfaceAt(p, x, y) / peakValue, 0, 255);
-      return (x === dx + W / 2 && y === dy + H / 2)
-        ? [80, 170, 255] : [brightness, brightness, brightness];
+    const p=pair();
+    const dx=p.peak[0]>W/2 ? p.peak[0]-W : p.peak[0];
+    const dy=p.peak[1]>H/2 ? p.peak[1]-H : p.peak[1];
+    const peakValue=p.surface[p.peak[1]*W+p.peak[0]];
+    paint('correlation',W,H,(x,y)=>{
+      const brightness=clamp(90+165*surfaceAt(p,x,y)/peakValue,0,255);
+      return x === dx+W/2 && y === dy+H/2 ? [80,170,255] : [brightness,brightness,brightness];
     });
-    // Shift B back by the proposed displacement to compare like coordinates.
-    paint('alignment', W, H, (x, y) => {
-      const bx = x + dx;
-      const by = y + dy;
-      const a = p.a[y * W + x];
-      if (bx < 0 || bx >= W || by < 0 || by >= H) return [a / 2, a / 2, a / 2];
-      const b = p.b[by * W + bx];
-      return [a, (a + b) / 2, b];
-    });
-    const score = p.surface[((dy + H) % H) * W + ((dx + W) % W)];
-    const peakDx = p.peak[0] > W / 2 ? p.peak[0] - W : p.peak[0];
-    const peakDy = p.peak[1] > H / 2 ? p.peak[1] - H : p.peak[1];
-    callout('candidate-readout', `Candidate (${fmt(dx, 0)}, ${fmt(dy, 0)}) px: measured correlation ${score.toFixed(4)}. Strongest integer cell is (${fmt(peakDx, 0)}, ${fmt(peakDy, 0)}) px at ${peakValue.toFixed(4)}. The displayed overlay is a visual check; the estimator chooses from the correlation surface.`, false);
+    for (const [id,shiftX,shiftY] of [['alignment-before',0,0],['alignment',dx,dy]]) {
+      paint(id,W,H,(x,y)=>{
+        const bx=x+shiftX,by=y+shiftY,a=p.a[y*W+x];
+        if(bx<0||bx>=W||by<0||by>=H)return [a/2,a/2,a/2];
+        const b=p.b[by*W+bx];return [a,(a+b)/2,b];
+      });
+    }
+    callout('candidate-readout','No-shift score: '+p.surface[0].toFixed(4)+
+      '. Strongest integer candidate: ('+fmt(dx,0)+', '+fmt(dy,0)+') px, score '+peakValue.toFixed(4)+
+      '. Move B back by that displacement for the visual overlay. Gray means agreement; colored fringes show differences. The next stage refines this integer candidate.',false);
   }
 
   /** Draw a small measured three-point interpolation about the X peak. */
@@ -278,6 +236,12 @@
         'font-size': 10, 'font-weight': 700 });
       label.textContent = String(index + 1);
       svg.append(label);
+      if (patch.match) {
+        const cx=patch.x+W/2, cy=patch.y+H/2;
+        const ex=cx+patch.match[0]*2, ey=cy+patch.match[1]*2;
+        svg.append(shape('line',{x1:cx,y1:cy,x2:ex,y2:ey,stroke:color,'stroke-width':2}));
+        svg.append(shape('circle',{cx:ex,cy:ey,r:2,fill:color}));
+      }
       const vote = document.createElement('div');
       vote.className = `notice ${patch.agrees ? 'agree' : 'outlier'}`;
       vote.textContent = `Patch ${index + 1}: ${patch.match ? `${fmt(patch.match[0], 2)}, ${fmt(patch.match[1], 2)} px · ${patch.distance.toFixed(2)} px from median` : 'rejected'} · ${patch.agrees ? 'agrees' : 'differs'}`;
@@ -301,8 +265,8 @@
     if (result) {
       const length = Math.min(60, Math.max(15, 10 * Math.hypot(result[0], result[1])));
       const magnitude = Math.hypot(result[0], result[1]);
-      const endX = 160 + length * result[0] / magnitude;
-      const endY = 90 + length * result[1] / magnitude;
+      const endX = 160 + length * result[0] / (magnitude || 1);
+      const endY = 90 + length * result[1] / (magnitude || 1);
       arrow.append(shape('line', { x1: 160, y1: 90, x2: endX, y2: endY,
         stroke: '#72baff', 'stroke-width': 5, 'stroke-linecap': 'round' }));
       const angle = Math.atan2(result[1], result[0]);
@@ -316,118 +280,86 @@
       : 'Unreliable image shift. No motion arrow is drawn; the image can still be displayed.';
   }
 
-  /** Keep the horizontal image traveler attached to the selected processing stage. */
-  function renderTraveler() {
-    const later = pairKey === 'adjacent' ? '314' : '316';
-    const imageA = stage >= 2 && stage <= 5 ? data.patchPaths['313'] : data.framePaths['313'];
-    const imageB = stage >= 2 && stage <= 5 ? data.patchPaths[later] : data.framePaths[later];
-    $('travel-a').src = imageA;
-    $('travel-b').src = imageB;
-    const button = document.querySelector(`[data-stage="${stage}"]`);
-    $('traveler').style.left = `${button.offsetLeft + 9}px`;
-    if (mode === 'walk') {
-      const wrap = $('rail-wrap');
-      wrap.scrollLeft = Math.max(0, button.offsetLeft - wrap.clientWidth / 3);
+  /** Keep every pipeline thumbnail tied to the selected recorded pair. */
+  function renderThumbnails() {
+    const later=pairKey === 'adjacent' ? '314' : '316';
+    const sources={2:'hann-map',3:'fft-a',4:'correlation',5:'quality-map'};
+    for(let i=0;i<8;i++){
+      const ctx=$('thumb-'+i).getContext('2d');ctx.clearRect(0,0,160,90);
+      if(sources[i]){ctx.drawImage($(sources[i]),0,0,160,90);continue;}
+      const image=frameImages[i===1 ? '313' : later];
+      if(!image || !image.complete || !image.naturalWidth)continue;
+      if(i===0){
+        if(frameImages['313'].complete && frameImages['313'].naturalWidth)ctx.drawImage(frameImages['313'],0,22,78,44);
+        ctx.drawImage(image,82,22,78,44);
+      }else ctx.drawImage(image,0,0,160,90);
+      if(i===1||i===6)pair().patches.forEach((p,index)=>{
+        ctx.strokeStyle=i===6 ? (p.agrees ? '#65d8bb':'#efb77b') : index===7 ? '#65d8bb':'#98a8bb';
+        ctx.lineWidth=index===7?2:1;ctx.strokeRect(p.x/2,p.y/2,W/2,H/2);
+      });
+      if(i===7){
+        ctx.fillStyle=pair().wholeResult ? '#65d8bb':'#efb77b';
+        ctx.fillRect(0,78,160,12);
+        ctx.fillStyle='#10161e';ctx.font='9px system-ui';
+        ctx.fillText(pair().wholeResult?'Reliable · arrow shown':'Unreliable · no arrow',5,87);
+      }
     }
   }
 
-  /** Display one stage or the structural overview, with synchronized controls. */
+  /** Keep the full pipeline visible while displaying one detailed stage. */
   function renderNavigation() {
-    $('overview').hidden = mode !== 'overview';
-    document.querySelectorAll('[data-panel]').forEach(panel => {
-      panel.hidden = mode !== 'walk' || Number(panel.dataset.panel) !== stage;
-    });
-    document.querySelectorAll('[data-stage]').forEach(button => {
-      if (mode === 'walk' && Number(button.dataset.stage) === stage) button.setAttribute('aria-current', 'step');
+    document.querySelectorAll('[data-panel]').forEach(panel=>{panel.hidden=Number(panel.dataset.panel)!==stage;});
+    document.querySelectorAll('[data-stage]').forEach(button=>{
+      if(Number(button.dataset.stage)===stage)button.setAttribute('aria-current','step');
       else button.removeAttribute('aria-current');
     });
-    $('overview-mode').setAttribute('aria-pressed', String(mode === 'overview'));
-    $('walk-mode').setAttribute('aria-pressed', String(mode === 'walk'));
-    $('stage-range').value = String(stage);
-    $('stage-count').textContent = `${stage + 1} / 8`;
-    $('prev').disabled = mode === 'overview' || stage === 0;
-    $('next').disabled = mode === 'overview' || stage === 7;
-    renderTraveler();
+    $('stage-count').textContent='STAGE '+(stage+1)+' / 8';
+    $('next').disabled=stage===7;
+    $('play').textContent=playing!==null?'Pause':stage===7?'Replay':'Play';
   }
 
   /** Stop autoplay before a learner manually changes context. */
   function stopPlaying() {
-    if (playing !== null) window.clearInterval(playing);
-    playing = null;
-    $('play').textContent = 'Play';
+    if(playing!==null)window.clearInterval(playing);
+    playing=null;
   }
 
   /** Rerender every measured view when switching between the two Pi frame pairs. */
   function renderPair() {
-    document.querySelectorAll('[data-pair]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.pair === pairKey)));
-    setImageSources();
-    renderInputs();
-    renderPatchGrid();
-    renderHann();
-    renderFFT();
-    renderInverse();
-    renderQuality();
-    renderConsensus();
-    renderState();
-    renderNavigation();
+    setImageSources();renderInputs();renderPatchGrid();renderHann();renderFFT();
+    renderInverse();renderQuality();renderConsensus();renderState();
+    renderThumbnails();renderNavigation();
   }
 
   /** Wire accessible controls and initialize the fully local recording replay. */
   function initialize() {
-    if (!data || !data.pairs || !data.pairs.adjacent || !data.pairs.walkthrough) {
-      $('ready').textContent = 'Recorded arrays are missing. Keep hann-fft-data.js beside this page.';
-      return;
+    if(!data?.pairs?.adjacent||!data?.pairs?.walkthrough){
+      $('ready').textContent='Recorded arrays missing: keep images/hann-fft-data.js with this page.';return;
     }
-    document.querySelectorAll('[data-pair]').forEach(button => button.addEventListener('click', () => {
-      stopPlaying();
-      pairKey = button.dataset.pair;
-      selectedPatch = 7;
-      $('candidate-x').value = '0';
-      $('candidate-y').value = '0';
-      renderPair();
+    for(const key of ['313','314','316']){
+      const image=new Image();frameImages[key]=image;
+      image.onload=renderThumbnails;image.src=data.framePaths[key];
+    }
+    $('pair-choice').addEventListener('change',()=>{
+      stopPlaying();pairKey=$('pair-choice').value;renderPair();
+    });
+    document.querySelectorAll('[data-stage]').forEach(button=>button.addEventListener('click',()=>{
+      stopPlaying();stage=Number(button.dataset.stage);renderNavigation();
     }));
-    $('overview-mode').addEventListener('click', () => { stopPlaying(); mode = 'overview'; renderNavigation(); });
-    $('walk-mode').addEventListener('click', () => { mode = 'walk'; renderNavigation(); });
-    document.querySelectorAll('[data-stage]').forEach(button => button.addEventListener('click', () => {
-      stopPlaying();
-      stage = Number(button.dataset.stage);
-      mode = 'walk';
-      renderNavigation();
-    }));
-    $('prev').addEventListener('click', () => { stopPlaying(); stage = Math.max(0, stage - 1); renderNavigation(); });
-    $('next').addEventListener('click', () => { stopPlaying(); stage = Math.min(7, stage + 1); renderNavigation(); });
-    $('stage-range').addEventListener('input', () => { stopPlaying(); stage = Number($('stage-range').value); mode = 'walk'; renderNavigation(); });
-    $('play').addEventListener('click', () => {
-      if (playing !== null) { stopPlaying(); return; }
-      mode = 'walk';
-      if (stage === 7) stage = 0;
-      renderNavigation();
-      $('play').textContent = 'Pause';
-      playing = window.setInterval(() => {
-        if (stage === 7) { stopPlaying(); return; }
-        stage += 1;
+    $('next').addEventListener('click',()=>{stopPlaying();stage=Math.min(7,stage+1);renderNavigation();});
+    $('reset').addEventListener('click',()=>{stopPlaying();stage=0;renderNavigation();});
+    $('play').addEventListener('click',()=>{
+      if(playing!==null){stopPlaying();renderNavigation();return;}
+      if(stage===7)stage=0;
+      playing=window.setInterval(()=>{
+        stage=Math.min(7,stage+1);
+        if(stage===7)stopPlaying();
         renderNavigation();
-      }, 3200);
+      },3600);
+      renderNavigation();
     });
-    $('hann-amount').addEventListener('input', renderHann);
-    for (const id of ['freq-x', 'freq-y']) $(id).addEventListener('input', renderFFT);
-    for (const id of ['candidate-x', 'candidate-y']) $(id).addEventListener('input', renderInverse);
-    $('choose-peak').addEventListener('click', () => {
-      const [x, y] = pair().peak;
-      $('candidate-x').value = String(x > W / 2 ? x - W : x);
-      $('candidate-y').value = String(y > H / 2 ? y - H : y);
-      renderInverse();
-    });
-    $('correlation').addEventListener('click', event => {
-      const rect = event.currentTarget.getBoundingClientRect();
-      const x = clamp(Math.floor((event.clientX - rect.left) * W / rect.width), 0, W - 1);
-      const y = clamp(Math.floor((event.clientY - rect.top) * H / rect.height), 0, H - 1);
-      $('candidate-x').value = String(x - W / 2);
-      $('candidate-y').value = String(y - H / 2);
-      renderInverse();
-    });
-    renderPair();
-    $('ready').textContent = 'Ready · derived from your Pi recording; no video or network needed.';
+    document.addEventListener('visibilitychange',()=>{if(document.hidden){stopPlaying();renderNavigation();}});
+    renderPair();$('ready').textContent='Recorded data · no camera or network needed';
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initialize);

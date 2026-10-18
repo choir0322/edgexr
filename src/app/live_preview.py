@@ -28,6 +28,7 @@ from vision.live_detector import (
     SOURCE_WIDTH,
     SOURCE_HEIGHT,
 )
+from vision.motion_history import MotionHistory
 
 
 def read_frame(stream: BinaryIO, size: int = WIDTH * HEIGHT) -> bytes | None:
@@ -72,13 +73,18 @@ def rate(times: Sequence[float]) -> float | None:
 
 class State:
     def __init__(
-        self, imu_enabled: bool = False, detection_enabled: bool = False
+        self,
+        imu_enabled: bool = False,
+        detection_enabled: bool = False,
+        motion_aware_tracking: bool = False,
     ) -> None:
         """Create bounded latest-value storage and synchronization for the live workers.
 
         Args:
             imu_enabled (bool): Whether the optional IMU path is selected.
             detection_enabled (bool): Whether full-frame detection storage is required.
+            motion_aware_tracking (bool): Whether the detector may query recent
+                analyzed image shifts for provisional box prediction.
 
         Returns:
             None: initializes shared state without starting workers.
@@ -93,13 +99,15 @@ class State:
         self.skipped = 0
         self.capture_times = deque(maxlen=60)
         self.analysis_times = deque(maxlen=60)
+        self.motion_history = MotionHistory()
+        self.motion_aware_tracking = motion_aware_tracking
         self.result = None
         self.error = None
         self.started = time.monotonic()
 
         # Give IMU and detection their own status stores; either may fail independently.
         self.imu = LiveImu(imu_enabled)
-        self.detector = DetectionState(detection_enabled)
+        self.detector = DetectionState(detection_enabled, motion_aware_tracking)
         self.detection_frame = None
 
     def publish_frame(
@@ -148,6 +156,7 @@ class State:
         shift: MotionShift | None,
         elapsed_ms: float,
         finished: float,
+        previous_time: float | None = None,
     ) -> None:
         """Store the latest analyzed image, displacement and motion-worker counters.
 
@@ -161,6 +170,8 @@ class State:
             elapsed_ms (float): Elapsed motion-estimator computation in milliseconds.
             finished (float): Host monotonic completion time in seconds for rate
                 measurement.
+            previous_time (float | None): Previous analyzed source receipt time;
+                omitted by callers that do not record interval motion.
 
         Returns:
             None: updates analyzed/skipped counts and latest browser result.
@@ -191,10 +202,28 @@ class State:
         # Atomically publish the result and count sequences bypassed by motion analysis.
         # This skip counter does not measure deliberate detector sampling.
         with self.condition:
+            if self.motion_aware_tracking and previous_seq > 0 and previous_time is not None:
+                self.motion_history.add(
+                    previous_seq, previous_time, seq, captured,
+                    (shift[0], shift[1]) if shift is not None else None,
+                )
             self.skipped += max(0, seq - previous_seq - 1)
             self.analyzed += 1
             self.analysis_times.append(finished)
             self.result = result
+
+    def motion_between(self, start: float, end: float) -> tuple[float, float] | None:
+        """Read reliable small-image scene displacement between two source times.
+
+        Args:
+            start (float): Older detector frame's host receipt seconds.
+            end (float): Current detector frame's host receipt seconds.
+
+        Returns:
+            tuple[float, float] | None: dx/dy in 320×180 pixels, or unknown.
+        """
+        with self.condition:
+            return self.motion_history.displacement(start, end)
 
     def snapshot(self, now: float | None = None) -> Record:
         """Build a JSON-ready view of independently aged camera, detector and IMU results.
@@ -309,7 +338,8 @@ def analyze_latest(state: State) -> None:
 
             # Publish the source frame and result together, then advance the reference frame.
             state.publish_result(
-                frame, previous[0] if previous else 0, shift, elapsed, time.monotonic()
+                frame, previous[0] if previous else 0, shift, elapsed, time.monotonic(),
+                previous_time=previous[1] if previous else None,
             )
             previous = frame
         except Exception as error:
@@ -617,6 +647,10 @@ def main() -> None:
         "--detect", action="store_true", help="MobileNet-SSD CPU boxes at a target 2 Hz"
     )
     parser.add_argument(
+        "--motion-aware-tracking", action="store_true",
+        help="predict detection box shifts using reliable recent image motion; requires --detect",
+    )
+    parser.add_argument(
         "--prototxt", type=Path, default=Path("models/mobilenet-ssd/deploy.prototxt")
     )
     parser.add_argument(
@@ -631,6 +665,8 @@ def main() -> None:
         parser.error("port must be between 1024 and 65535")
     if not shutil.which("ffmpeg"):
         parser.error("existing FFmpeg installation required")
+    if args.motion_aware_tracking and not args.detect:
+        parser.error("--motion-aware-tracking requires --detect")
 
     # Load OpenCV only for detection. Two internal threads are a baseline setting,
     # not reserved CPU cores; disable OpenCL to keep this path on the CPU.
@@ -646,7 +682,11 @@ def main() -> None:
 
     # Create shared state and start the server plus core camera/motion workers.
     # Keep resource handles available for cleanup even if later setup fails.
-    state = State(imu_enabled=args.imu, detection_enabled=args.detect)
+    state = State(
+        imu_enabled=args.imu,
+        detection_enabled=args.detect,
+        motion_aware_tracking=args.motion_aware_tracking,
+    )
     process = None
     server = None
     try:
@@ -713,6 +753,11 @@ def main() -> None:
                 "Detection: 720p source -> 300x300 model, CPU 2 threads, target 2 Hz. Boxes may lag; age shown.",
                 flush=True,
             )
+            if args.motion_aware_tracking:
+                print(
+                    "Tracking: image-shift prediction on; ordinary box overlap remains available. Coverage shown in browser.",
+                    flush=True,
+                )
         if args.imu:
             print(
                 "IMU: first second must be still; using per-run raw gyro offset. IMU errors appear in browser.",
