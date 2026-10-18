@@ -27,6 +27,12 @@ improve tracking stability.
 Use the protocol in `BENCHMARKING.md` to establish a baseline. Test one
 optimization at a time: capture mode, model choice, frame skipping, threading,
 or display overhead. Explain each tradeoff in a committed result summary.
+The proposed first step is a sustained, unchanged full-workload measurement in
+[`ap-baseline.md`](exec-plans/active/ap-baseline.md). It awaits user review;
+no optimization or hardware setting change has begun. The preceding
+[tracker comparison](../benchmarks/results/tracking-comparison-2026-10-18.md)
+did not demonstrate a necessary motion-assisted ID hold, so tracker tuning is
+not a prerequisite for this phase.
 
 Explicit future objective: **find the best detector configuration for this Pi
 and EdgeXR's requirements**, including model efficiency and whole-application

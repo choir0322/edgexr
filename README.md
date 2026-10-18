@@ -15,14 +15,16 @@ For a repeatable Pi comparison of basic and motion-aware tracking, follow the
 
 New: [optional live detection](docs/LIVE_DETECTION.md) adds boxes with source
 age and a target 2 Hz update rate. The [saved-frame Pi baseline](docs/DETECTION_RESULTS.md)
-took about 196 ms per detection. Motion-aware tracking now has local tests but
-still needs a controlled Pi comparison with the IoU-only baseline.
+took about 196 ms per detection. The first
+[Pi tracking comparison](benchmarks/results/tracking-comparison-2026-10-18.md)
+found no necessary motion-assisted ID hold in two exploratory 60-second runs;
+the turns were not speed-matched, so this is not an accuracy ranking.
 
-Next: [detect objects in a saved camera frame](docs/DETECTION_BASELINE.md)
-using an optional OpenCV CPU baseline. Read the setup before downloading its
-model. The tool produces labelled boxes and a timing report; real Pi detection
-quality and speed are recorded in the baseline above. [Recent motion results](docs/MOTION_03_RESULTS.md)
-support proceeding beyond the camera/IMU checks.
+Next proposed step: review the
+[sustained AP baseline plan](docs/exec-plans/active/ap-baseline.md) before
+changing models, threads or camera settings. The earlier
+[saved-frame detector baseline](docs/DETECTION_BASELINE.md) remains available
+for studying model output and single-image timing.
 
 The SSH browser preview can now show [live IMU readings](docs/LIVE_IMU.md)
 with `--imu`. The gyro gets a fresh stationary offset each run; image and IMU

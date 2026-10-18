@@ -56,7 +56,9 @@ extend ID lifetime after departure from view.
   and current-versus-planned behavior; explicitly record if a diagram remains
   unchanged and why.
 - [x] 2026-10-18: Run local unit/browser checks and `git diff --check`.
-- [ ] Run controlled Pi comparison and record actual outcomes.
+- [x] 2026-10-18: Run two 60-second Pi trials, inspect distinct detector
+  results and ID transitions, and record the outcome in
+  `benchmarks/results/tracking-comparison-2026-10-18.md`.
 - [x] 2026-10-18: User observed stable IDs in both modes during ordinary turns;
   motion-aware coverage was nonzero but the browser's motion-only match count
   stayed at zero. Add a metrics-only two-run recorder before making any
@@ -64,7 +66,8 @@ extend ID lifetime after departure from view.
 - [x] 2026-10-18: Implement and hardware-free test the trial recorder, the
   no-image telemetry route, and side-by-side report reader. Review/update
   `docs/PIPELINE.md` and the motion-aware learning guide for this extra process.
-- [ ] Run the recorded basic and motion-aware Pi trials and inspect samples.
+- [x] 2026-10-18: Review both transferred `samples.jsonl` files, including
+  turn intensity, coverage, detector ambiguity and fallback at ID changes.
 
 ## Plan of work
 
@@ -140,7 +143,14 @@ The user's initial Pi observation showed that reliable motion coverage alone
 is not an improvement: during ordinary turns the raw IoU baseline also kept
 IDs, so `motion_only_matches` stayed zero. A separate metrics-only endpoint
 avoids fetching image bytes at a higher logging rate, though HTTP polling can
-still miss a result and adds some CPU work.
+still miss a result and adds some CPU work. The two runs were not equally
+intense: median absolute gyro Y during turns was 11.99°/s in basic mode versus
+32.77°/s in motion-aware mode. This prevents a fair "1 versus 2 ID changes"
+accuracy ranking. Motion-only matches remained zero; 25 predicted-overlap
+wins did not cross a threshold that raw overlap failed. During turns, coverage
+was available for only 23 of 84 old-track comparisons. Both aware-mode ID
+changes used fallback, while the basic-mode change followed an ambiguous
+two-person result.
 
 ## Decision log
 
@@ -159,20 +169,22 @@ still miss a result and adds some CPU work.
   observed detector sequences. Use one unique target category; ambiguity or a
   missing target breaks the ID-change chain. Counts are observational proxies,
   not labelled ground-truth accuracy.
+- 2026-10-18: Stop this first matching experiment with the option intact but
+  off by default. The observed trials show no necessary ID hold; do not claim
+  benefit or harm from unpaired, differently paced hand movements. Revisit
+  interval coverage and labelled identity only if this becomes a priority.
 
 ## Outcomes and retrospective
 
-Implementation is local and opt-in. The camera, model, detector cadence, IMU
-reader and drawn box coordinates are unchanged. On Mac, the full hardware-free
-unit suite passed (65 tests, two existing environment-dependent skips); preview
-label and both learning-page JavaScript checks passed; `git diff --check` passed.
-These do not establish real Pi identity accuracy. A matched baseline/aware
-hardware comparison is still pending; do not mark complete until it is recorded.
-The learning-contract audit reports one pre-existing missing docstring section in
-`scripts/build_hann_fft_lesson.py`; this unrelated lesson-builder file was not
-changed for tracking. New tracking code and tests satisfy that audit.
-The new read-only comparison tooling passes the full Mac unit suite (70 tests,
-two environment-dependent skips), including fake telemetry and the no-image
-HTTP route. `git diff --check` passes. It has **not** yet been run on the Pi;
-the remaining acceptance step is the paired 60-second user trial documented
-in `docs/TRACKING_TRIAL.md` and manual review of any false ID holds.
+The opt-in matcher and metrics-only trial recorder are implemented. The camera,
+model, detector cadence, IMU reader and displayed box coordinates were not
+changed. Hardware-free unit checks passed before Pi use; the recorder then
+completed two 60-second Pi runs with zero poll errors. The result is documented
+in [`tracking-comparison-2026-10-18.md`](../../../benchmarks/results/tracking-comparison-2026-10-18.md).
+There was **no demonstrated necessary motion-assisted ID hold** in those runs.
+The motion-aware run had much faster turns, so observed ID-change counts
+cannot rank accuracy. No labelled footage was saved to verify false holds.
+The learning-contract audit still reports one unrelated pre-existing
+docstring issue in `scripts/build_hann_fft_lesson.py`; tracking files satisfy
+that audit. Future tracker tuning is deferred rather than treated as a
+prerequisite for the next EdgeXR phase.
