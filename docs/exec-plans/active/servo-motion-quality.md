@@ -34,6 +34,9 @@ another camera/FFT implementation.
 - [x] 2026-10-19: User reports pan/tilt HAT PWM channel labels 2/3, in that
   order; no real servo movement has occurred in this work session.
 - [x] 2026-10-20: User confirms pan = 2, tilt = 3, and safe mechanical 0°.
+- [x] 2026-10-20: Add an explicit pan-only ±20° commissioning option after
+  the user found the ±2° pan movement too small. Keep a separate wider-range
+  clearance acknowledgement; no hardware was commanded by Codex.
 - [ ] Confirm cable slack, power and clear travel; run a supervised short Pi
   commissioning trial before the full speed series.
 - [ ] Review camera/IMU/video results and select one justified estimator change
@@ -98,6 +101,9 @@ interval after each completed call.
   and physical confirmation for an armed run.
 - 2026-10-20: User confirms pan = 2, tilt = 3 and safe 0°. Still require
   cable/travel/power preflight and supervised commissioning.
+- 2026-10-20: Preserve the original small-sweep default. The requested
+  0° → −20° → +20° → 0° path is opt-in for pan only, at 5 commanded °/s;
+  the wider physical path needs its own clearance check.
 - 2026-10-19: Keep speeds conservative; a software angle bound cannot detect a
   misassembled linkage, a blocked shaft or cable tension.
 

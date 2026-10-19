@@ -86,6 +86,38 @@ class ServoQualityTests(unittest.TestCase):
         self.assertTrue(all(abs(command.angle_deg) <= 2 for command in commands))
         self.assertLess(duration, 10)
 
+    def test_wide_pan_schedule_reaches_both_twenty_degree_bounds(self) -> None:
+        """Opt-in pan commissioning follows center, left, right, center."""
+        commands, phases, duration = build_schedule(
+            "pan", commission=True, wide_pan=True
+        )
+        self.assertEqual(len(phases), 1)
+        self.assertEqual(phases[0].amplitude_deg, 20)
+        self.assertEqual(len(commands), 80)
+        self.assertEqual(
+            [command.angle_deg for command in commands if command.angle_deg in (-20, 20)],
+            [-20, 20],
+        )
+        self.assertEqual(commands[-1].angle_deg, 0)
+        self.assertAlmostEqual(duration, 21.5)
+        with self.assertRaisesRegex(ValueError, "requires"):
+            build_schedule("tilt", commission=True, wide_pan=True)
+        with self.assertRaisesRegex(ValueError, "requires"):
+            build_schedule("pan", wide_pan=True)
+
+    def test_wide_pan_arming_requires_specific_clearance_confirmation(self) -> None:
+        """The existing small-sweep cable check does not arm a ±20° sweep."""
+        args = argparse.Namespace(
+            confirm_centered=True,
+            confirm_cable_slack=True,
+            confirm_wide_pan_clearance=False,
+            confirm_commissioned=False,
+            commission=True,
+            wide_pan=True,
+        )
+        with self.assertRaisesRegex(ValueError, "±20° pan"):
+            validate_arming(args)
+
     def test_command_fault_stops_and_preserves_partial_log(self) -> None:
         """An unavailable recorder prevents later servo commands."""
         servo = FakeServo()
@@ -143,7 +175,7 @@ class ServoQualityTests(unittest.TestCase):
         """The actuator boundary checks bounds even if given a bad schedule."""
         servo = FakeServo()
         for commands in (
-            [ServoCommand(0.1, "pan", 9, "bad")],
+            [ServoCommand(0.1, "pan", 21, "bad")],
             [ServoCommand(0.1, "pan", -2, "bad")],
             [ServoCommand(0.1, "pan", -1, "bad"),
              ServoCommand(0.11, "pan", -2, "bad")],

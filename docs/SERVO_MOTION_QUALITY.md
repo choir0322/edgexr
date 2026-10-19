@@ -27,6 +27,10 @@ PYTHONPATH=src python3 -m recording.servo_motion_quality --axes both
 ```
 
 Commission mode makes a single ±2° sweep at 5 commanded degrees/second.
+For a larger **pan-only** test after the small pan run, `--commission
+--axes pan --wide-pan` commands 0° → −20° → +20° → 0°, in 1° steps at
+5 commanded degrees/second. It is a separate opt-in run; it does not change
+the small tilt trial or the full series. Its capture lasts about 21.5 seconds.
 The full program makes six sweeps, pan and tilt separately, at commanded 5,
 10 and 20 degrees/second, using 1° steps. Pan stays within ±8° and tilt
 within ±6° around software 0°. The first 2.5 seconds after the recording cue
@@ -43,6 +47,9 @@ These are **commands**, not measured shaft angles or rates.
   commands 0° before recording. Do not force an energized servo shaft by hand.
 - Confirm cable slack through each proposed tiny movement, clear mechanical
   travel, stable HAT power, rigid camera/IMU attachment, and a fixed base.
+- The ±20° pan option requires a **new** clearance and cable-slack check over
+  that wider range. The previous ±2° check does not establish it. Only pass
+  `--confirm-wide-pan-clearance` after checking the wider path.
 - Stay beside the rig with a way to remove servo power. Stop immediately for
   binding, unusual noise, cable tension, brownout or unexpected motion.
   `Ctrl+C` stops future commands and interrupts capture, but may leave the
@@ -69,6 +76,17 @@ sudo python3 src/recording/servo_motion_quality.py \
   --confirm-centered --confirm-cable-slack \
   --pan-channel 2 --tilt-channel 3 \
   --device /dev/video0 --output recordings/servo-commission-tilt-01
+```
+
+For the requested wider pan sweep, after checking the ±20° path, run this
+**instead of** repeating the small pan command. Stay beside the rig:
+
+```bash
+sudo python3 src/recording/servo_motion_quality.py \
+  --commission --axes pan --wide-pan --execute \
+  --confirm-centered --confirm-cable-slack --confirm-wide-pan-clearance \
+  --pan-channel 2 --tilt-channel 3 \
+  --device /dev/video0 --output recordings/servo-commission-pan-wide-01
 ```
 
 Only after reviewing both complete commissioning recordings and checking
