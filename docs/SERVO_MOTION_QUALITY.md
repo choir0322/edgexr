@@ -8,10 +8,10 @@ Default mode is a dry run: no camera, IMU or servo library is loaded.
 SunFounder's [AI Fusion pan/tilt example](https://docs.sunfounder.com/projects/ai-lab-kit/en/latest/python/4.16_pan_tilt_camera.html)
 uses `Servo(channel).angle(degrees)` and shows channels 2 and 3. Its
 [servo API](https://docs.sunfounder.com/projects/fusion-hat/en/latest/api/fusion_hat.servo.html)
-supports angle commands. For this build, the user reports pan on HAT PWM
-channel 2 and tilt on channel 3 (in that order); this axis assignment still
-needs confirmation before movement. These are HAT servo-channel labels, **not**
-BCM GPIO pin numbers. Inspect the actual plugs/labels before arming.
+supports angle commands. For this build, the user confirms pan on HAT PWM
+channel 2, tilt on channel 3, and a mechanically safe 0° command. These are
+HAT servo-channel labels, **not** BCM GPIO pin numbers. The small-angle test
+has not yet been observed; inspect the plugs and travel before arming.
 Your EdgeXR camera is the separate USB OV9281, not the CSI camera in that
 example. No software limit can detect a wrongly centered horn, snagged cable,
 blocked mount or weak power supply.
@@ -36,12 +36,11 @@ These are **commands**, not measured shaft angles or rates.
 
 ## 2. Physical preflight — required before `--execute`
 
-- Confirm that the reported HAT mapping really is **pan = 2, tilt = 3**, not
-  the reverse. Ensure both are distinct. Do not interpret these as BCM pins.
-- Confirm the head's **physical** neutral orientation corresponds to the
-  library's 0° commands. The program commands 0° before recording; if the
-  mounting is not centered, even this could move it unexpectedly. Do not
-  force an energized servo shaft by hand.
+- Recheck the confirmed HAT mapping (**pan = 2, tilt = 3**) against the
+  actual plugs. Do not interpret these as BCM pins.
+- The user confirms that the library's 0° command is mechanically safe.
+  Recheck the head's physical orientation before each run; the program
+  commands 0° before recording. Do not force an energized servo shaft by hand.
 - Confirm cable slack through each proposed tiny movement, clear mechanical
   travel, stable HAT power, rigid camera/IMU attachment, and a fixed base.
 - Stay beside the rig with a way to remove servo power. Stop immediately for
@@ -55,8 +54,8 @@ These are **commands**, not measured shaft angles or rates.
 Do **not** use the full series until both small commissioning runs have been
 observed safely. `--execute` also requires explicit `--confirm-centered` and
 `--confirm-cable-slack`; the full series additionally requires
-`--confirm-commissioned`. The channel numbers below reflect the user's report;
-do not run them until the physical axis assignment is checked.
+`--confirm-commissioned`. The channel numbers below reflect the user's
+confirmation; do not run until the remaining physical preflight is complete.
 
 ```bash
 sudo python3 src/recording/servo_motion_quality.py \

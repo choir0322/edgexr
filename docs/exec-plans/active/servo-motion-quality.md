@@ -12,9 +12,9 @@ joint angle. Keep physical movement optional and explicitly armed.
 
 The Pi 4's Fusion HAT+ can drive pan/tilt servos using SunFounder's
 `fusion_hat.servo.Servo(channel).angle(degrees)` API. The official example
-uses channels 2 and 3. The user reports this build uses HAT PWM channels
-2 (pan) and 3 (tilt), but the axis assignment has not been motor-tested and
-the mechanical center remains unverified. These are HAT channel labels, not
+uses channels 2 and 3. The user confirms this build uses HAT PWM channels
+2 (pan) and 3 (tilt) and that a 0° command is mechanically safe. The small
+commissioning sweep has not been observed. These are HAT channel labels, not
 BCM GPIO pin numbers. The USB OV9281 camera is **not** SunFounder's CSI camera.
 `combined_capture.py` already records MJPEG plus IMU; `visual_motion.py` and
 `patch_diagnostics.py` analyze saved frames. Use those components rather than
@@ -33,9 +33,9 @@ another camera/FFT implementation.
   because no new live-preview worker was added.
 - [x] 2026-10-19: User reports pan/tilt HAT PWM channel labels 2/3, in that
   order; no real servo movement has occurred in this work session.
-- [ ] Confirm the reported axis order, physical center, cable slack, power
-  and absence of binding; run a short real Pi commissioning trial before the
-  full speed series.
+- [x] 2026-10-20: User confirms pan = 2, tilt = 3, and safe mechanical 0°.
+- [ ] Confirm cable slack, power and clear travel; run a supervised short Pi
+  commissioning trial before the full speed series.
 - [ ] Review camera/IMU/video results and select one justified estimator change
   or retain the current rejection behavior.
 
@@ -95,15 +95,15 @@ interval after each completed call.
 ## Decision log
 
 - 2026-10-19: User reports channels 2/3 for pan/tilt. Keep explicit mapping
-  and physical confirmation for an armed run; reported wiring is not a
-  motor-tested assignment or evidence of a safe mechanical center.
+  and physical confirmation for an armed run.
+- 2026-10-20: User confirms pan = 2, tilt = 3 and safe 0°. Still require
+  cable/travel/power preflight and supervised commissioning.
 - 2026-10-19: Keep speeds conservative; a software angle bound cannot detect a
   misassembled linkage, a blocked shaft or cable tension.
 
 ## Outcomes and retrospective
 
 The dry run and hardware-independent tests are complete; the physical gate
-remains open. No servo was commanded by Codex. The reported Pi channel
-assignment, mechanical center, cable clearance, power and negotiated camera
-mode still need the user's supervised verification before the first
-commissioning run.
+remains open. No servo was commanded by Codex. The user confirmed the Pi
+channel assignment and safe 0° command; cable clearance, power and camera
+mode still need supervised verification before the first commissioning run.
