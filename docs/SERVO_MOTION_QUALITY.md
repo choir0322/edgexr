@@ -8,8 +8,10 @@ Default mode is a dry run: no camera, IMU or servo library is loaded.
 SunFounder's [AI Fusion pan/tilt example](https://docs.sunfounder.com/projects/ai-lab-kit/en/latest/python/4.16_pan_tilt_camera.html)
 uses `Servo(channel).angle(degrees)` and shows channels 2 and 3. Its
 [servo API](https://docs.sunfounder.com/projects/fusion-hat/en/latest/api/fusion_hat.servo.html)
-supports angle commands. **Those example channels do not verify your own HAT
-wiring.** Inspect the actual plugs/labels before entering channel numbers.
+supports angle commands. For this build, the user reports pan on HAT PWM
+channel 2 and tilt on channel 3 (in that order); this axis assignment still
+needs confirmation before movement. These are HAT servo-channel labels, **not**
+BCM GPIO pin numbers. Inspect the actual plugs/labels before arming.
 Your EdgeXR camera is the separate USB OV9281, not the CSI camera in that
 example. No software limit can detect a wrongly centered horn, snagged cable,
 blocked mount or weak power supply.
@@ -34,8 +36,8 @@ These are **commands**, not measured shaft angles or rates.
 
 ## 2. Physical preflight — required before `--execute`
 
-- Confirm the actual pan and tilt HAT channels from the wiring, not the
-  SunFounder example numbers. Ensure both are distinct.
+- Confirm that the reported HAT mapping really is **pan = 2, tilt = 3**, not
+  the reverse. Ensure both are distinct. Do not interpret these as BCM pins.
 - Confirm the head's **physical** neutral orientation corresponds to the
   library's 0° commands. The program commands 0° before recording; if the
   mounting is not centered, even this could move it unexpectedly. Do not
@@ -53,21 +55,20 @@ These are **commands**, not measured shaft angles or rates.
 Do **not** use the full series until both small commissioning runs have been
 observed safely. `--execute` also requires explicit `--confirm-centered` and
 `--confirm-cable-slack`; the full series additionally requires
-`--confirm-commissioned`. Replace `PAN_NUMBER` and `TILT_NUMBER` below with
-the verified numeric channel labels. The literal placeholders will fail
-safely if not replaced.
+`--confirm-commissioned`. The channel numbers below reflect the user's report;
+do not run them until the physical axis assignment is checked.
 
 ```bash
 sudo python3 src/recording/servo_motion_quality.py \
   --commission --axes pan --execute \
   --confirm-centered --confirm-cable-slack \
-  --pan-channel PAN_NUMBER --tilt-channel TILT_NUMBER \
+  --pan-channel 2 --tilt-channel 3 \
   --device /dev/video0 --output recordings/servo-commission-pan-01
 
 sudo python3 src/recording/servo_motion_quality.py \
   --commission --axes tilt --execute \
   --confirm-centered --confirm-cable-slack \
-  --pan-channel PAN_NUMBER --tilt-channel TILT_NUMBER \
+  --pan-channel 2 --tilt-channel 3 \
   --device /dev/video0 --output recordings/servo-commission-tilt-01
 ```
 
@@ -78,7 +79,7 @@ travel, use a **new** output name for the full series:
 sudo python3 src/recording/servo_motion_quality.py \
   --axes both --execute \
   --confirm-centered --confirm-cable-slack --confirm-commissioned \
-  --pan-channel PAN_NUMBER --tilt-channel TILT_NUMBER \
+  --pan-channel 2 --tilt-channel 3 \
   --device /dev/video0 --output recordings/servo-quality-01
 ```
 

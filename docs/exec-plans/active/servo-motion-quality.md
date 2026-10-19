@@ -12,8 +12,10 @@ joint angle. Keep physical movement optional and explicitly armed.
 
 The Pi 4's Fusion HAT+ can drive pan/tilt servos using SunFounder's
 `fusion_hat.servo.Servo(channel).angle(degrees)` API. The official example
-uses channels 2 and 3, but the user's actual wiring and mechanical center
-are not verified. The USB OV9281 camera is **not** SunFounder's CSI camera.
+uses channels 2 and 3. The user reports this build uses HAT PWM channels
+2 (pan) and 3 (tilt), but the axis assignment has not been motor-tested and
+the mechanical center remains unverified. These are HAT channel labels, not
+BCM GPIO pin numbers. The USB OV9281 camera is **not** SunFounder's CSI camera.
 `combined_capture.py` already records MJPEG plus IMU; `visual_motion.py` and
 `patch_diagnostics.py` analyze saved frames. Use those components rather than
 another camera/FFT implementation.
@@ -29,8 +31,10 @@ another camera/FFT implementation.
   `docs/learning/IMAGE_MOTION.md` for the optional servo path, shapes, units,
   clocks, rates and failure behavior. The live diagram itself remains unchanged
   because no new live-preview worker was added.
-- [ ] User confirms actual channels, physical center, cable slack, power and
-  absence of binding; run a short real Pi commissioning trial before the
+- [x] 2026-10-19: User reports pan/tilt HAT PWM channel labels 2/3, in that
+  order; no real servo movement has occurred in this work session.
+- [ ] Confirm the reported axis order, physical center, cable slack, power
+  and absence of binding; run a short real Pi commissioning trial before the
   full speed series.
 - [ ] Review camera/IMU/video results and select one justified estimator change
   or retain the current rejection behavior.
@@ -90,14 +94,16 @@ interval after each completed call.
 
 ## Decision log
 
-- 2026-10-19: Do not assume official example channels 2/3 match the user's
-  HAT. Require explicit mapping and physical confirmation for an armed run.
+- 2026-10-19: User reports channels 2/3 for pan/tilt. Keep explicit mapping
+  and physical confirmation for an armed run; reported wiring is not a
+  motor-tested assignment or evidence of a safe mechanical center.
 - 2026-10-19: Keep speeds conservative; a software angle bound cannot detect a
   misassembled linkage, a blocked shaft or cable tension.
 
 ## Outcomes and retrospective
 
 The dry run and hardware-independent tests are complete; the physical gate
-remains open. No servo was commanded by Codex. Actual Pi channel labels,
-mechanical center, cable clearance, power and negotiated camera mode still
-need the user's supervised verification before the first commissioning run.
+remains open. No servo was commanded by Codex. The reported Pi channel
+assignment, mechanical center, cable clearance, power and negotiated camera
+mode still need the user's supervised verification before the first
+commissioning run.

@@ -68,9 +68,10 @@ the SunFounder example produced changing acceleration, gyro, magnetometer,
 and pressure readings when the board moved. The board has an SH3001 motion
 sensor, QMC6310 magnetometer, and SPL06_001 barometer.
 
-The actual pan/tilt servo **channel mapping and mechanical 0° center are not
-yet verified** in this record. SunFounder's AI Fusion example shows channels
-2 and 3, but that is not evidence of this build's wiring. The optional
+The user reports that pan and tilt use Fusion HAT PWM servo channels 2 and 3,
+respectively. These are HAT channel labels, not Raspberry Pi BCM GPIO pin
+numbers. The axis-to-channel order has not yet been confirmed by a supervised
+motor test, and the mechanical 0° center is not verified. The optional
 [servo quality test](SERVO_MOTION_QUALITY.md) requires explicit channels and a
 supervised ±2° commissioning run before the full small-angle series.
 
