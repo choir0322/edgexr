@@ -118,6 +118,35 @@ class ServoQualityTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "±20° pan"):
             validate_arming(args)
 
+    def test_quick_pan_has_requested_path_and_stops_at_plus_forty(self) -> None:
+        """Quick pan is one bounded path, not the multi-phase full series."""
+        commands, phases, duration = build_schedule("pan", quick_pan=True)
+        self.assertEqual(len(phases), 1)
+        self.assertEqual(phases[0].speed_deg_s, 20)
+        self.assertEqual(len(commands), 120)
+        self.assertEqual(commands[39].angle_deg, -40)
+        self.assertEqual(commands[-1].angle_deg, 40)
+        self.assertAlmostEqual(duration, 11.5)
+        self.assertTrue(all(command.axis == "pan" for command in commands))
+        with self.assertRaisesRegex(ValueError, "requires"):
+            build_schedule("both", quick_pan=True)
+        with self.assertRaisesRegex(ValueError, "requires"):
+            build_schedule("pan", commission=True, quick_pan=True)
+
+    def test_quick_pan_arming_requires_wider_clearance_confirmation(self) -> None:
+        """A completed ±20° run does not establish safe travel through ±40°."""
+        args = argparse.Namespace(
+            confirm_centered=True,
+            confirm_cable_slack=True,
+            confirm_quick_pan_clearance=False,
+            confirm_commissioned=False,
+            commission=False,
+            wide_pan=False,
+            quick_pan=True,
+        )
+        with self.assertRaisesRegex(ValueError, "±40° pan"):
+            validate_arming(args)
+
     def test_command_fault_stops_and_preserves_partial_log(self) -> None:
         """An unavailable recorder prevents later servo commands."""
         servo = FakeServo()
@@ -175,7 +204,7 @@ class ServoQualityTests(unittest.TestCase):
         """The actuator boundary checks bounds even if given a bad schedule."""
         servo = FakeServo()
         for commands in (
-            [ServoCommand(0.1, "pan", 21, "bad")],
+            [ServoCommand(0.1, "pan", 41, "bad")],
             [ServoCommand(0.1, "pan", -2, "bad")],
             [ServoCommand(0.1, "pan", -1, "bad"),
              ServoCommand(0.11, "pan", -2, "bad")],

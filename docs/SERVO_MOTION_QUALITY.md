@@ -11,7 +11,8 @@ uses `Servo(channel).angle(degrees)` and shows channels 2 and 3. Its
 supports angle commands. For this build, the user confirms pan on HAT PWM
 channel 2, tilt on channel 3, and a mechanically safe 0° command. These are
 HAT servo-channel labels, **not** BCM GPIO pin numbers. The small-angle test
-has not yet been observed; inspect the plugs and travel before arming.
+and pan-only ±20° test have now been run; inspect the plugs and travel before
+any wider movement.
 Your EdgeXR camera is the separate USB OV9281, not the CSI camera in that
 example. No software limit can detect a wrongly centered horn, snagged cable,
 blocked mount or weak power supply.
@@ -31,6 +32,10 @@ For a larger **pan-only** test after the small pan run, `--commission
 --axes pan --wide-pan` commands 0° → −20° → +20° → 0°, in 1° steps at
 5 commanded degrees/second. It is a separate opt-in run; it does not change
 the small tilt trial or the full series. Its capture lasts about 21.5 seconds.
+The optional `--quick-pan --axes pan` test commands **0° → −40° → +40°**
+at 20 commanded degrees/second, in 1° steps every 50 ms. It ends at **+40°**;
+it does not return to 0°. Its capture lasts about 11.5 seconds. This is a
+faster stress test, not a smooth continuous-speed servo command.
 The full program makes six sweeps, pan and tilt separately, at commanded 5,
 10 and 20 degrees/second, using 1° steps. Pan stays within ±8° and tilt
 within ±6° around software 0°. The first 2.5 seconds after the recording cue
@@ -50,6 +55,10 @@ These are **commands**, not measured shaft angles or rates.
 - The ±20° pan option requires a **new** clearance and cable-slack check over
   that wider range. The previous ±2° check does not establish it. Only pass
   `--confirm-wide-pan-clearance` after checking the wider path.
+- The quick ±40° pan option requires a separate **±40°** clearance and
+  cable-slack check. The completed ±20° run does not establish safe travel
+  through ±40°. Only pass `--confirm-quick-pan-clearance` after that check.
+  This test deliberately ends at +40°; leave room for the head to remain there.
 - Stay beside the rig with a way to remove servo power. Stop immediately for
   binding, unusual noise, cable tension, brownout or unexpected motion.
   `Ctrl+C` stops future commands and interrupts capture, but may leave the
@@ -87,6 +96,18 @@ sudo python3 src/recording/servo_motion_quality.py \
   --confirm-centered --confirm-cable-slack --confirm-wide-pan-clearance \
   --pan-channel 2 --tilt-channel 3 \
   --device /dev/video0 --output recordings/servo-commission-pan-wide-01
+```
+
+For the requested quick pan test, after checking the **entire ±40° path**,
+run this pan-only command while beside the rig. It begins with the usual 0°
+initialization and leaves pan at +40° when complete:
+
+```bash
+sudo python3 src/recording/servo_motion_quality.py \
+  --axes pan --quick-pan --execute \
+  --confirm-centered --confirm-cable-slack --confirm-quick-pan-clearance \
+  --pan-channel 2 --tilt-channel 3 \
+  --device /dev/video0 --output recordings/servo-quick-pan-01
 ```
 
 Only after reviewing both complete commissioning recordings and checking

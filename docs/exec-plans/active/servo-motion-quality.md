@@ -37,6 +37,9 @@ another camera/FFT implementation.
 - [x] 2026-10-20: Add an explicit pan-only ±20° commissioning option after
   the user found the ±2° pan movement too small. Keep a separate wider-range
   clearance acknowledgement; no hardware was commanded by Codex.
+- [x] 2026-10-20: Add an opt-in 0° → −40° → +40° pan-only stress test at
+  20 commanded °/s, with a separate ±40° clearance acknowledgement. It
+  intentionally ends at +40°; no hardware was commanded by Codex.
 - [ ] Confirm cable slack, power and clear travel; run a supervised short Pi
   commissioning trial before the full speed series.
 - [ ] Review camera/IMU/video results and select one justified estimator change
@@ -104,6 +107,10 @@ interval after each completed call.
 - 2026-10-20: Preserve the original small-sweep default. The requested
   0° → −20° → +20° → 0° path is opt-in for pan only, at 5 commanded °/s;
   the wider physical path needs its own clearance check.
+- 2026-10-20: The user's subsequent quick-test request is separate from the
+  original full series. Use one pan-only 20°/s command schedule from 0° to
+  −40° to +40°, without an unrequested return sweep. Require a new ±40°
+  clearance check before real execution.
 - 2026-10-19: Keep speeds conservative; a software angle bound cannot detect a
   misassembled linkage, a blocked shaft or cable tension.
 

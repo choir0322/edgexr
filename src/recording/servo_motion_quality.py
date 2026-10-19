@@ -25,7 +25,7 @@ from typing import Callable, Sequence
 
 
 AMPLITUDES = {"pan": 8, "tilt": 6}  # Degrees about the confirmed physical center.
-MAX_COMMAND_AMPLITUDES = {"pan": 20, "tilt": 6}  # Includes opt-in wide pan commissioning.
+MAX_COMMAND_AMPLITUDES = {"pan": 40, "tilt": 6}  # Includes opt-in quick pan test.
 SPEEDS = (5, 10, 20)  # Commanded degrees/second, not measured shaft speed.
 INITIAL_STILL_S = 2.5
 BETWEEN_PHASES_S = 1.0
@@ -45,7 +45,7 @@ class ServoCommand:
 
 @dataclass(frozen=True)
 class Phase:
-    """One complete center/left/right/center sweep at a commanded rate."""
+    """One bounded single-axis sweep at a commanded rate."""
 
     name: str
     axis: str
@@ -56,7 +56,8 @@ class Phase:
 
 
 def build_schedule(
-    axes: str = "both", *, commission: bool = False, wide_pan: bool = False
+    axes: str = "both", *, commission: bool = False, wide_pan: bool = False,
+    quick_pan: bool = False,
 ) -> tuple[list[ServoCommand], list[Phase], float]:
     """Build a center-bounded, sequential speed series with no hardware access.
 
@@ -65,6 +66,7 @@ def build_schedule(
         commission (bool): Use one 5°/s phase at ±2° for initial supervised
             physical verification, before the full speed series.
         wide_pan (bool): Use ±20° for a pan-only commissioning sweep.
+        quick_pan (bool): Command pan 0° → −40° → +40° at 20°/s, ending at +40°.
 
     Returns:
         tuple[list[ServoCommand], list[Phase], float]: Timed commands, phase
@@ -74,21 +76,24 @@ def build_schedule(
         raise ValueError("axes must be pan, tilt or both")
     if wide_pan and (not commission or axes != "pan"):
         raise ValueError("--wide-pan requires --commission --axes pan")
+    if quick_pan and (commission or wide_pan or axes != "pan"):
+        raise ValueError("--quick-pan requires --axes pan without --commission or --wide-pan")
     selected = ("pan", "tilt") if axes == "both" else (axes,)
-    speeds = (5,) if commission else SPEEDS
+    speeds = (20,) if quick_pan else (5,) if commission else SPEEDS
     commands: list[ServoCommand] = []
     phases: list[Phase] = []
     elapsed = INITIAL_STILL_S
 
-    # Move in 1° steps: center → negative bound → positive bound → center.
+    # Move in 1° steps; only the quick test intentionally ends away from center.
     # Never command both axes within the same phase or exceed the selected bounds.
     for speed in speeds:
         for axis in selected:
-            amplitude = (20 if wide_pan else 2) if commission else AMPLITUDES[axis]
+            amplitude = 40 if quick_pan else (20 if wide_pan else 2) if commission else AMPLITUDES[axis]
             current = 0
             start = elapsed
-            name = f"{axis}-{speed}dps"
-            for target in (-amplitude, amplitude, 0):
+            name = f"{axis}-quick-{speed}dps" if quick_pan else f"{axis}-{speed}dps"
+            targets = (-amplitude, amplitude) if quick_pan else (-amplitude, amplitude, 0)
+            for target in targets:
                 while current != target:
                     current += 1 if target > current else -1
                     elapsed += 1 / speed
@@ -115,7 +120,9 @@ def validate_arming(args: argparse.Namespace) -> None:
         raise ValueError("Confirm physical 0° center and free cable travel first")
     if getattr(args, "wide_pan", False) and not getattr(args, "confirm_wide_pan_clearance", False):
         raise ValueError("Confirm clear travel and cable slack through ±20° pan first")
-    if not args.commission and not args.confirm_commissioned:
+    if getattr(args, "quick_pan", False) and not getattr(args, "confirm_quick_pan_clearance", False):
+        raise ValueError("Confirm clear travel and cable slack through ±40° pan first")
+    if not args.commission and not getattr(args, "quick_pan", False) and not args.confirm_commissioned:
         raise ValueError("Complete supervised --commission checks before the full series")
     if not args.device or not args.output:
         raise ValueError("Real run requires --device and --output")
@@ -319,7 +326,8 @@ def run_capture(args: argparse.Namespace, commands: list[ServoCommand], phases: 
         "--device", args.device, "--seconds", f"{duration:.2f}",
         "--output", str(args.output),
         "--notes", "Guarded servo test; sequential pan/tilt, "
-        + ("wide pan commission ±20 degrees" if args.wide_pan else
+        + ("quick pan 0 to -40 to +40 degrees" if args.quick_pan else
+           "wide pan commission ±20 degrees" if args.wide_pan else
            "commission ±2 degrees" if args.commission else "series ±8/±6 degrees")
         + f"; scene={args.scene}; power={args.power}; cooling={args.cooling}",
     ]
@@ -434,11 +442,15 @@ def main(argv: Sequence[str] | None = None) -> int:
                         help="one supervised ±2° phase at 5 commanded °/s")
     parser.add_argument("--wide-pan", action="store_true",
                         help="opt-in pan-only commissioning sweep at ±20°")
+    parser.add_argument("--quick-pan", action="store_true",
+                        help="opt-in pan-only 0° → −40° → +40° at 20 commanded °/s")
     parser.add_argument("--execute", action="store_true", help="enable real Pi hardware")
     parser.add_argument("--confirm-centered", action="store_true")
     parser.add_argument("--confirm-cable-slack", action="store_true")
     parser.add_argument("--confirm-wide-pan-clearance", action="store_true",
                         help="confirm clear pan travel and cable slack through ±20°")
+    parser.add_argument("--confirm-quick-pan-clearance", action="store_true",
+                        help="confirm clear pan travel and cable slack through ±40°")
     parser.add_argument("--confirm-commissioned", action="store_true",
                         help="acknowledge successful pan and tilt commissioning before full run")
     parser.add_argument("--pan-channel", type=int)
@@ -450,11 +462,14 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--cooling", default="unknown")
     args = parser.parse_args(argv)
     commands, phases, duration = build_schedule(
-        args.axes, commission=args.commission, wide_pan=args.wide_pan
+        args.axes, commission=args.commission, wide_pan=args.wide_pan,
+        quick_pan=args.quick_pan,
     )
     print(f"Schedule: {len(commands)} 1° commands, {len(phases)} phases, {duration:.1f} s")
     for phase in phases:
-        print(f"  {phase.name}: ±{phase.amplitude_deg}°, {phase.speed_deg_s} commanded °/s; "
+        path = (f"0° → −{phase.amplitude_deg}° → +{phase.amplitude_deg}°"
+                if args.quick_pan else f"±{phase.amplitude_deg}° → 0°")
+        print(f"  {phase.name}: {path}, {phase.speed_deg_s} commanded °/s; "
               f"{phase.start_s:.1f}–{phase.end_s:.1f} s after cue")
     if not args.execute:
         print("DRY RUN ONLY: no camera, IMU, Fusion HAT import or servo commands.")
