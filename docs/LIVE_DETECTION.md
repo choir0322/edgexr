@@ -142,6 +142,55 @@ false or competing boxes. This is a separate setting from the 0.85
 **re-identification similarity** cutoff. Neither promises continuous bottle
 or person detection; compare both failure modes in the next Pi trial.
 
+## Record the person-and-bottle re-entry trial
+
+This is an **opt-in exception** to the normal no-footage live preview. It opens
+the camera only once: FFmpeg copies the incoming MJPEG packets to `camera.mkv`
+while the live detector continues to receive grayscale frames. For each
+completed detector update, `updates.jsonl` records the source sequence, host
+receipt/completion times, current boxes/IDs/scores, and re-ID diagnostic
+reasons. `detector-frames/` holds the exact grayscale input selected for that
+inference, losslessly PNG-compressed for review. These sampled images are not all 30
+camera frames per second. No descriptor vector or IMU data is recorded.
+
+Stop any earlier preview. After pushing the reviewed code on Mac and pulling on
+Pi, run one **60-second** trial from the repository root:
+
+```bash
+cd ~/projects/edgexr
+git pull --ff-only
+PYTHONPATH=src python3 -m app.live_preview \
+  --device /dev/video0 --detect --reidentify \
+  --trial-output recordings/reid-person-bottle-01 \
+  --trial-seconds 60 \
+  --trial-notes "Stationary bottle; person leaves and returns 2-3 times; fixed camera and lighting"
+```
+
+The program stops automatically at 60 seconds; Ctrl+C earlier leaves a
+`partial` manifest. It refuses to overwrite an existing output directory.
+Use the existing Mac SSH tunnel and preview page while recording. Keep the
+camera fixed and bottle in view. Spend about the first 10 seconds with the
+person and bottle visible; then have the person leave completely for about
+3–5 seconds and return, two or three times; keep both visible near the end.
+The bottle should not be moved. Note approximate leave/return times and any
+obvious false ID claims. Do not force a servo or change lighting deliberately.
+
+After the timer ends, check `metadata.json` for `"status": "complete"` and
+confirm `camera.mkv`, `updates.jsonl`, and `detector-frames/` exist. These files
+contain images of a person and must stay out of Git (`recordings/` is ignored).
+On the **Mac**, copy the whole trial outside the repository for joint review:
+
+```bash
+scp -r pi@ai-fusion.local:/home/pi/projects/edgexr/recordings/reid-person-bottle-01 \
+  /Users/ryanchoi/Desktop/reid-person-bottle-01
+```
+
+The raw camera video has its own packet timestamps; JSONL uses Pi host receipt
+and completion times. They are **not** exposure-synchronized or an exact
+video-frame-to-detector-frame map. The saved detector PNG and JSONL sequence
+*are* paired exactly, so inspect those for each score/ID decision. This trial
+is for diagnosis, not a benchmark: extra video/PNG writing changes workload.
+
 No backlog or catch-up bursts: if inference takes longer than 0.5 seconds,
 the next run uses whatever frame is newest when it becomes available. Boxes
 are hidden when their source is older than 1.5 seconds, on detector error,

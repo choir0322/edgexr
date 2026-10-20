@@ -55,6 +55,14 @@ and visual-motion history do not yet participate in this memory decision.
 See [`object_memory.py`](../../src/vision/object_memory.py),
 [`basic_tracker.py`](../../src/vision/basic_tracker.py), and the
 [Pi trial](../LIVE_DETECTION.md) before drawing conclusions from one ID hold.
+For the opt-in recording trial, `camera_command()` copies the incoming MJPEG
+stream while `detect_latest()` passes each selected frame and completed
+`BasicTracker.update()` result to `ReidTrialRecorder.record()`. The saved
+grayscale lossless PNG is the exact frame selected for that detector update, not a
+browser screenshot or a later camera frame. Its JSONL entry has the same
+source sequence and includes class-specific re-ID reasons and scores; see
+[`reid_trial.py`](../../src/vision/reid_trial.py). Recording does not change
+the 0.30 live detection score cutoff or 0.85 re-ID similarity threshold.
 
 ## Where MobileNet ends and SSD prediction begins
 

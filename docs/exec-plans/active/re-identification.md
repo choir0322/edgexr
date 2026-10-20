@@ -71,6 +71,14 @@ motion must remain unknown rather than an assumed zero.
 - [ ] Repeat the bottle-and-person Pi trial and record detector rate, box
   flicker, retirement count, memory/expiry counts, best return scores, new IDs,
   tentative restores and any false claims. Do not infer cause without these data.
+- [x] 2026-10-21: Add opt-in timed trial capture with one FFmpeg camera input,
+  continuous MJPEG packet-copy video, exact detector-selected grayscale PNGs,
+  per-update boxes/IDs/diagnostics, and partial/complete metadata. Review and
+  update `docs/PIPELINE.md` and the object-detection learning guide for the
+  recording branch; no new tracking or fusion path is implied.
+- [ ] Inspect the recorded successful and failed returns together, label
+  physical continuity by eye, and compare bottle detection misses separately
+  from person appearance-match decisions. Retune only from those cases.
 - [ ] Compare appearance-only, appearance + reliable image motion, and
   appearance + validated IMU rotation on the same labelled pan/return cases.
   Report when spatial evidence helps, hurts or is unavailable.
@@ -167,6 +175,10 @@ returning 2–3 times always received a higher ID. These are user observations,
 not yet a timestamped ground-truth dataset. The changed live score cutoff may
 recover weaker boxes but could add false positives. Persistent diagnostic
 reasons are needed before changing the appearance threshold.
+The user subsequently observed that re-entry sometimes succeeds and sometimes
+fails. Browser telemetry alone cannot preserve the visual evidence, so the
+opt-in trial records both the continuous camera stream and exact detector
+input frames with decisions. This is not an exposure-synchronized benchmark.
 
 ## Decision log
 
@@ -181,6 +193,9 @@ reasons are needed before changing the appearance threshold.
 - 2026-10-20: Permit a separate, opt-in exploratory live check before score
   calibration because the user requested immediate observation. Do not enable
   memory by default or describe one successful return as validated re-ID.
+- 2026-10-21: Preserve inference and matching settings during the next
+  diagnosis. Record only under ignored `recordings/` when requested; avoid a
+  second camera opener and avoid committing footage of people.
 
 ## Outcomes and retrospective
 

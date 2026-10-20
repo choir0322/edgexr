@@ -7,6 +7,7 @@ if TYPE_CHECKING:
     from _contracts import Frame, Record
 
     from app.live_preview import State
+    from vision.reid_trial import ReidTrialRecorder
 
 
 from collections import deque
@@ -205,6 +206,7 @@ def detect_latest(
     state: State,
     factory: Callable[[], Callable[[bytes], list[Record]]],
     clock: Callable[[], float] = time.monotonic,
+    recorder: ReidTrialRecorder | None = None,
 ) -> None:
     """Run sequential latest-frame detection with at least 0.5 seconds between starts.
 
@@ -215,6 +217,7 @@ def detect_latest(
             detector before the loop begins.
         clock (Callable[[], float]): Zero-argument host clock; units are seconds except
             explicitly named nanosecond stages.
+        recorder (ReidTrialRecorder | None): Optional local trial recorder.
 
     Returns:
         None: assigns session-local IDs and publishes results/errors without
@@ -311,5 +314,7 @@ def detect_latest(
                 frame, identified, (finished - started) * 1000, finished,
                 tracker.last_stats,
             )
+            if recorder is not None:
+                recorder.record(frame, identified, tracker.last_stats, finished)
     except Exception as error:
         state.detector.fail(f"Detector failed: {error}")

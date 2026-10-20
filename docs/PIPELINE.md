@@ -40,18 +40,22 @@ flowchart TD
     BIAS["LiveImu<br/>First-second stationary gyro offset<br/>Latest corrected XYZ rates in degrees/s"]
     STATE["State.snapshot<br/>Latest independent results + ages/errors<br/>Not exposure-synchronized sensor fusion"]
     TRIAL["Optional second SSH process: tracking_trial<br/>/api/telemetry omits image bytes<br/>JSONL + summary under ignored recordings/"]
+    REIDVIDEO["Optional --trial-output<br/>MJPEG packet copy to camera.mkv<br/>Same camera input, no second opener"]
+    REIDLOG["ReidTrialRecorder.record<br/>Exact selected gray frame as lossless PNG<br/>Boxes, IDs, reasons + host times as JSONL"]
     AP["Optional second SSH process: ap_baseline<br/>HTTP metrics + exact-PID /proc counters<br/>Thermal zone + raw throttle flag<br/>Ignored JSONL + summary"]
     WEB["Loopback HTTP: /api/frame<br/>SSH tunnel to Mac browser"]
     UI["preview.html<br/>Image + exaggerated motion arrow<br/>Older boxes with provisional #IDs<br/>Gyro/timing cards; fetch/render then wait 200 ms"]
     CAMERA --> FF
     DEMO -. alternative .-> FF
     FF --> CAP
+    FF -. "trial recording only" .-> REIDVIDEO
     CAP --> SMALL --> MOTION --> RESULT
     MOTION -. "--motion-aware-tracking" .-> HISTORY
     CAP --> FULL --> DET --> PRE --> NET --> BOX --> TRACK
     FULL -. "--reidentify source crop" .-> DESC --> TRACK
     TRACK -. "retire after two missed detector updates" .-> MEMORY
     MEMORY -. "same-class tentative ID restore" .-> TRACK
+    DET -. "selected input + completed decision" .-> REIDLOG
     MODEL --> NET
     HISTORY -. "interval shift x4 into source pixels" .-> TRACK
     IMU --> POLL --> BIAS
@@ -84,6 +88,12 @@ best/runner-up scores when available, retained-entry count and cumulative reason
 detector snapshot. These are metadata only, not raw crops or descriptors.
 The IMU and image-motion history do not yet gate this memory decision; that is
 a separately planned XR-context experiment. The default tracker is unchanged.
+With optional `--trial-output`, the same FFmpeg camera input is also packet-
+copied to a local MJPEG-in-Matroska file, and the detector worker writes its
+selected 1280×720 grayscale frame (lossless PNG) alongside boxes, IDs, scores,
+diagnostic reasons and host times in JSONL. The camera is not opened twice.
+This recording branch is disabled by default and remains under ignored
+`recordings/`; it does not feed tracking or the browser.
 
 With detection off, FFmpeg downsizes to 320x180 before the pipe; there is no full
 image slot or detector worker. With IMU off, no IMU reader is started. `--demo`

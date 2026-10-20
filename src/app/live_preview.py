@@ -30,6 +30,7 @@ from vision.live_detector import (
     SOURCE_HEIGHT,
 )
 from vision.motion_history import MotionHistory
+from vision.reid_trial import ReidTrialRecorder
 
 
 def read_frame(stream: BinaryIO, size: int = WIDTH * HEIGHT) -> bytes | None:
@@ -353,7 +354,8 @@ def analyze_latest(state: State) -> None:
 
 
 def camera_command(
-    device: str | None = None, demo: bool = False, detection: bool = False
+    device: str | None = None, demo: bool = False, detection: bool = False,
+    video_path: Path | None = None,
 ) -> list[str]:
     """Build FFmpeg arguments for real/demo capture and the selected grayscale pipe size.
 
@@ -363,6 +365,8 @@ def camera_command(
         demo (bool): Use synthetic FFmpeg imagery instead of a physical camera.
         detection (bool): Keep full source pixels for detection instead of downsizing in
             FFmpeg.
+        video_path (Path | None): Optional new Matroska file for a packet-copy
+            camera recording; never opens the camera a second time.
 
     Returns:
         list[str]: Argument list; real capture requires a device path unless demo is
@@ -371,6 +375,8 @@ def camera_command(
     # Select a paced synthetic source or the verified MJPEG camera request.
     # Both feed the same raw-grayscale output path.
     command = ["ffmpeg", "-hide_banner", "-nostdin", "-loglevel", "warning"]
+    if video_path is not None:
+        command.append("-n")
     if demo:
         size = f"{SOURCE_WIDTH}x{SOURCE_HEIGHT}" if detection else f"{WIDTH}x{HEIGHT}"
         command += ["-re", "-f", "lavfi", "-i", f"testsrc2=size={size}:rate=30"]
@@ -391,7 +397,14 @@ def camera_command(
     # Detection needs the 720p source; motion-only mode reduces inside FFmpeg.
     # Python must read exactly width × height bytes for each gray frame.
     width, height = (SOURCE_WIDTH, SOURCE_HEIGHT) if detection else (WIDTH, HEIGHT)
+    if video_path is not None:
+        if demo or not detection:
+            raise ValueError("Trial video requires a real camera with detection")
+        command += [
+            "-map", "0:v:0", "-c:v", "copy", "-f", "matroska", str(video_path),
+        ]
     return command + [
+        "-map", "0:v:0",
         "-an",
         "-vf",
         f"scale={width}:{height}",
@@ -670,6 +683,15 @@ def main() -> None:
         help="experimental, uncalibrated appearance memory for retired IDs; requires --detect",
     )
     parser.add_argument(
+        "--trial-output", type=Path,
+        help="new ignored recordings/ directory for timed re-ID video and detector decisions",
+    )
+    parser.add_argument(
+        "--trial-seconds", type=float, default=60.0,
+        help="duration of --trial-output recording (default: 60 seconds)",
+    )
+    parser.add_argument("--trial-notes", default="", help="scene notes for trial metadata")
+    parser.add_argument(
         "--prototxt", type=Path, default=Path("models/mobilenet-ssd/deploy.prototxt")
     )
     parser.add_argument(
@@ -688,6 +710,15 @@ def main() -> None:
         parser.error("--motion-aware-tracking requires --detect")
     if args.reidentify and not args.detect:
         parser.error("--reidentify requires --detect")
+    if args.trial_output is not None and (not args.reidentify or args.demo):
+        parser.error("--trial-output requires a real camera with --detect --reidentify")
+    if not 0 < args.trial_seconds <= 600:
+        parser.error("--trial-seconds must be in (0, 600]")
+    if args.trial_output is not None:
+        recordings_root = (Path.cwd() / "recordings").resolve()
+        trial_path = args.trial_output.resolve()
+        if not trial_path.is_relative_to(recordings_root) or trial_path == recordings_root:
+            parser.error("--trial-output must be a new directory under this repo's ignored recordings/")
 
     # Load OpenCV only for detection. Two internal threads are a baseline setting,
     # not reserved CPU cores; disable OpenCL to keep this path on the CPU.
@@ -711,10 +742,19 @@ def main() -> None:
     )
     process = None
     server = None
+    recorder = None
+    trial_finished = False
     try:
         server = make_server(state, args.port)
+        if args.trial_output is not None:
+            recorder = ReidTrialRecorder(
+                args.trial_output, args.trial_seconds, args.trial_notes, cv,
+            )
         process, threads = start_workers(
-            state, camera_command(args.device, args.demo, args.detect), cv
+            state, camera_command(
+                args.device, args.demo, args.detect,
+                recorder.output / "camera.mkv" if recorder else None,
+            ), cv
         )
 
         # Construct the detector inside its worker so model loading does not block
@@ -734,7 +774,8 @@ def main() -> None:
 
             factory = build_detector
             worker = threading.Thread(
-                target=detect_latest, args=(state, factory), daemon=True
+                target=detect_latest, args=(state, factory),
+                kwargs={"recorder": recorder}, daemon=True
             )
             worker.start()
             threads.append(worker)
@@ -768,7 +809,10 @@ def main() -> None:
             flush=True,
         )
         print(
-            "Analysis: 320x180 grayscale. No footage saved. Ctrl+C stops.", flush=True
+            "Analysis: 320x180 grayscale. " + (
+                f"Trial recording for {args.trial_seconds:g} seconds to {recorder.output}."
+                if recorder else "No footage saved. Ctrl+C stops."
+            ), flush=True,
         )
         if args.detect:
             print(
@@ -790,7 +834,12 @@ def main() -> None:
 
         # Serve browser snapshots until interruption, then stop workers and close
         # the server even when startup or request handling raised an error.
+        trial_deadline = time.monotonic() + args.trial_seconds if recorder else None
         while not state.stop.is_set():
+            if trial_deadline is not None and time.monotonic() >= trial_deadline:
+                trial_finished = True
+                print("Trial timer complete; stopping preview.", flush=True)
+                break
             server.handle_request()
     except KeyboardInterrupt:
         print("\nStopping preview.")
@@ -801,6 +850,11 @@ def main() -> None:
             stop_workers(state, process, threads)
         if server is not None:
             server.server_close()
+        if recorder is not None:
+            recorder.close(
+                "complete" if trial_finished and not state.error and not state.detector.error
+                else "partial"
+            )
 
 
 if __name__ == "__main__":

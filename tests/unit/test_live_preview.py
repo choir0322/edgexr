@@ -2,6 +2,7 @@ from __future__ import annotations
 from typing import BinaryIO
 import io
 import json
+from pathlib import Path
 import threading
 import unittest
 from http.client import HTTPConnection
@@ -114,6 +115,15 @@ class PreviewTests(unittest.TestCase):
         self.assertEqual(command[command.index("-i") + 1], "/dev/video9")
         self.assertIn("1280x720", command)
         self.assertNotIn("v4l2", camera_command(demo=True))
+        recorded = camera_command("/dev/video9", detection=True,
+                                  video_path=Path("recordings/trial/camera.mkv"))
+        self.assertEqual(recorded.count("-map"), 2)
+        self.assertIn("copy", recorded)
+        self.assertIn("recordings/trial/camera.mkv", recorded)
+        self.assertEqual(recorded[-1], "-")
+        with self.assertRaises(ValueError):
+            camera_command(demo=True, detection=True,
+                           video_path=Path("recordings/trial/camera.mkv"))
 
     def test_loopback_routes_and_no_file_serving(self) -> None:
         """Verify loopback routes and no file serving.

@@ -101,6 +101,15 @@ class LiveDetectionTests(unittest.TestCase):
             real_publish(frame, boxes, cost_ms, finished, tracking_stats)
 
         state.detector.publish = publish
+        recorded: list[tuple[int, list[Record], Record]] = []
+
+        class Recorder:
+            """Observe the optional recorder hook without writing image files."""
+
+            def record(self, frame: tuple[int, float, bytes], boxes: list[Record],
+                       tracking_stats: Record, completed_s: float) -> None:
+                """Keep the exact source sequence and decision from each inference."""
+                recorded.append((frame[0], boxes, tracking_stats))
 
         def detect(pixels: bytes) -> list[Record]:
             """Send one box, two empty results, then a displaced return."""
@@ -117,12 +126,14 @@ class LiveDetectionTests(unittest.TestCase):
                      "box_xyxy": box}]
 
         with patch("vision.live_detector.grayscale_grid_descriptor", return_value=(1.0, 0.0)):
-            detect_latest(state, lambda: detect, lambda: clock[0])
+            detect_latest(state, lambda: detect, lambda: clock[0], Recorder())
         self.assertEqual([len(group) for group in published], [1, 0, 0, 1])
         self.assertEqual(published[0][0]["track_id"], 1)
         self.assertEqual(published[-1][0]["track_id"], 1)
         self.assertEqual(published[-1][0]["match_source"], "appearance")
         self.assertEqual(state.detector.snapshot(clock[0])["tracking_stats"]["reid_restores"], 1)
+        self.assertEqual(len(recorded), 4)
+        self.assertEqual(recorded[-1][1][0]["match_source"], "appearance")
         self.assertIsNone(state.detector.error)
 
     def test_worker_uses_scaled_motion_and_reports_motion_only_id_hold(self) -> None:
