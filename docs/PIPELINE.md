@@ -30,7 +30,7 @@ flowchart TD
     DET["Detector worker: detect_latest<br/>Target start spacing 0.5 s; no backlog"]
     PRE["infer_once<br/>Gray to 3 channels; resize 300x300<br/>(pixel - 127.5) times 0.007843"]
     NET["OpenCV DNN CPU<br/>MobileNet-SSD; OpenCV thread setting 2"]
-    BOX["parse_detections: score at least 0.5<br/>Source-coordinate boxes"]
+    BOX["parse_detections: live score at least 0.30<br/>Source-coordinate boxes"]
     TRACK["BasicTracker.update in detector worker<br/>Same-class raw/predicted IoU; session-local IDs"]
     DESC["Optional --reidentify<br/>8x8 mean-centered grayscale crop descriptor<br/>1280x720 source box; no raw crop retained"]
     MEMORY["RetiredObjectMemory in detector worker<br/>Up to 32 IDs, at most 10 s since last sighting<br/>Provisional cosine score + ambiguity abstain"]
@@ -79,6 +79,9 @@ grayscale crop descriptor for suitable current boxes. Only after active IoU or
 motion-aware matching fails may an unmatched detection claim a retired ID from
 the worker-local, bounded memory. A `↺` label and per-update restore count mean
 the provisional appearance rule fired, **not** verified physical identity.
+The worker also publishes last-decision reasons by detector class,
+best/runner-up scores when available, retained-entry count and cumulative reason counts through the
+detector snapshot. These are metadata only, not raw crops or descriptors.
 The IMU and image-motion history do not yet gate this memory decision; that is
 a separately planned XR-context experiment. The default tracker is unchanged.
 

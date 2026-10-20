@@ -1,4 +1,4 @@
-"""Hardware-free tests for a retired-ID memory not yet wired into live tracking."""
+"""Hardware-free tests for bounded retired-ID memory and diagnostics."""
 
 from __future__ import annotations
 
@@ -48,6 +48,30 @@ class ObjectMemoryTests(unittest.TestCase):
         self.assertIsNone(memory.take_match(
             15, [0, 1], now=2.3, min_similarity=0.9, min_margin=0.1
         ))
+        self.assertEqual(memory.last_decision["reason"], "below_threshold")
+        self.assertAlmostEqual(memory.last_decision["best_similarity"], 0.01, places=2)
+
+    def test_diagnostic_distinguishes_expiry_ambiguity_and_success(self) -> None:
+        """Publish scores and reasons without changing the original match policy."""
+        memory = RetiredObjectMemory(capacity=3, retention_s=2)
+        memory.remember(1, 15, [1, 0], seen_at=1, now=1)
+        memory.remember(2, 15, [0.99, 0.01], seen_at=1, now=1)
+        self.assertIsNone(memory.take_match(
+            15, [1, 0], now=2, min_similarity=0.85, min_margin=0.05
+        ))
+        self.assertEqual(memory.last_decision["reason"], "ambiguous")
+        self.assertEqual(memory.last_decision["candidate_count"], 2)
+        self.assertIsNotNone(memory.last_decision["runner_up_similarity"])
+        self.assertIsNone(memory.take_match(
+            15, [1, 0], now=3.1, min_similarity=0.85, min_margin=0.05
+        ))
+        self.assertEqual(memory.last_decision["reason"], "expired")
+        self.assertEqual(memory.expired_total, 2)
+        memory.remember(3, 15, [1, 0], seen_at=3.2, now=3.2)
+        self.assertEqual(memory.take_match(
+            15, [1, 0], now=3.3, min_similarity=0.85, min_margin=0.05
+        ), (3, 1.0))
+        self.assertEqual(memory.last_decision["reason"], "restored")
 
     def test_expiry_capacity_and_clock_direction(self) -> None:
         """Last sighting, not retirement time, controls expiry and eviction."""

@@ -21,6 +21,7 @@ from vision.object_memory import RetiredObjectMemory, grayscale_grid_descriptor
 # the small motion/display image and the target inference cadence.
 SOURCE_WIDTH, SOURCE_HEIGHT = 1280, 720
 MAX_AGE = 1.5
+LIVE_CONFIDENCE_THRESHOLD = 0.30
 
 
 class DetectionState:
@@ -143,6 +144,7 @@ class DetectionState:
                 height=SOURCE_HEIGHT,
                 tracking_mode="motion-aware" if self.motion_aware else "basic",
                 reidentify_enabled=self.reidentify,
+                score_threshold=LIVE_CONFIDENCE_THRESHOLD,
             )
             if status != "ready":
                 result["boxes"] = []
@@ -185,15 +187,18 @@ class CpuDetector:
                 this stage.
 
         Returns:
-            list[Record]: Parsed source-coordinate boxes at confidence threshold 0.5.
+            list[Record]: Parsed source-coordinate boxes at the live score cutoff.
         """
         # Reinterpret the full gray source, run shared 300×300 preprocessing/inference,
-        # then map accepted boxes back to source pixels using the baseline 0.5 threshold.
+        # then map accepted boxes back to source pixels. This live cutoff is
+        # separate from the saved-image command's historical default.
         gray = self.np.frombuffer(pixels, dtype=self.np.uint8).reshape(
             SOURCE_HEIGHT, SOURCE_WIDTH
         )
         rows, *_ = infer_once(self.cv, self.net, gray)
-        return parse_detections(rows, SOURCE_WIDTH, SOURCE_HEIGHT, 0.5)
+        return parse_detections(
+            rows, SOURCE_WIDTH, SOURCE_HEIGHT, LIVE_CONFIDENCE_THRESHOLD
+        )
 
 
 def detect_latest(

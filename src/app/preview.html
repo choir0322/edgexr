@@ -151,6 +151,7 @@ these two displays are approximate concurrent observations, not synchronized mea
  * @property {?number} [rate_hz] Recent completed detections per second.
  * @property {?number} [compute_ms] Elapsed preprocessing/inference/parsing time.
  * @property {boolean} [reidentify_enabled] Experimental appearance memory flag.
+ * @property {number} [score_threshold] Live detector acceptance cutoff.
  * @property {?number} [age_ms] Source-image receipt age on Pi, excluding transport.
  * @property {string} [tracking_mode] basic or motion-aware matching.
  * @property {Object} [tracking_stats] Counts for the latest detector update only.
@@ -267,9 +268,17 @@ function render(data) {
   const ready = detector.status === 'ready' && data.status === 'live';
   const trackingNote = detector.tracking_mode === 'motion-aware' ?
     ` Motion coverage: ${tracking.covered_tracks ?? 0} old tracks; ${tracking.fallback_tracks ?? 0} fell back. Motion-only ID holds: ${tracking.motion_only_matches ?? 0}.` : '';
+  const reidLast = tracking.reid_last_event || {};
+  const reidScore = Number.isFinite(reidLast.best_similarity) ?
+    `; best ${reidLast.best_similarity.toFixed(3)} vs ${reidLast.threshold.toFixed(2)} threshold` : '';
+  const personDecision = tracking.reid_last_by_class?.['15'];
+  const bottleDecision = tracking.reid_last_by_class?.['5'];
+  const personNote = personDecision ?
+    ` Person: ${personDecision.reason}${Number.isFinite(personDecision.best_similarity) ? ` (${personDecision.best_similarity.toFixed(3)} vs ${personDecision.threshold.toFixed(2)})` : ''}.` : '';
+  const bottleNote = bottleDecision ? ` Bottle: ${bottleDecision.reason}.` : '';
   const reidNote = detector.reidentify_enabled ?
-    ` Experimental appearance ID restores this update: ${tracking.reid_restores ?? 0} (↺; not verified identity).` : '';
-  put('detect-status', ready ? `${detector.boxes.length} detections on source frame ${detector.sequence} · boxes may lag behind this view.${trackingNote}${reidNote}` :
+    ` Appearance memory: ${tracking.reid_memory_count ?? 0} retired IDs; last decision (class ${reidLast.class_id ?? '—'}): ${reidLast.reason || 'none'}${reidScore}.${personNote}${bottleNote} Restores this update: ${tracking.reid_restores ?? 0} (↺; not verified identity).` : '';
+  put('detect-status', ready ? `${detector.boxes.length} detections on source frame ${detector.sequence} (score ≥${detector.score_threshold?.toFixed(2) ?? '—'}) · boxes may lag behind this view.${trackingNote}${reidNote}` :
     detector.status === 'off' ? 'Detection is off. Add --detect to show boxes.' :
     detector.status === 'error' ? detector.error :
     detector.status === 'starting' ? 'Loading detector / waiting for its first frame…' : 'Detection unavailable or stale; boxes hidden.');

@@ -95,11 +95,26 @@ class BasicTracker:
         self.reid_min_margin = reid_min_margin
         self._next_id = 1
         self._tracks: dict[int, _Track] = {}
+        self._reid_events: Counter[str] = Counter()
+        self._last_reid_event: Record | None = None
+        self._last_reid_by_class: dict[int, Record] = {}
         self.last_stats = {
             "covered_tracks": 0, "fallback_tracks": 0,
             "motion_matches": 0, "motion_only_matches": 0,
             "reid_restores": 0,
         }
+
+    def _note_reid(self, reason: str, class_id: int, **details: object) -> None:
+        """Keep a small, image-free explanation of the most recent memory decision.
+
+        Args:
+            reason (str): Stable decision name for browser and telemetry.
+            class_id (int): Detector class that triggered the decision.
+            **details (object): Numeric score and candidate metadata, never pixels.
+        """
+        self._reid_events[reason] += 1
+        self._last_reid_event = {"reason": reason, "class_id": class_id, **details}
+        self._last_reid_by_class[class_id] = self._last_reid_event
 
     def update(
         self,
@@ -225,12 +240,16 @@ class BasicTracker:
             track = self._tracks[track_id]
             track.missed += 1
             if track.missed >= self.max_missed:
-                if (self.reid_memory is not None and track.descriptor is not None
-                        and track.seen_at is not None and source_time is not None):
-                    self.reid_memory.remember(
+                if self.reid_memory is not None:
+                    if track.descriptor is None or track.seen_at is None or source_time is None:
+                        self._note_reid("retired_no_descriptor", track.class_id)
+                    elif self.reid_memory.remember(
                         track_id, track.class_id, track.descriptor,
                         seen_at=track.seen_at, now=source_time,
-                    )
+                    ):
+                        self._note_reid("retired_stored", track.class_id)
+                    else:
+                        self._note_reid("retired_expired", track.class_id)
                 del self._tracks[track_id]
 
         # Walk the current detections in their original order. A matched one
@@ -248,14 +267,24 @@ class BasicTracker:
             assignment = assignments.get(index)
             restored = None
             if assignment is None:
-                if (self.reid_memory is not None and normalized[index] is not None
-                        and source_time is not None
-                        and unmatched_class_counts[detection["class_id"]] == 1):
-                    restored = self.reid_memory.take_match(
-                        detection["class_id"], normalized[index], now=source_time,
-                        min_similarity=self.reid_min_similarity,
-                        min_margin=self.reid_min_margin,
-                    )
+                if self.reid_memory is not None:
+                    class_id = detection["class_id"]
+                    if normalized[index] is None or source_time is None:
+                        self._note_reid("return_no_descriptor", class_id)
+                    elif unmatched_class_counts[class_id] != 1:
+                        self._note_reid("return_multiple_same_class", class_id)
+                    else:
+                        restored = self.reid_memory.take_match(
+                            class_id, normalized[index], now=source_time,
+                            min_similarity=self.reid_min_similarity,
+                            min_margin=self.reid_min_margin,
+                        )
+                        decision = self.reid_memory.last_decision
+                        if decision is not None:
+                            self._note_reid(decision["reason"], class_id, **{
+                                key: value for key, value in decision.items()
+                                if key != "reason"
+                            })
                 if restored is None:
                     track_id = self._next_id
                     self._next_id += 1
@@ -285,4 +314,15 @@ class BasicTracker:
             "motion_only_matches": sum(assignment[1] and assignment[2] for assignment in assignments.values()),
             "reid_restores": reid_restores,
         }
+        if self.reid_memory is not None:
+            self.last_stats.update(
+                reid_memory_count=len(self.reid_memory),
+                reid_expired_total=self.reid_memory.expired_total,
+                reid_event_counts=dict(self._reid_events),
+                reid_last_event=dict(self._last_reid_event or {}),
+                reid_last_by_class={
+                    str(class_id): dict(event)
+                    for class_id, event in self._last_reid_by_class.items()
+                },
+            )
         return identified

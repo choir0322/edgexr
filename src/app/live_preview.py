@@ -772,7 +772,7 @@ def main() -> None:
         )
         if args.detect:
             print(
-                "Detection: 720p source -> 300x300 model, CPU 2 threads, target 2 Hz. Boxes may lag; age shown.",
+                "Detection: 720p source -> 300x300 model, score at least 0.30, CPU 2 threads, target 2 Hz. Boxes may lag; age shown.",
                 flush=True,
             )
             if args.reidentify:

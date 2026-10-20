@@ -12,7 +12,9 @@ try:
 except ImportError:
     np = None
 
-from vision.live_detector import DetectionState, detect_latest
+from vision.live_detector import (
+    CpuDetector, DetectionState, LIVE_CONFIDENCE_THRESHOLD, detect_latest,
+)
 
 if np is not None:
     from app.live_preview import State, camera_command
@@ -36,6 +38,7 @@ class DetectionStateTests(unittest.TestCase):
         state.publish((1, 10, b""), [{"label": "chair"}], 200, 10.2)
         self.assertAlmostEqual(state.snapshot(10.3)["age_ms"], 300)
         self.assertEqual(state.snapshot(10.3)["status"], "ready")
+        self.assertEqual(state.snapshot(10.3)["score_threshold"], 0.30)
         self.assertEqual(state.snapshot(12)["boxes"], [])
         self.assertEqual(state.snapshot(10.3, False)["boxes"], [])
         state.publish((2, 10.5, b""), [], 201, 10.7)
@@ -49,6 +52,19 @@ class DetectionStateTests(unittest.TestCase):
 
 @unittest.skipIf(np is None, "NumPy required for preview")
 class LiveDetectionTests(unittest.TestCase):
+    def test_live_detector_accepts_scores_at_least_point_three(self) -> None:
+        """The live cutoff changes without changing saved-image parser defaults."""
+        detector = CpuDetector.__new__(CpuDetector)
+        detector.np, detector.cv, detector.net = np, None, None
+        rows = [
+            [0, 5, 0.30, 0.1, 0.1, 0.5, 0.5],
+            [0, 15, 0.29, 0.2, 0.2, 0.8, 0.8],
+        ]
+        with patch("vision.live_detector.infer_once", return_value=(rows, 0, 0, 0)):
+            boxes = detector(bytes(1280 * 720))
+        self.assertEqual(LIVE_CONFIDENCE_THRESHOLD, 0.30)
+        self.assertEqual([box["label"] for box in boxes], ["bottle"])
+
     def test_opt_in_worker_restores_a_retired_id_without_changing_default(self) -> None:
         """A four-inference sequence exercises the live memory handoff."""
         clock = [100.0]

@@ -115,6 +115,8 @@ class RetiredObjectMemory:
         self.retention_s = float(retention_s)
         self._entries: dict[int, MemoryEntry] = {}
         self._last_now: float | None = None
+        self.expired_total = 0
+        self.last_decision: dict[str, float | int | str | None] | None = None
 
     def __len__(self) -> int:
         """Return the number of stored retired IDs before the next expiry check."""
@@ -134,6 +136,7 @@ class RetiredObjectMemory:
         for track_id, entry in list(self._entries.items()):
             if now - entry.seen_at > self.retention_s:
                 del self._entries[track_id]
+                self.expired_total += 1
 
     def remember(
         self, track_id: int, class_id: int, descriptor: Sequence[float],
@@ -195,6 +198,12 @@ class RetiredObjectMemory:
         if not math.isfinite(min_margin) or not 0 < min_margin <= 2:
             raise ValueError("min_margin must be finite and in (0, 2]")
         current = normalize_descriptor(descriptor)
+        expired_before = self.expired_total
+        expiring_class_candidates = sum(
+            entry.class_id == class_id and len(entry.descriptor) == len(current)
+            and now - entry.seen_at > self.retention_s
+            for entry in self._entries.values()
+        )
         self._advance(now)
 
         # Different descriptor versions (lengths) and detector classes cannot
@@ -207,9 +216,25 @@ class RetiredObjectMemory:
             ),
             reverse=True,
         )
-        if not ranked or ranked[0][0] < min_similarity:
-            return None
-        if len(ranked) > 1 and ranked[0][0] - ranked[1][0] < min_margin:
+        best = ranked[0][0] if ranked else None
+        runner_up = ranked[1][0] if len(ranked) > 1 else None
+        reason = (
+            "expired" if not ranked and expiring_class_candidates else
+            "no_candidate" if not ranked else
+            "below_threshold" if best < min_similarity else
+            "ambiguous" if runner_up is not None and best - runner_up < min_margin else
+            "restored"
+        )
+        self.last_decision = {
+            "reason": reason,
+            "candidate_count": len(ranked),
+            "best_similarity": best,
+            "runner_up_similarity": runner_up,
+            "threshold": min_similarity,
+            "required_margin": min_margin,
+            "expired_during_check": self.expired_total - expired_before,
+        }
+        if reason != "restored":
             return None
         score, track_id = ranked[0]
         del self._entries[track_id]

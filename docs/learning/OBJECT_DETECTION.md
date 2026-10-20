@@ -72,7 +72,8 @@ the other five grids each have six. This configuration has 1,917 priors in total
 These dimensions describe this specific MobileNet-SSD graph; other SSD variants
 use different grids and counts. The model includes softmax, CENTER_SIZE box
 decoding, score filtering at 0.25 and class-wise NMS at IoU 0.45. The Python
-application then applies its own 0.5 score filter to the graph's output.
+application then applies its own score filter to the graph's output: 0.30 in
+the live preview, while the saved-frame command retains its 0.50 default.
 
 MobileNet and SSD are connected within the model loaded by
 `cv.dnn.readNetFromCaffe`; one `net.forward()` executes the graph. There is no
@@ -242,7 +243,9 @@ top, right, bottom. Box coordinates are relative to image width/height.
 `parse_detections(rows, width, height, threshold)` accepts numeric seven-element
 rows, positive image dimensions and a threshold in `[0,1]`. It validates shape,
 finite values, scores and class IDs, skips the no-detection sentinel/background,
-and rejects scores below the threshold. Live `CpuDetector` passes threshold 0.5.
+and rejects scores below the threshold. Live `CpuDetector` passes threshold
+0.30. This changes which model predictions become visible boxes; it does not
+change the model's predictions or guarantee a box on every detector update.
 
 Left/top are clipped to the image and rounded down; right/bottom are clipped
 and rounded up. Empty boxes are removed. For normalized coordinates

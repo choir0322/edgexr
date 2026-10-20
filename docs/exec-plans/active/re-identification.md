@@ -63,6 +63,14 @@ motion must remain unknown rather than an assumed zero.
   shape or runtime cadence. Revisit both when the live path is wired.
 - [ ] Run a supervised Pi trial, inspect ID holds and false matches, and
   record runtime cost before the deferred AP optimization phase.
+- [x] 2026-10-21: Add persistent, image-free reasons and scores for experimental
+  re-ID decisions after the user's first trial showed repeated new person IDs.
+  Lower the separate **live detection score cutoff** from 0.50 to 0.30 after
+  the stationary bottle's detection box flickered. Keep re-ID's provisional
+  0.85 cosine threshold unchanged so the two failure modes remain separable.
+- [ ] Repeat the bottle-and-person Pi trial and record detector rate, box
+  flicker, retirement count, memory/expiry counts, best return scores, new IDs,
+  tentative restores and any false claims. Do not infer cause without these data.
 - [ ] Compare appearance-only, appearance + reliable image motion, and
   appearance + validated IMU rotation on the same labelled pan/return cases.
   Report when spatial evidence helps, hurts or is unavailable.
@@ -153,6 +161,12 @@ The user requested a quick Pi re-entry run before a labelled calibration set
 exists. The live flag therefore uses explicit provisional settings and an
 on-screen restore marker. This is useful for observing the mechanism, not
 for claiming that a matching number proves a correct identity.
+In the first live trial, a stationary bottle's detection box flickered and its
+ID sometimes increased; a person leaving for approximately 3–5 seconds and
+returning 2–3 times always received a higher ID. These are user observations,
+not yet a timestamped ground-truth dataset. The changed live score cutoff may
+recover weaker boxes but could add false positives. Persistent diagnostic
+reasons are needed before changing the appearance threshold.
 
 ## Decision log
 

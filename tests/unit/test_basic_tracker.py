@@ -103,6 +103,8 @@ class BasicTrackerTests(unittest.TestCase):
         tracker.update([], 1.5, descriptors=[])
         tracker.update([], 2.0, descriptors=[])
         self.assertEqual(len(memory), 1)
+        self.assertEqual(tracker.last_stats["reid_last_event"]["reason"], "retired_stored")
+        self.assertEqual(tracker.last_stats["reid_memory_count"], 1)
         returned = tracker.update(
             [detection(15, [400, 0, 500, 100])], 2.5,
             descriptors=[[1, 0]],
@@ -110,6 +112,10 @@ class BasicTrackerTests(unittest.TestCase):
         self.assertEqual(returned[0]["track_id"], 1)
         self.assertEqual(returned[0]["match_source"], "appearance")
         self.assertEqual(tracker.last_stats["reid_restores"], 1)
+        self.assertEqual(tracker.last_stats["reid_last_event"]["reason"], "restored")
+        self.assertEqual(tracker.last_stats["reid_last_by_class"]["15"]["reason"],
+                         "restored")
+        self.assertEqual(tracker.last_stats["reid_event_counts"]["retired_stored"], 1)
         self.assertEqual(len(memory), 0)
 
     def test_opt_in_memory_abstains_for_different_appearance(self) -> None:
@@ -125,6 +131,8 @@ class BasicTrackerTests(unittest.TestCase):
                                descriptors=[[0, 1]])
         self.assertEqual(other[0]["track_id"], 2)
         self.assertEqual(tracker.last_stats["reid_restores"], 0)
+        self.assertEqual(tracker.last_stats["reid_last_event"]["reason"], "below_threshold")
+        self.assertEqual(tracker.last_stats["reid_last_event"]["best_similarity"], 0.0)
 
     def test_opt_in_memory_abstains_when_two_current_same_class_boxes_compete(self) -> None:
         """Two returning lookalikes cannot claim an old ID by list order."""
@@ -141,6 +149,38 @@ class BasicTrackerTests(unittest.TestCase):
         ], 2.5, descriptors=[[1, 0], [1, 0]])
         self.assertEqual([item["track_id"] for item in result], [2, 3])
         self.assertEqual(tracker.last_stats["reid_restores"], 0)
+        self.assertEqual(tracker.last_stats["reid_last_event"]["reason"],
+                         "return_multiple_same_class")
+
+    def test_no_descriptor_retirement_is_explained(self) -> None:
+        """Flat/tiny source crops cannot create a retired appearance candidate."""
+        tracker = BasicTracker(reid_memory=RetiredObjectMemory(
+            capacity=4, retention_s=10
+        ))
+        tracker.update([detection(15, [100, 0, 200, 100])], 1,
+                       descriptors=[None])
+        tracker.update([], 1.5, descriptors=[])
+        tracker.update([], 2, descriptors=[])
+        self.assertEqual(tracker.last_stats["reid_last_event"]["reason"],
+                         "retired_no_descriptor")
+        self.assertEqual(tracker.last_stats["reid_memory_count"], 0)
+
+    def test_person_diagnostic_survives_a_later_bottle_event(self) -> None:
+        """Class-specific reasons remain readable in a mixed-object scene."""
+        tracker = BasicTracker(reid_memory=RetiredObjectMemory(
+            capacity=4, retention_s=10
+        ))
+        tracker.update([detection(15, [100, 0, 200, 100])], 1,
+                       descriptors=[[1, 0]])
+        tracker.update([], 1.5, descriptors=[])
+        tracker.update([], 2, descriptors=[])
+        tracker.update([
+            detection(15, [400, 0, 500, 100]),
+            detection(5, [700, 0, 800, 100]),
+        ], 2.5, descriptors=[[0, 1], [1, 0]])
+        by_class = tracker.last_stats["reid_last_by_class"]
+        self.assertEqual(by_class["15"]["reason"], "below_threshold")
+        self.assertEqual(by_class["5"]["reason"], "no_candidate")
 
     def test_motion_prediction_holds_an_id_that_raw_overlap_would_lose(self) -> None:
         """Use source-pixel scene shift; changing direction changes the sign.

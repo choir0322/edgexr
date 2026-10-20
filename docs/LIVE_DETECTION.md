@@ -5,7 +5,9 @@ model on the CPU, with two OpenCV threads and a target of two updates/second.
 No new dependency, model download, saved footage or servo control is involved.
 
 The detector processes the newest available 1280x720 grayscale frame, using
-the saved-frame tool's 300x300 normalization and threshold 0.5. Intermediate
+the saved-frame tool's 300x300 normalization. Live boxes now require a score
+of at least 0.30; the saved-frame command keeps its historical 0.50 default.
+Intermediate
 frames are intentionally skipped for detection. The existing Skipped decoded
 frames counter still refers to the motion-analysis worker, not this deliberate
 detector sampling. Only one latest frame and one detector result are retained.
@@ -114,6 +116,31 @@ This option adds no model or package, saves no images, and does not move a
 servo. It keeps at most 32 retired descriptors for up to 10 seconds since the
 last sighting. The 0.85 cosine threshold and 0.05 ambiguity margin are
 uncalibrated; the IMU and image motion are not fused into this feature yet.
+
+For a failed re-entry, the status line now keeps the **last re-ID decision**
+visible, including the best similarity when a candidate existed. `retired_stored`
+means the old track entered memory after two missed detector updates;
+`retired_no_descriptor` means its crop was too small or visually flat.
+`below_threshold` compares the best score with 0.85; `ambiguous` means a second
+stored same-class candidate was too close. `expired` or a growing expiry count
+points to the 10-second window. `return_multiple_same_class` means more than
+one unmatched current box competed, so memory abstained. `no_candidate` means
+there was no eligible stored entry; this also happens on the first appearance.
+`restored` is only a tentative appearance claim. The last person and bottle
+decisions are kept separately, so a flickering bottle cannot overwrite the
+person's most recent score. Exact event counts and decisions remain available
+through `/api/telemetry` without image bytes:
+
+```bash
+curl -s http://127.0.0.1:8765/api/telemetry | python3 -c 'import json,sys; d=json.load(sys.stdin)["detector"]; s=d.get("tracking_stats") or {}; print("rate_hz:",d.get("rate_hz")); print("memory:",s.get("reid_memory_count"),"expired_total:",s.get("reid_expired_total")); print("events:",s.get("reid_event_counts")); print("person:",(s.get("reid_last_by_class") or {}).get("15")); print("bottle:",(s.get("reid_last_by_class") or {}).get("5"))'
+```
+
+The live score cutoff was changed from 0.50 to 0.30 after a stationary bottle's
+box flickered in the user's trial. A weaker accepted box may reduce misses,
+but a missed model prediction still produces no box, and lower scores may add
+false or competing boxes. This is a separate setting from the 0.85
+**re-identification similarity** cutoff. Neither promises continuous bottle
+or person detection; compare both failure modes in the next Pi trial.
 
 No backlog or catch-up bursts: if inference takes longer than 0.5 seconds,
 the next run uses whatever frame is newest when it becomes available. Boxes
