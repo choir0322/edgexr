@@ -31,6 +31,31 @@ per output channel. These teaching biases are enabled for explanation; the
 actual backbone disables convolution biases. Actual model dimensions appear
 in an expandable explanation.
 
+## Experimental return matching
+
+With `--detect --reidentify`, the same detector worker uses each current
+1280×720 grayscale source frame and its source-coordinate box to form a
+mean-centered 8×8 brightness-grid descriptor. Tiny or nearly flat crops have
+no descriptor and cannot enter memory. `BasicTracker.update()` still gives
+active same-class IoU matches first priority. At the second missed detector
+update, a track with a usable descriptor moves into a worker-local retired-ID
+memory (32 entries maximum; 10 seconds since last sighting). An otherwise
+unmatched same-class current box may claim one old ID if its cosine score is
+at least 0.85 and exceeds the runner-up by at least 0.05. Those numbers are
+**provisional test settings**, not calibrated accuracy thresholds. A `↺` label
+marks an appearance-based restore; a new ID is the abstain outcome. No raw
+crop or descriptor is sent to the browser or saved to disk.
+If multiple *current unmatched* boxes have the same class, the first
+experiment abstains from appearance restoration for all of them rather than
+letting list order decide who inherits the old ID.
+
+This is not face recognition or verified identity. Similar clothes, lighting,
+pose and background inside a box can create false matches or misses. The IMU
+and visual-motion history do not yet participate in this memory decision.
+See [`object_memory.py`](../../src/vision/object_memory.py),
+[`basic_tracker.py`](../../src/vision/basic_tracker.py), and the
+[Pi trial](../LIVE_DETECTION.md) before drawing conclusions from one ID hold.
+
 ## Where MobileNet ends and SSD prediction begins
 
 The pinned graph's SHA-256 matches the saved Pi baseline report:

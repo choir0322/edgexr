@@ -5,6 +5,7 @@ if TYPE_CHECKING:
     from _contracts import Record
 
 import unittest
+from unittest.mock import patch
 
 try:
     import numpy as np
@@ -48,6 +49,66 @@ class DetectionStateTests(unittest.TestCase):
 
 @unittest.skipIf(np is None, "NumPy required for preview")
 class LiveDetectionTests(unittest.TestCase):
+    def test_opt_in_worker_restores_a_retired_id_without_changing_default(self) -> None:
+        """A four-inference sequence exercises the live memory handoff."""
+        clock = [100.0]
+
+        class Stop:
+            """Advance synthetic time while the detector respects its cadence."""
+
+            stopped = False
+
+            def is_set(self) -> bool:
+                """Return whether the synthetic worker should exit."""
+                return self.stopped
+
+            def set(self) -> None:
+                """Stop the worker after the returning detection."""
+                self.stopped = True
+
+            def wait(self, seconds: float) -> bool:
+                """Advance the fake clock without sleeping."""
+                clock[0] += seconds
+                return self.stopped
+
+        state = State(detection_enabled=True, reidentify=True)
+        state.stop = Stop()
+        state.publish_frame(b"", clock[0], b"frame1")
+        published: list[list[Record]] = []
+        real_publish = state.detector.publish
+
+        def publish(frame: tuple[int, float, bytes], boxes: list[Record],
+                    cost_ms: float, finished: float,
+                    tracking_stats: Record | None = None) -> None:
+            """Record the published IDs and retain the real status update."""
+            published.append(boxes)
+            real_publish(frame, boxes, cost_ms, finished, tracking_stats)
+
+        state.detector.publish = publish
+
+        def detect(pixels: bytes) -> list[Record]:
+            """Send one box, two empty results, then a displaced return."""
+            index = len(published)
+            clock[0] += 0.1
+            if index < 3:
+                state.publish_frame(b"", clock[0], f"frame{index + 2}".encode())
+            else:
+                state.stop.set()
+            if index in (1, 2):
+                return []
+            box = [100, 0, 200, 100] if index == 0 else [400, 0, 500, 100]
+            return [{"class_id": 15, "label": "person", "confidence": 0.9,
+                     "box_xyxy": box}]
+
+        with patch("vision.live_detector.grayscale_grid_descriptor", return_value=(1.0, 0.0)):
+            detect_latest(state, lambda: detect, lambda: clock[0])
+        self.assertEqual([len(group) for group in published], [1, 0, 0, 1])
+        self.assertEqual(published[0][0]["track_id"], 1)
+        self.assertEqual(published[-1][0]["track_id"], 1)
+        self.assertEqual(published[-1][0]["match_source"], "appearance")
+        self.assertEqual(state.detector.snapshot(clock[0])["tracking_stats"]["reid_restores"], 1)
+        self.assertIsNone(state.detector.error)
+
     def test_worker_uses_scaled_motion_and_reports_motion_only_id_hold(self) -> None:
         """Join 320×180 pair shifts to 1280×720 detector boxes by receipt time.
 

@@ -1,4 +1,4 @@
-# Phase 4 first step: sustained Pi application-processor baseline
+# Historical Pi application-processor baseline; tuning deferred
 
 ## Purpose / big picture
 
@@ -37,7 +37,10 @@ exposure latency. See `docs/BENCHMARKING.md` and `docs/AP_OPTIMIZATION.md`.
   Pi measurement; add its concise result under `benchmarks/results/`. Raw
   time-series logs remain outside Git.
 - [ ] Confirm power supply, inspect thermal trend and decide whether a
-  thermally stabilized repeat is needed before the first tuning comparison.
+  thermally stabilized repeat is needed before a future tuning comparison.
+- [x] 2026-10-20: Preserve this pre-re-identification result as a reference;
+  user moved AP optimization after object memory in the roadmap. Do not use
+  this unchanged basic-tracking workload as the final tuning baseline.
 
 ## Plan of work
 
@@ -109,6 +112,8 @@ remain unreported. See `benchmarks/results/ap-baseline-basic-2026-10-18.md`.
 - 2026-10-18: Preserve the completed first run with its incomplete conditions;
   do not treat rising temperature as a settled thermal baseline or compare
   future thread settings against it without matching/stabilizing conditions.
+- 2026-10-20: Postpone tuning until re-identification is implemented and
+  measured. A new full-workload baseline will include its actual runtime cost.
 
 ## Outcomes and retrospective
 

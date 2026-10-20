@@ -9,7 +9,10 @@ Start with the [current pipeline diagram](docs/PIPELINE.md) and the
 [IMU readings](docs/learning/IMU.md). These describe the current code, including
 its timing and limitations. Basic session-local tracking and optional
 [motion-aware ID matching](docs/learning/MOTION_AWARE_TRACKING.md) exist;
-sensor fusion and long-term re-identification do not.
+an [experimental, opt-in appearance memory](docs/LIVE_DETECTION.md#quick-experimental-re-entry-check)
+can now attempt to restore a recently retired ID. Its thresholds are not
+calibrated, and sensor fusion, verified identity and long-term memory do not
+exist.
 For a repeatable Pi comparison of basic and motion-aware tracking, follow the
 [metrics-only tracking trial](docs/TRACKING_TRIAL.md).
 

@@ -22,17 +22,29 @@ Display calibrated or clearly labelled raw motion/orientation alongside the
 camera feed. Only then explore whether it helps reject camera-induced motion or
 improve tracking stability.
 
-## Phase 4 — Application Processor: measure and optimize
+## Phase 4 — Remember objects after they leave view
+
+Build a bounded, session-local object memory so a returning object can keep its
+old ID after the short-term track has retired. This is a new re-identification
+problem, not an extension of box overlap alone: compare appearance and class,
+handle competing lookalikes conservatively, and allow an **unknown/new ID**
+outcome. Evaluate departures and returns in recorded trials before enabling it
+in the live preview. The camera is monochrome; a matching appearance is not
+proof of real-world identity. Follow the
+[active re-identification plan](exec-plans/active/re-identification.md).
+
+## Phase 5 — Application Processor: measure and optimize
 
 Use the protocol in `BENCHMARKING.md` to establish a baseline. Test one
 optimization at a time: capture mode, model choice, frame skipping, threading,
 or display overhead. Explain each tradeoff in a committed result summary.
-The proposed first step is a sustained, unchanged full-workload measurement in
-[`ap-baseline.md`](exec-plans/active/ap-baseline.md). It awaits user review;
-no optimization or hardware setting change has begun. The preceding
-[tracker comparison](../benchmarks/results/tracking-comparison-2026-10-18.md)
-did not demonstrate a necessary motion-assisted ID hold, so tracker tuning is
-not a prerequisite for this phase.
+The earlier sustained, unchanged basic-tracking measurement in
+[`ap-baseline.md`](exec-plans/active/ap-baseline.md) remains a historical
+reference. It was collected **before** re-identification and is not a fair
+final-workload optimization baseline. Defer thread, model, camera-mode and
+other tuning until the re-identification behavior and its cost are measured;
+then establish a comparable full-workload baseline. No tuning experiment has
+started.
 
 Explicit future objective: **find the best detector configuration for this Pi
 and EdgeXR's requirements**, including model efficiency and whole-application
@@ -51,7 +63,7 @@ artifacts on the real Pi. Training/export may occur on a separate computer.
 - [ ] Evaluate fine-tuning for the camera's grayscale scenes and required classes.
 - [ ] Document the selected configuration and rejected alternatives reproducibly.
 
-## Phase 5 — Demonstrate and reflect
+## Phase 6 — Demonstrate and reflect
 
 Record a reproducible demo procedure, compare against the first baseline, and
 write what the system can and cannot reliably claim.

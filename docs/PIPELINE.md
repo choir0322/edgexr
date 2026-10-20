@@ -32,6 +32,8 @@ flowchart TD
     NET["OpenCV DNN CPU<br/>MobileNet-SSD; OpenCV thread setting 2"]
     BOX["parse_detections: score at least 0.5<br/>Source-coordinate boxes"]
     TRACK["BasicTracker.update in detector worker<br/>Same-class raw/predicted IoU; session-local IDs"]
+    DESC["Optional --reidentify<br/>8x8 mean-centered grayscale crop descriptor<br/>1280x720 source box; no raw crop retained"]
+    MEMORY["RetiredObjectMemory in detector worker<br/>Up to 32 IDs, at most 10 s since last sighting<br/>Provisional cosine score + ambiguity abstain"]
     MODEL["Local deploy.prototxt + caffemodel<br/>Graph and pretrained parameters"]
     IMU["Camera-mounted IMU via I2C<br/>SunFounder SH3001 driver"]
     POLL["poll_imu<br/>Read midpoint timestamp; then wait 50 ms"]
@@ -47,6 +49,9 @@ flowchart TD
     CAP --> SMALL --> MOTION --> RESULT
     MOTION -. "--motion-aware-tracking" .-> HISTORY
     CAP --> FULL --> DET --> PRE --> NET --> BOX --> TRACK
+    FULL -. "--reidentify source crop" .-> DESC --> TRACK
+    TRACK -. "retire after two missed detector updates" .-> MEMORY
+    MEMORY -. "same-class tentative ID restore" .-> TRACK
     MODEL --> NET
     HISTORY -. "interval shift x4 into source pixels" .-> TRACK
     IMU --> POLL --> BIAS
@@ -68,6 +73,14 @@ worker asks that history for the interval between a track's last matched source
 receipt and the current source receipt. The independent
 I2C IMU reader supplies corrected angular rates. A snapshot combines the latest
 available outputs for display, not for a shared-time estimate of camera pose.
+
+With experimental `--reidentify`, the detector worker also computes a 64-value
+grayscale crop descriptor for suitable current boxes. Only after active IoU or
+motion-aware matching fails may an unmatched detection claim a retired ID from
+the worker-local, bounded memory. A `↺` label and per-update restore count mean
+the provisional appearance rule fired, **not** verified physical identity.
+The IMU and image-motion history do not yet gate this memory decision; that is
+a separately planned XR-context experiment. The default tracker is unchanged.
 
 With detection off, FFmpeg downsizes to 320x180 before the pipe; there is no full
 image slot or detector worker. With IMU off, no IMU reader is started. `--demo`
@@ -172,8 +185,8 @@ session-local IDs, optionally use measured image shift to help match IDs during
 moderate turns, and measure angular rate concurrently. Future: validate this
 mode on the Pi, align sensor timing and coordinate frames, and better distinguish
 moving objects from a moving observer.
-Long-term object memory, camera pose, IMU-driven box correction and full spatial
-mapping are not implemented by this diagram.
+Calibrated object identity, long-term or cross-run memory, camera pose,
+IMU-driven box correction and full spatial mapping are not implemented.
 
 Review for the offline [basic tracker lesson](learning/basic-tracker.html):
 `detect_latest` now calls `vision.basic_tracker.BasicTracker` between inference

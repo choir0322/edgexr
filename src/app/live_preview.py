@@ -78,6 +78,7 @@ class State:
         imu_enabled: bool = False,
         detection_enabled: bool = False,
         motion_aware_tracking: bool = False,
+        reidentify: bool = False,
     ) -> None:
         """Create bounded latest-value storage and synchronization for the live workers.
 
@@ -86,6 +87,7 @@ class State:
             detection_enabled (bool): Whether full-frame detection storage is required.
             motion_aware_tracking (bool): Whether the detector may query recent
                 analyzed image shifts for provisional box prediction.
+            reidentify (bool): Enable experimental session-local appearance memory.
 
         Returns:
             None: initializes shared state without starting workers.
@@ -102,6 +104,7 @@ class State:
         self.analysis_times = deque(maxlen=60)
         self.motion_history = MotionHistory()
         self.motion_aware_tracking = motion_aware_tracking
+        self.reidentify = reidentify
         self.result = None
         self.error = None
         self.started = time.monotonic()
@@ -109,7 +112,7 @@ class State:
 
         # Give IMU and detection their own status stores; either may fail independently.
         self.imu = LiveImu(imu_enabled)
-        self.detector = DetectionState(detection_enabled, motion_aware_tracking)
+        self.detector = DetectionState(detection_enabled, motion_aware_tracking, reidentify)
         self.detection_frame = None
 
     def publish_frame(
@@ -663,6 +666,10 @@ def main() -> None:
         help="predict detection box shifts using reliable recent image motion; requires --detect",
     )
     parser.add_argument(
+        "--reidentify", action="store_true",
+        help="experimental, uncalibrated appearance memory for retired IDs; requires --detect",
+    )
+    parser.add_argument(
         "--prototxt", type=Path, default=Path("models/mobilenet-ssd/deploy.prototxt")
     )
     parser.add_argument(
@@ -679,6 +686,8 @@ def main() -> None:
         parser.error("existing FFmpeg installation required")
     if args.motion_aware_tracking and not args.detect:
         parser.error("--motion-aware-tracking requires --detect")
+    if args.reidentify and not args.detect:
+        parser.error("--reidentify requires --detect")
 
     # Load OpenCV only for detection. Two internal threads are a baseline setting,
     # not reserved CPU cores; disable OpenCL to keep this path on the CPU.
@@ -698,6 +707,7 @@ def main() -> None:
         imu_enabled=args.imu,
         detection_enabled=args.detect,
         motion_aware_tracking=args.motion_aware_tracking,
+        reidentify=args.reidentify,
     )
     process = None
     server = None
@@ -765,6 +775,8 @@ def main() -> None:
                 "Detection: 720p source -> 300x300 model, CPU 2 threads, target 2 Hz. Boxes may lag; age shown.",
                 flush=True,
             )
+            if args.reidentify:
+                print("Experimental appearance memory: 10 s, provisional score; ↺ means a tentative restored ID, not verified identity.", flush=True)
             if args.motion_aware_tracking:
                 print(
                     "Tracking: image-shift prediction on; ordinary box overlap remains available. Coverage shown in browser.",

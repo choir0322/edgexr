@@ -83,8 +83,37 @@ The mode uses a bounded history of 320×180 image shifts scaled to 1280×720 box
 coordinates. It compares raw and shifted overlap; unavailable or implausible
 motion falls back to raw overlap. Displayed box positions are unchanged.
 The IMU is still a separate readout, and an object returning after its track
-retires will receive a new ID. Read the [code-order guide](learning/MOTION_AWARE_TRACKING.md)
+retires will receive a new ID **unless** the separate experimental
+`--reidentify` option is enabled. Read the [code-order guide](learning/MOTION_AWARE_TRACKING.md)
 before interpreting this as camera-pose estimation or re-identification.
+
+## Quick experimental re-entry check
+
+After reviewing and pushing the opt-in code on Mac, stop the old Pi preview,
+pull the commit, and run:
+
+```bash
+cd ~/projects/edgexr
+git pull --ff-only
+PYTHONPATH=src python3 -m app.live_preview --device /dev/video0 --detect --reidentify
+```
+
+Reuse the existing Mac SSH tunnel and browser address. Put one easily detected
+object (for example, one person) in view and note its `#ID`. Move it fully out
+of view for roughly three seconds, long enough for at least two completed
+detector updates with no matching box. Return within 10 seconds of its last
+detection, preferably in a different image location. Look for the *same* ID
+with a `↺` marker and `Experimental appearance ID restores this update: 1`.
+If the original ID stayed active because fewer than two detector updates were
+missed, this is not a re-identification test. If a new ID appears, the
+provisional descriptor/threshold abstained or failed. Also try a different
+same-class object: restoring the old ID to it is a **false match**, not a
+success. Report both outcomes, lighting, and achieved detector update rate.
+
+This option adds no model or package, saves no images, and does not move a
+servo. It keeps at most 32 retired descriptors for up to 10 seconds since the
+last sighting. The 0.85 cosine threshold and 0.05 ambiguity margin are
+uncalibrated; the IMU and image motion are not fused into this feature yet.
 
 No backlog or catch-up bursts: if inference takes longer than 0.5 seconds,
 the next run uses whatever frame is newest when it becomes available. Boxes

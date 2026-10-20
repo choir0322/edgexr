@@ -9,6 +9,7 @@ if TYPE_CHECKING:
 import unittest
 
 from vision.basic_tracker import BasicTracker, box_iou
+from vision.object_memory import RetiredObjectMemory
 
 
 def detection(class_id: int, box: list[int]) -> Record:
@@ -90,6 +91,57 @@ def shift_implausible(start: float, end: float) -> tuple[float, float]:
 
 
 class BasicTrackerTests(unittest.TestCase):
+    def test_opt_in_memory_restores_retired_id_after_two_missed_updates(self) -> None:
+        """Appearance matching is after active IoU matching and is opt-in."""
+        memory = RetiredObjectMemory(capacity=4, retention_s=10)
+        tracker = BasicTracker(reid_memory=memory)
+        original = tracker.update(
+            [detection(15, [100, 0, 200, 100])], 1.0,
+            descriptors=[[1, 0]],
+        )
+        self.assertEqual(original[0]["track_id"], 1)
+        tracker.update([], 1.5, descriptors=[])
+        tracker.update([], 2.0, descriptors=[])
+        self.assertEqual(len(memory), 1)
+        returned = tracker.update(
+            [detection(15, [400, 0, 500, 100])], 2.5,
+            descriptors=[[1, 0]],
+        )
+        self.assertEqual(returned[0]["track_id"], 1)
+        self.assertEqual(returned[0]["match_source"], "appearance")
+        self.assertEqual(tracker.last_stats["reid_restores"], 1)
+        self.assertEqual(len(memory), 0)
+
+    def test_opt_in_memory_abstains_for_different_appearance(self) -> None:
+        """A returning same-class box does not inherit an incompatible ID."""
+        tracker = BasicTracker(reid_memory=RetiredObjectMemory(
+            capacity=4, retention_s=10
+        ))
+        tracker.update([detection(15, [100, 0, 200, 100])], 1,
+                       descriptors=[[1, 0]])
+        tracker.update([], 1.5, descriptors=[])
+        tracker.update([], 2, descriptors=[])
+        other = tracker.update([detection(15, [400, 0, 500, 100])], 2.5,
+                               descriptors=[[0, 1]])
+        self.assertEqual(other[0]["track_id"], 2)
+        self.assertEqual(tracker.last_stats["reid_restores"], 0)
+
+    def test_opt_in_memory_abstains_when_two_current_same_class_boxes_compete(self) -> None:
+        """Two returning lookalikes cannot claim an old ID by list order."""
+        tracker = BasicTracker(reid_memory=RetiredObjectMemory(
+            capacity=4, retention_s=10
+        ))
+        tracker.update([detection(15, [100, 0, 200, 100])], 1,
+                       descriptors=[[1, 0]])
+        tracker.update([], 1.5, descriptors=[])
+        tracker.update([], 2, descriptors=[])
+        result = tracker.update([
+            detection(15, [400, 0, 500, 100]),
+            detection(15, [700, 0, 800, 100]),
+        ], 2.5, descriptors=[[1, 0], [1, 0]])
+        self.assertEqual([item["track_id"] for item in result], [2, 3])
+        self.assertEqual(tracker.last_stats["reid_restores"], 0)
+
     def test_motion_prediction_holds_an_id_that_raw_overlap_would_lose(self) -> None:
         """Use source-pixel scene shift; changing direction changes the sign.
 

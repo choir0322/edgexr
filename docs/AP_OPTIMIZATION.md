@@ -1,8 +1,12 @@
 # Future Application Processor work: choose the detector for EdgeXR
 
-Requested 2026-10-06. This is a future experiment agenda, not authorization to
-download/install/train new models or change the current hardware protocol.
-Keep MobileNet-SSD as the reproducible baseline while finishing initial IDs.
+Requested 2026-10-06; deferred on 2026-10-20 until the session-local
+re-identification feature is implemented and evaluated. This is a future
+experiment agenda, not authorization to download/install/train new models or
+change the current hardware protocol. Keep MobileNet-SSD as the reproducible
+detector while finishing object memory. The 2026-10-18 AP measurement predates
+that feature and remains a historical reference, not the final-workload tuning
+baseline.
 
 ## Define what best means
 

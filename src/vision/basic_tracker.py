@@ -13,7 +13,9 @@ if TYPE_CHECKING:
     from _contracts import Record
 
 from dataclasses import dataclass
+from collections import Counter
 import math
+from vision.object_memory import RetiredObjectMemory, normalize_descriptor
 
 
 @dataclass
@@ -30,6 +32,7 @@ class _Track:
     box: tuple[float, float, float, float]
     missed: int = 0
     seen_at: float | None = None
+    descriptor: tuple[float, ...] | None = None
 
 
 def box_iou(first: Sequence[float], second: Sequence[float]) -> float:
@@ -57,7 +60,11 @@ def box_iou(first: Sequence[float], second: Sequence[float]) -> float:
 
 
 class BasicTracker:
-    def __init__(self, min_iou: float = 0.3, max_missed: int = 2) -> None:
+    def __init__(
+        self, min_iou: float = 0.3, max_missed: int = 2,
+        *, reid_memory: RetiredObjectMemory | None = None,
+        reid_min_similarity: float = 0.85, reid_min_margin: float = 0.05,
+    ) -> None:
         """Create empty memory for one sequential stream of detector results.
 
         Args:
@@ -66,6 +73,10 @@ class BasicTracker:
             max_missed (int): Consecutive completed detector results without a
                 match before forgetting an ID. Two updates are not necessarily
                 one second: the detector's target rate can slow down.
+            reid_memory (RetiredObjectMemory | None): Optional, experimental
+                session-local memory; None preserves the existing behavior.
+            reid_min_similarity (float): Provisional appearance score floor.
+            reid_min_margin (float): Provisional gap over a lookalike runner-up.
 
         Returns:
             None: Creates an empty ID-to-_Track dictionary and next ID one.
@@ -79,15 +90,23 @@ class BasicTracker:
             raise ValueError("max_missed must be a positive integer")
         self.min_iou = min_iou
         self.max_missed = max_missed
+        self.reid_memory = reid_memory
+        self.reid_min_similarity = reid_min_similarity
+        self.reid_min_margin = reid_min_margin
         self._next_id = 1
         self._tracks: dict[int, _Track] = {}
-        self.last_stats = {"covered_tracks": 0, "fallback_tracks": 0, "motion_matches": 0, "motion_only_matches": 0}
+        self.last_stats = {
+            "covered_tracks": 0, "fallback_tracks": 0,
+            "motion_matches": 0, "motion_only_matches": 0,
+            "reid_restores": 0,
+        }
 
     def update(
         self,
         detections: Sequence[Record],
         source_time: float | None = None,
         shift_lookup: Callable[[float, float], tuple[float, float] | None] | None = None,
+        *, descriptors: Sequence[Sequence[float] | None] | None = None,
     ) -> list[Record]:
         """Attach IDs to the boxes from one completed detector inference.
 
@@ -103,6 +122,9 @@ class BasicTracker:
             shift_lookup (Callable | None): Optional displacement between two
                 receipt times, in 1280x720 source pixels. None means unknown;
                 ordinary box overlap remains available.
+            descriptors (Sequence[Sequence[float] | None] | None): Optional
+                appearance vectors aligned to current detections. Used only
+                when the experimental retired-ID memory is enabled.
 
         Returns:
             list[Record]: New dictionaries in the detector's original order,
@@ -115,6 +137,13 @@ class BasicTracker:
         # so one bad record cannot leave memory half-updated.
         if source_time is not None and not math.isfinite(source_time):
             raise ValueError("source_time must be finite")
+        if descriptors is not None and len(descriptors) != len(detections):
+            raise ValueError("descriptors must align with detections")
+        normalized = (
+            [normalize_descriptor(value) if value is not None else None
+             for value in descriptors]
+            if descriptors is not None else [None] * len(detections)
+        )
         boxes: list[tuple[float, float, float, float]] = []
         for detection in detections:
             class_id = detection.get("class_id")
@@ -196,6 +225,12 @@ class BasicTracker:
             track = self._tracks[track_id]
             track.missed += 1
             if track.missed >= self.max_missed:
+                if (self.reid_memory is not None and track.descriptor is not None
+                        and track.seen_at is not None and source_time is not None):
+                    self.reid_memory.remember(
+                        track_id, track.class_id, track.descriptor,
+                        seen_at=track.seen_at, now=source_time,
+                    )
                 del self._tracks[track_id]
 
         # Walk the current detections in their original order. A matched one
@@ -204,23 +239,50 @@ class BasicTracker:
         # The detector worker publishes the returned boxes; remembered tracks
         # remain internal when absent from this result.
         identified: list[Record] = []
+        reid_restores = 0
+        unmatched_class_counts = Counter(
+            detection["class_id"] for index, detection in enumerate(detections)
+            if index not in assignments
+        )
         for index, detection in enumerate(detections):
             assignment = assignments.get(index)
+            restored = None
             if assignment is None:
-                track_id = self._next_id
-                self._next_id += 1
-                self._tracks[track_id] = _Track(detection["class_id"], boxes[index], seen_at=source_time)
+                if (self.reid_memory is not None and normalized[index] is not None
+                        and source_time is not None
+                        and unmatched_class_counts[detection["class_id"]] == 1):
+                    restored = self.reid_memory.take_match(
+                        detection["class_id"], normalized[index], now=source_time,
+                        min_similarity=self.reid_min_similarity,
+                        min_margin=self.reid_min_margin,
+                    )
+                if restored is None:
+                    track_id = self._next_id
+                    self._next_id += 1
+                else:
+                    track_id = restored[0]
+                    reid_restores += 1
+                self._tracks[track_id] = _Track(
+                    detection["class_id"], boxes[index], seen_at=source_time,
+                    descriptor=normalized[index],
+                )
             else:
                 track_id = assignment[0]
                 track = self._tracks[track_id]
                 track.box = boxes[index]
                 track.missed = 0
                 track.seen_at = source_time
-            identified.append({**detection, "track_id": track_id})
+                if normalized[index] is not None:
+                    track.descriptor = normalized[index]
+            identified_box = {**detection, "track_id": track_id}
+            if assignment is None and restored is not None:
+                identified_box["match_source"] = "appearance"
+            identified.append(identified_box)
         self.last_stats = {
             "covered_tracks": covered,
             "fallback_tracks": fallback,
             "motion_matches": sum(assignment[1] for assignment in assignments.values()),
             "motion_only_matches": sum(assignment[1] and assignment[2] for assignment in assignments.values()),
+            "reid_restores": reid_restores,
         }
         return identified

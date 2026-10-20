@@ -128,7 +128,8 @@ these two displays are approximate concurrent observations, not synchronized mea
  * @property {number[]} box_xyxy Left, top, right, bottom in source pixels.
  * @property {string} label One of the model's 20 object category names.
  * @property {number} confidence Model score, not measured probability of correctness.
- * @property {number} [track_id] Positive session-local IoU tracker ID when available.
+ * @property {number} [track_id] Positive session-local tracker ID when available.
+ * @property {string} [match_source] ``appearance`` marks a tentative restored ID.
  */
 /**
  * Independently sampled IMU status; values are absent unless the reader is ready.
@@ -149,6 +150,7 @@ these two displays are approximate concurrent observations, not synchronized mea
  * @property {number} [height] Source height in pixels, currently 720.
  * @property {?number} [rate_hz] Recent completed detections per second.
  * @property {?number} [compute_ms] Elapsed preprocessing/inference/parsing time.
+ * @property {boolean} [reidentify_enabled] Experimental appearance memory flag.
  * @property {?number} [age_ms] Source-image receipt age on Pi, excluding transport.
  * @property {string} [tracking_mode] basic or motion-aware matching.
  * @property {Object} [tracking_stats] Counts for the latest detector update only.
@@ -203,7 +205,8 @@ const fmt = (v, unit) => v == null ? '—' : v.toFixed(1) + ' ' + unit;
  */
 function detectionLabel(box) {
   const id = Number.isInteger(box.track_id) && box.track_id > 0 ? `#${box.track_id} ` : '';
-  return `${id}${box.label} ${box.confidence.toFixed(2)}`;
+  const restored = box.match_source === 'appearance' ? '↺ ' : '';
+  return `${id}${restored}${box.label} ${box.confidence.toFixed(2)}`;
 }
 
 /**
@@ -264,7 +267,9 @@ function render(data) {
   const ready = detector.status === 'ready' && data.status === 'live';
   const trackingNote = detector.tracking_mode === 'motion-aware' ?
     ` Motion coverage: ${tracking.covered_tracks ?? 0} old tracks; ${tracking.fallback_tracks ?? 0} fell back. Motion-only ID holds: ${tracking.motion_only_matches ?? 0}.` : '';
-  put('detect-status', ready ? `${detector.boxes.length} detections on source frame ${detector.sequence} · boxes may lag behind this view.${trackingNote}` :
+  const reidNote = detector.reidentify_enabled ?
+    ` Experimental appearance ID restores this update: ${tracking.reid_restores ?? 0} (↺; not verified identity).` : '';
+  put('detect-status', ready ? `${detector.boxes.length} detections on source frame ${detector.sequence} · boxes may lag behind this view.${trackingNote}${reidNote}` :
     detector.status === 'off' ? 'Detection is off. Add --detect to show boxes.' :
     detector.status === 'error' ? detector.error :
     detector.status === 'starting' ? 'Loading detector / waiting for its first frame…' : 'Detection unavailable or stale; boxes hidden.');

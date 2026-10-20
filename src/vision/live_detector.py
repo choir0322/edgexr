@@ -15,6 +15,7 @@ import threading
 import time
 from vision.basic_tracker import BasicTracker
 from vision.detect_image import infer_once, parse_detections
+from vision.object_memory import RetiredObjectMemory, grayscale_grid_descriptor
 
 # Keep detector source dimensions and the source-age cutoff separate from
 # the small motion/display image and the target inference cadence.
@@ -23,12 +24,16 @@ MAX_AGE = 1.5
 
 
 class DetectionState:
-    def __init__(self, enabled: bool = False, motion_aware: bool = False) -> None:
+    def __init__(
+        self, enabled: bool = False, motion_aware: bool = False,
+        reidentify: bool = False,
+    ) -> None:
         """Initialize a single latest detector result and bounded completion history.
 
         Args:
             enabled (bool): Whether this optional live subsystem is requested.
             motion_aware (bool): Whether box matching may use recent image shifts.
+            reidentify (bool): Whether experimental appearance memory is enabled.
 
         Returns:
             None: does not load a model or start inference.
@@ -37,6 +42,7 @@ class DetectionState:
         # readers; startup time is used to detect a detector that never produces data.
         self.enabled = enabled
         self.motion_aware = motion_aware
+        self.reidentify = reidentify
         self.lock = threading.Lock()
         self.started = time.monotonic()
         self.result = None
@@ -136,6 +142,7 @@ class DetectionState:
                 width=SOURCE_WIDTH,
                 height=SOURCE_HEIGHT,
                 tracking_mode="motion-aware" if self.motion_aware else "basic",
+                reidentify_enabled=self.reidentify,
             )
             if status != "ready":
                 result["boxes"] = []
@@ -213,7 +220,12 @@ def detect_latest(
     # queue or tracker access from another thread is needed.
     try:
         detector = factory()
-        tracker = BasicTracker()
+        # Opt-in memory is local to this detector worker and program run.
+        # These are provisional experiment settings, not calibrated identity
+        # thresholds; defaults never create or query retired-ID memory.
+        memory = (RetiredObjectMemory(capacity=32, retention_s=10.0)
+                  if state.reidentify else None)
+        tracker = BasicTracker(reid_memory=memory)
 
         def source_shift(start: float, end: float) -> tuple[float, float] | None:
             """Scale reliable scene displacement to full detector-image pixels.
@@ -280,8 +292,15 @@ def detect_latest(
             # An empty valid result still ages remembered tracks by one update.
             boxes = detector(frame[2])
             finished = clock()
+            descriptors = (
+                [grayscale_grid_descriptor(
+                    frame[2], SOURCE_WIDTH, SOURCE_HEIGHT, box["box_xyxy"]
+                ) for box in boxes]
+                if state.reidentify else None
+            )
             identified = tracker.update(
-                boxes, frame[1], source_shift if state.motion_aware_tracking else None
+                boxes, frame[1], source_shift if state.motion_aware_tracking else None,
+                descriptors=descriptors,
             )
             state.detector.publish(
                 frame, identified, (finished - started) * 1000, finished,
