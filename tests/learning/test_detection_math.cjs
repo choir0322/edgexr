@@ -56,7 +56,7 @@ const boxes = [
   { id: "A", label: "chair", score: 0.9, box: [0, 0, 1, 1] },
   { id: "B", label: "chair", score: 0.8, box: [0, 0, 1, 1] },
   { id: "C", label: "person", score: 0.7, box: [0, 0, 1, 1] },
-  { id: "D", label: "chair", score: 0.4, box: [2, 2, 3, 3] },
+  { id: "D", label: "chair", score: 0.28, box: [2, 2, 3, 3] },
   { id: "E", label: "chair", score: 0.25, box: [4, 4, 5, 5] },
 ];
 const decisions = M.suppress(boxes);

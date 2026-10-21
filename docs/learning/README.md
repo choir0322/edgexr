@@ -1,7 +1,12 @@
 # Read the EdgeXR code from end to end
 
 These guides explain the currently inspected implementation, not an idealized
-replacement. Start with [the live diagram](../PIPELINE.md). Then study:
+replacement. Start with the interactive [whole-program flow explorer](program-flow-explorer.html).
+It begins with the camera and IMU inputs, then lets you open the motion,
+detection/tracking, timing and browser-delivery branches without showing every
+detail at once. Its execution walkthrough demonstrates why the browser can show
+an image, boxes and an IMU sample from different source times. Use the
+[live diagram](../PIPELINE.md) as the compact reference, then study:
 
 1. [Image motion](IMAGE_MOTION.md): camera bytes -> image arrays -> displacement -> arrow.
 2. [Object detection](OBJECT_DETECTION.md): newest image -> model -> scored boxes -> overlay.

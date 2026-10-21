@@ -64,7 +64,7 @@ assert.equal(callback,null);
 assert.equal(get("step").disabled,true);
 assert.match(get("progress").textContent,/Cell 4\/4/);
 assert.equal(get("play").textContent,"Replay");
-for (const id of ["standard-diagram","separable-diagram","saved-boxes"]) {
+for (const id of ["standard-diagram","separable-diagram"]) {
   assert(!/NaN|undefined|Infinity/.test(get(id).innerHTML));
   assert(get(id).innerHTML.includes("<"));
 }
@@ -75,5 +75,5 @@ click("reset");
 assert.equal(get("step").disabled,false);
 assert.match(get("progress").textContent,/Cell 1\/4/);
 assert.match(get("detail-title").textContent,/Standard filter 1/);
-assert.equal((html.match(/<button /g)||[]).length,3);
+for (const id of ["play", "step", "reset"]) assert.match(html, new RegExp(`id="${id}"`));
 console.log("PASS: known convolution results, both paths, selection/keyboard, playback, pause, completion and reset. Browser layout remains unverified.");

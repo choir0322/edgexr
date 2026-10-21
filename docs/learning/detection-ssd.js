@@ -45,7 +45,7 @@
     return [
       { id: "A", label: "chair", score: scores[9], box: a },
       { id: "B", label: "chair", score: 0.72, box: b },
-      { id: "C", label: "chair", score: 0.40, box: [0.68, 0.07, 0.86, 0.22] },
+      { id: "C", label: "chair", score: 0.28, box: [0.68, 0.07, 0.86, 0.22] },
       { id: "D", label: "chair", score: 0.20, box: [0.72, 0.40, 0.90, 0.59] },
     ];
   }
@@ -154,11 +154,11 @@
       <details><summary>Follow the exact calculation</summary><div class="ssd-equation">cx = prior.cx + 0.1 × tx × prior.w<br>cy = prior.cy + 0.1 × ty × prior.h<br>w = prior.w × exp(0.2 × tw)<br>h = prior.h × exp(0.2 × th)</div><p>For the x center: ${fixed(prior.cx*300,2)} + 0.1 × ${offsets[0]} × ${fixed(prior.w*300,2)} = ${fixed(decoded.cx*300,2)} pixels. Width multiplies by exp(0.2 × ${offsets[2]}) = ${fixed(Math.exp(.2*offsets[2]),3)}. Exponentiation keeps the decoded width and height positive.</p><p>Corners follow from center and size: left = cx − w/2, right = cx + w/2; similarly for top and bottom. Coordinates inside the model are normalized to image width/height.</p></details>`;
     if (stage === 4) {
       const boxes = candidates(decoded), decisions = M.suppress(boxes);
-      const reasons = {A:"Keep", B:`NMS: IoU with A = ${fixed(M.iou(boxes[0].box,boxes[1].box))}`, C:"EdgeXR score < 0.5", D:"Graph score ≤ 0.25"};
+      const reasons = {A:"Keep", B:`NMS: IoU with A = ${fixed(M.iou(boxes[0].box,boxes[1].box))}`, C:"EdgeXR score < 0.30", D:"Graph score ≤ 0.25"};
       return `<span class="ssd-tag toy">ILLUSTRATIVE CANDIDATES</span><p>Several priors can predict the same object. Postprocessing reduces the duplicates before EdgeXR draws the boxes.</p>
         <table class="ssd-table"><thead><tr><th>Chair box</th><th>Score</th><th>Decision</th></tr></thead><tbody>${decisions.map(box=>`<tr><td>${box.id}</td><td>${fixed(box.score)}</td><td>${box.reason === "keep" ? "Keep" : box.id === "B" ? reasons.B : box.reason.startsWith("overlaps") ? "NMS: overlaps a higher-score box" : reasons[box.id]}</td></tr>`).join("")}</tbody></table>
         <p><strong>Inside the graph:</strong> exclude background and scores ≤ 0.25, then keep high-score boxes while suppressing same-class overlaps with IoU &gt; 0.45. This is non-maximum suppression (NMS).</p>
-        <p><strong>Inside EdgeXR:</strong> <code>parse_detections()</code> keeps scores ≥ 0.5, clips corners to image bounds and discards empty boxes.</p>
+        <p><strong>Inside EdgeXR:</strong> live <code>parse_detections()</code> keeps scores ≥ 0.30, clips corners to image bounds and discards empty boxes. The saved-frame command still defaults to 0.50 unless you pass another threshold.</p>
         <details><summary>Why overlap does not always mean a duplicate</summary><p>NMS here is class-wise: an overlapping chair and person can both remain. IoU is intersection area divided by union area. The graph also applies top-k caps (100 per-class candidates before NMS and 100 final detections); our four-box example never reaches those limits.</p><p>NMS compares boxes within one inference result. The tracker’s later IoU matching compares boxes across detector updates to assign IDs. Those are different decisions.</p></details>`;
     }
     const chair = data.detections.find(box => box.label === "chair");

@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>EdgeXR · Inside the program</title>
+  <link rel="stylesheet" href="program-flow-explorer.css">
+  <link rel="stylesheet" href="program-flow-inline.css">
+</head>
+<body>
+<main>
+  <header><a href="README.md">EDGEXR / LEARNING</a><span>LOCAL EXPLORER · NO HARDWARE CONNECTED</span></header>
+  <div class="heading"><div><h1>Inside the program.</h1><p>Start with the whole. Expand a node. Follow what changes.</p></div><button id="home" type="button">Collapse all</button></div>
+  <nav id="breadcrumbs" aria-label="Location in the program"></nav>
+  <section class="map-shell" aria-label="Expandable program graph">
+    <div class="map-heading"><div><span id="depth" class="eyebrow"></span><h2 id="map-title"></h2></div><span id="map-kind"></span></div>
+    <p id="map-note"></p>
+    <div class="graph-scroll"><div id="graph"><svg id="edges" aria-hidden="true"></svg><div id="nodes"></div></div></div>
+    <div class="legend"><span>→ data / execution order</span><span>↳ resize this node and reveal its internals</span><span>− collapse the enlarged node</span><span>⊙ inspect a calculation</span><span>Independent branches do not wait for each other.</span></div>
+  </section>
+  <section id="inspector" aria-label="Selected operation">
+    <div class="inspection-heading"><div><span class="eyebrow" id="detail-kind"></span><h2 id="detail-title"></h2></div><button id="back" type="button">← Up one level</button></div>
+    <div id="contract" class="contract"></div>
+    <div id="visual"></div>
+    <p id="explanation"></p>
+    <details id="rules"><summary>Decisions, limits & source</summary><p id="policy"></p><div id="source"></div></details>
+  </section>
+  <section class="execution" aria-label="Illustrative independent worker timing">
+    <div><span class="eyebrow">OPTIONAL · WATCH THE HAND-OFF</span><h2>Same screen. Different source times.</h2><p>This small teaching sequence is not a measured Pi trace.</p></div>
+    <div class="controls"><button id="play" type="button">Play</button><button id="step" type="button">Next event →</button><button id="reset" type="button">Reset</button></div>
+    <div id="slots" class="slots"></div><p id="event" aria-live="polite"></p>
+  </section>
+  <footer><p>Current live path: <code>--detect --imu</code>. Optional tracking/memory and recording are marked explicitly. No claimed 3D map, verified identity or exposure synchronization.</p><p>Real Pi motion images and precomputed Fourier arrays: <code>combined-motion-02</code>. Other numerical examples are labeled illustrative. <a href="../PIPELINE.md">Architecture reference</a> · <a href="../exec-plans/completed/program-flow-explorer.md">Completed plan</a></p></footer>
+</main>
+<noscript>This graph requires JavaScript. Read <a href="../PIPELINE.md">the pipeline reference</a> instead.</noscript>
+<script src="images/hann-fft-data.js"></script>
+<script src="program-flow-map.js"></script>
+<script src="program-flow-explorer.js"></script>
+</body>
+</html>

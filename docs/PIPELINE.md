@@ -1,7 +1,10 @@
 # Current live pipeline
 
-Updated 2026-10-18 for optional motion-aware ID matching and the read-only AP
-collector. The diagram includes
+Reviewed 2026-10-21 while building the interactive
+[whole-program flow explorer](learning/program-flow-explorer.html). Runtime
+topology, shapes, units, worker schedules and freshness policies still match
+the implementation, so the diagram itself did not need restructuring. It
+includes optional motion-aware ID matching and the read-only AP collector, plus
 `BasicTracker.update()` after detection parsing and an optional, bounded history
 of analyzed-frame shifts. Image sizes, timing targets and freshness policies
 are unchanged. The earlier

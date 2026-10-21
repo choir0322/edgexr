@@ -134,7 +134,7 @@
   }
 
   /** Class-wise greedy NMS, then the app's inclusive score cutoff. @param {object[]} boxes @param {number} threshold @param {number} appThreshold @returns {object[]} */
-  function suppress(boxes, threshold = 0.45, appThreshold = 0.5) {
+  function suppress(boxes, threshold = 0.45, appThreshold = 0.30) {
     const decisions = boxes.map((box) => ({
       ...box,
       reason: box.score > 0.25 ? "pending" : "graph score ≤ 0.25",

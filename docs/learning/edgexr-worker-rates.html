@@ -99,7 +99,7 @@ footer{color:var(--muted);font-size:13px;border-top:1px solid var(--line);paddin
       <div class="detail" id="detail-detector">
         <h2>3B · Detector worker</h2><p class="rate">Starts ≥500 ms apart</p>
         <p>Takes the newest full frame at each start; frames in between are bypassed, so there is no backlog.</p>
-        <div class="static-only policy"><h3>Accept boxes</h3><ul><li>Score ≥0.5; positive area after clipping.</li><li>Source older than 1.5 s is skipped.</li><li>Zero boxes is a valid result.</li></ul></div>
+        <div class="static-only policy"><h3>Accept boxes</h3><ul><li>Score ≥0.30; positive area after clipping.</li><li>Source older than 1.5 s is skipped.</li><li>Zero boxes is a valid result.</li></ul></div>
         <div class="dynamic-only"><p id="detector-status" class="readout"></p><div id="detector-tokens" class="tokens"></div><p id="detector-output" class="readout"></p></div>
         <p class="handoff">→ <code>detector.result</code> · <a class="function" href="../../src/vision/live_detector.py">detect_latest()</a> · <a class="function" href="../../src/vision/detect_image.py">parse_detections()</a></p>
       </div>
@@ -431,7 +431,7 @@ function render(){
   text('motion-output',mo.warmup?'F1 warm-up; no shift yet.':mo.accepted?`✓ F${mo.previous} → F${mo.seq}: 6/9 agree, (+2.0, −0.1) px`:`! F${mo.seq}: only 3/9 agree, shift withheld`);
   tokens('motion-tokens',arrived,scenario.motions,t);
   text('detector-status',d?`● Detecting F${d.seq}, done at ${d.end} ms`:nextDetection?`○ Next start at ${nextDetection.start} ms`:'○ Waiting for next 500 ms start');
-  text('detector-output',de?`✓ F${de.seq}: person 0.87 kept; 0.34 dropped (<0.5)`:'No result yet.');
+  text('detector-output',de?`✓ F${de.seq}: person 0.87 kept; 0.28 dropped (<0.30)`:'No result yet.');
   tokens('detector-tokens',arrived,scenario.detections,t);
   text('imu-status',u?`● Reading S${u.sample}`:'○ 50 ms pause');
   text('imu-output',imu.status==='ready'?`✓ Calibrated. Latest S${ur.sample}; no frame ID.`:`○ Calibrating: ${imu.samples} samples, need ≥1 s still`);
