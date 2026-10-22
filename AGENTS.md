@@ -7,6 +7,22 @@ combine a USB global-shutter camera, IMU motion data, object detection/tracking,
 and performance measurement. The goal is to understand each engineering choice,
 not to produce opaque code quickly.
 
+## Main goal and relevance checks
+
+The primary goal is orientation-aware surroundings: estimate where the camera
+is looking and remember the space it has observed. Begin with a stationary base
+and relative camera orientation; do not claim 3D position, depth or SLAM from
+image displacement or gyro integration alone. Detection and identity tracking
+are supporting capabilities, not the main success criterion.
+
+Before each new milestone, explain how it directly advances this goal, enables
+it, or is a less-relevant detour. Explicitly remind the user when a request would
+shift effort toward identity tuning, learning websites or cosmetic visualization.
+Offer the goal-aligned next step and ask before expanding a detour. Respect an
+explicit user choice to take it. Prefer minimal diagnostic displays and measured
+spatial behavior over additional visualization features. Keep this reminder
+brief; do not obstruct already-approved work with repeated confirmations.
+
 ## How to work here
 
 Before changing code, explain in plain language what will change, why it is

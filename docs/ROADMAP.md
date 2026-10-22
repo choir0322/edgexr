@@ -22,7 +22,20 @@ Display calibrated or clearly labelled raw motion/orientation alongside the
 camera feed. Only then explore whether it helps reject camera-induced motion or
 improve tracking stability.
 
-## Phase 4 — Remember objects after they leave view
+## Phase 4 — Orientation-aware surroundings (current priority)
+
+Keep the base stationary first. Establish IMU-to-camera axes, timing and
+short-term drift; estimate relative viewing orientation; then remember observed
+scene regions by direction and validate revisits. Preserve uncertainty and reject
+unsupported motion rather than inventing a position. Follow the
+[orientation-aware surroundings plan](exec-plans/active/orientation-aware-surroundings.md).
+Translation, metric depth and full 3D mapping require a separate later scope.
+
+### Supporting branch — Object re-identification (paused 2026-10-23)
+
+The implementation below remains available, but further tuning is not a
+prerequisite for directional scene memory. The latest
+[trial checkpoint](REID_CROWD_GALLERY_CHECKPOINT.md) records unresolved findings.
 
 Build a bounded, session-local object memory so a returning object can keep its
 old ID after the short-term track has retired. This is a new re-identification
@@ -42,7 +55,7 @@ The earlier sustained, unchanged basic-tracking measurement in
 [`ap-baseline.md`](exec-plans/active/ap-baseline.md) remains a historical
 reference. It was collected **before** re-identification and is not a fair
 final-workload optimization baseline. Defer thread, model, camera-mode and
-other tuning until the re-identification behavior and its cost are measured;
+other tuning until the orientation-aware workload and its cost are measured;
 then establish a comparable full-workload baseline. No tuning experiment has
 started.
 

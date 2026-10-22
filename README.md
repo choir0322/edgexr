@@ -1,5 +1,13 @@
 # EdgeXR
 
+## Current priority
+
+As of 2026-10-23, focus on **orientation-aware surroundings**: where the camera
+is looking and what space it has observed. Re-identification improvements and
+learning-site expansion are paused, not removed. Start with the
+[orientation and directional-memory plan](docs/exec-plans/active/orientation-aware-surroundings.md).
+This is planned work, not an existing 3D pose or mapping capability.
+
 ## Learn the implementation
 
 Start with the [current pipeline diagram](docs/PIPELINE.md) and the

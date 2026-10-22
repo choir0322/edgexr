@@ -1,5 +1,11 @@
 # Session-local object memory and re-identification
 
+Status 2026-10-23: paused by the user in favor of
+[orientation-aware surroundings](orientation-aware-surroundings.md).
+Implementation is retained; crowd accuracy and spatial-cue validation are not
+complete. See the [latest trial checkpoint](../../REID_CROWD_GALLERY_CHECKPOINT.md).
+Do not resume identity tuning as the default next step.
+
 ## Purpose / big picture
 
 When a person or object leaves the OV9281 camera's view long enough for
