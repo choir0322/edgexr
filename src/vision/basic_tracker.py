@@ -14,8 +14,9 @@ if TYPE_CHECKING:
 
 from dataclasses import dataclass
 from collections import Counter
+from functools import partial
 import math
-from vision.object_memory import RetiredObjectMemory, normalize_descriptor
+from vision.object_memory import MemoryEntry, RetiredObjectMemory, normalize_descriptor
 
 
 @dataclass
@@ -33,6 +34,9 @@ class _Track:
     missed: int = 0
     seen_at: float | None = None
     descriptor: tuple[float, ...] | None = None
+    gallery: tuple[tuple[float, ...], ...] = ()
+    reference_area: float = 0.0
+    pending_until: float | None = None
 
 
 def box_iou(first: Sequence[float], second: Sequence[float]) -> float:
@@ -64,6 +68,7 @@ class BasicTracker:
         self, min_iou: float = 0.3, max_missed: int = 2,
         *, reid_memory: RetiredObjectMemory | None = None,
         reid_min_similarity: float = 0.85, reid_min_margin: float = 0.05,
+        reid_retry_seconds: float = 0.0, reid_spatial: bool = False,
     ) -> None:
         """Create empty memory for one sequential stream of detector results.
 
@@ -77,6 +82,10 @@ class BasicTracker:
                 session-local memory; None preserves the existing behavior.
             reid_min_similarity (float): Provisional appearance score floor.
             reid_min_margin (float): Provisional gap over a lookalike runner-up.
+            reid_retry_seconds (float): Optional time for a provisional new ID to
+                gather a better appearance after its first failed return.
+            reid_spatial (bool): Use reliable image shift as a small positive
+                ranking clue between already-strong retired-ID candidates.
 
         Returns:
             None: Creates an empty ID-to-_Track dictionary and next ID one.
@@ -88,11 +97,15 @@ class BasicTracker:
             raise ValueError("min_iou must be finite and in (0, 1]")
         if isinstance(max_missed, bool) or not isinstance(max_missed, int) or max_missed < 1:
             raise ValueError("max_missed must be a positive integer")
+        if not math.isfinite(reid_retry_seconds) or not 0 <= reid_retry_seconds <= 5:
+            raise ValueError("reid_retry_seconds must be in [0, 5]")
         self.min_iou = min_iou
         self.max_missed = max_missed
         self.reid_memory = reid_memory
         self.reid_min_similarity = reid_min_similarity
         self.reid_min_margin = reid_min_margin
+        self.reid_retry_seconds = reid_retry_seconds
+        self.reid_spatial = reid_spatial
         self._next_id = 1
         self._tracks: dict[int, _Track] = {}
         self._reid_events: Counter[str] = Counter()
@@ -115,6 +128,74 @@ class BasicTracker:
         self._reid_events[reason] += 1
         self._last_reid_event = {"reason": reason, "class_id": class_id, **details}
         self._last_reid_by_class[class_id] = self._last_reid_event
+
+    def _learn_appearance(
+        self, track: _Track, descriptor: tuple[float, ...] | None,
+        confidence: float,
+    ) -> str:
+        """Retain a few useful views without overwriting them on an exit crop.
+
+        Args:
+            track (_Track): Active track after its source box has been updated.
+            descriptor (tuple[float, ...] | None): Current normalized crop vector.
+            confidence (float): Current detector score, separate from similarity.
+
+        Returns:
+            str: Image-free enrollment reason for diagnostics.
+        """
+        if descriptor is None:
+            return "no_descriptor"
+        if not math.isfinite(confidence) or confidence < 0.5:
+            return "low_confidence"
+        area = (track.box[2] - track.box[0]) * (track.box[3] - track.box[1])
+        if area < 0.6 * track.reference_area:
+            return "shrunken_crop"
+        track.reference_area = max(track.reference_area, area)
+        # Keep the first eligible view as an anchor. Near-identical subsequent
+        # views do not fill the gallery; rotate the other three slots when full.
+        if any(sum(a * b for a, b in zip(descriptor, old)) >= 0.98
+               for old in track.gallery if len(old) == len(descriptor)):
+            return "duplicate_view"
+        if track.gallery and len(track.gallery[0]) != len(descriptor):
+            return "descriptor_shape_changed"
+        views = track.gallery
+        if len(views) == 4:
+            views = (views[0],) + views[2:]
+        track.gallery = views + (descriptor,)
+        track.descriptor = descriptor
+        return "stored_view"
+
+    def _spatial_support(
+        self, entry: MemoryEntry, box: tuple[float, float, float, float],
+        now: float, shift_lookup: Callable[[float, float], tuple[float, float] | None],
+    ) -> bool | None:
+        """Check whether a reliable image shift places an old box near a return.
+
+        Args:
+            entry (MemoryEntry): Retired ID with its last observed source box.
+            box (tuple[float, float, float, float]): Current source box in pixels.
+            now (float): Current detector frame's monotonic receipt seconds.
+            shift_lookup (Callable): Returns source-pixel displacement or None.
+
+        Returns:
+            bool | None: Spatial support, disagreement, or unavailable evidence.
+        """
+        if entry.box is None:
+            return None
+        offset = shift_lookup(entry.seen_at, now)
+        if (offset is None or len(offset) != 2 or
+                not all(math.isfinite(v) for v in offset) or
+                abs(offset[0]) > 320 or abs(offset[1]) > 180):
+            return None
+        old = entry.box
+        predicted_x = (old[0] + old[2]) / 2 + offset[0]
+        predicted_y = (old[1] + old[3]) / 2 + offset[1]
+        actual_x, actual_y = (box[0] + box[2]) / 2, (box[1] + box[3]) / 2
+        # Broad tolerance acknowledges independent object motion, box jitter
+        # and approximate host timestamps. Disagreement is diagnostic only.
+        tolerance_x = max(80.0, (old[2] - old[0] + box[2] - box[0]) / 2)
+        tolerance_y = max(60.0, (old[3] - old[1] + box[3] - box[1]) / 2)
+        return abs(actual_x - predicted_x) <= tolerance_x and abs(actual_y - predicted_y) <= tolerance_y
 
     def update(
         self,
@@ -241,11 +322,18 @@ class BasicTracker:
             track.missed += 1
             if track.missed >= self.max_missed:
                 if self.reid_memory is not None:
-                    if track.descriptor is None or track.seen_at is None or source_time is None:
+                    if (track.pending_until is not None and source_time is not None
+                            and source_time <= track.pending_until):
+                        # A provisional duplicate that vanished before the
+                        # verdict must not compete with the original old ID.
+                        self._note_reid("retry_disappeared", track.class_id)
+                    elif track.descriptor is None or track.seen_at is None or source_time is None:
                         self._note_reid("retired_no_descriptor", track.class_id)
                     elif self.reid_memory.remember(
                         track_id, track.class_id, track.descriptor,
                         seen_at=track.seen_at, now=source_time,
+                        gallery=track.gallery, reference_area=track.reference_area,
+                        box=track.box,
                     ):
                         self._note_reid("retired_stored", track.class_id)
                     else:
@@ -259,6 +347,8 @@ class BasicTracker:
         # remain internal when absent from this result.
         identified: list[Record] = []
         reid_restores = 0
+        retry_restores = 0
+        gallery_updates: Counter[str] = Counter()
         unmatched_class_counts = Counter(
             detection["class_id"] for index, detection in enumerate(detections)
             if index not in assignments
@@ -266,9 +356,16 @@ class BasicTracker:
         for index, detection in enumerate(detections):
             assignment = assignments.get(index)
             restored = None
+            retried = False
+            class_id = detection["class_id"]
+            spatial_support = None
+            if self.reid_spatial and shift_lookup is not None and source_time is not None:
+                spatial_support = partial(
+                    self._spatial_support, box=boxes[index], now=source_time,
+                    shift_lookup=shift_lookup,
+                )
             if assignment is None:
                 if self.reid_memory is not None:
-                    class_id = detection["class_id"]
                     if normalized[index] is None or source_time is None:
                         self._note_reid("return_no_descriptor", class_id)
                     elif unmatched_class_counts[class_id] != 1:
@@ -278,6 +375,7 @@ class BasicTracker:
                             class_id, normalized[index], now=source_time,
                             min_similarity=self.reid_min_similarity,
                             min_margin=self.reid_min_margin,
+                            spatial_support=spatial_support,
                         )
                         decision = self.reid_memory.last_decision
                         if decision is not None:
@@ -293,19 +391,71 @@ class BasicTracker:
                     reid_restores += 1
                 self._tracks[track_id] = _Track(
                     detection["class_id"], boxes[index], seen_at=source_time,
-                    descriptor=normalized[index],
                 )
+                if (restored is None and self.reid_memory is not None
+                        and self.reid_retry_seconds > 0 and source_time is not None
+                        and unmatched_class_counts[class_id] == 1
+                        and self.reid_memory.eligible_count(class_id, source_time) > 0
+                        and not any(t.class_id == class_id and t.pending_until is not None
+                                    for key, t in self._tracks.items() if key != track_id)):
+                    self._tracks[track_id].pending_until = source_time + self.reid_retry_seconds
+                    self._note_reid("retry_pending", class_id)
+                if restored is not None:
+                    entry = self.reid_memory.last_match_entry
+                    self._tracks[track_id].gallery = entry.gallery
+                    self._tracks[track_id].descriptor = entry.descriptor
+                    self._tracks[track_id].reference_area = entry.reference_area
             else:
                 track_id = assignment[0]
                 track = self._tracks[track_id]
                 track.box = boxes[index]
                 track.missed = 0
                 track.seen_at = source_time
-                if normalized[index] is not None:
-                    track.descriptor = normalized[index]
+                if track.pending_until is not None and source_time is not None:
+                    if source_time > track.pending_until:
+                        track.pending_until = None
+                        self._note_reid("retry_expired", class_id)
+                    elif (self.reid_memory is not None and normalized[index] is not None
+                          and sum(t.class_id == class_id and t.pending_until is not None
+                                  for t in self._tracks.values()) == 1):
+                        restored = self.reid_memory.take_match(
+                            class_id, normalized[index], now=source_time,
+                            min_similarity=self.reid_min_similarity,
+                            min_margin=self.reid_min_margin,
+                            spatial_support=spatial_support,
+                        )
+                        if restored is not None:
+                            old_id = track_id
+                            track_id = restored[0]
+                            entry = self.reid_memory.last_match_entry
+                            track.gallery = entry.gallery
+                            track.descriptor = entry.descriptor
+                            track.reference_area = entry.reference_area
+                            track.pending_until = None
+                            self._tracks[track_id] = self._tracks.pop(old_id)
+                            retried = True
+                            retry_restores += 1
+                            reid_restores += 1
+                            self._note_reid("retry_restored", class_id,
+                                            best_similarity=restored[1], provisional_id=old_id)
+                        else:
+                            decision = self.reid_memory.last_decision or {}
+                            self._note_reid("retry_" + str(decision.get("reason", "unknown")),
+                                            class_id, **{
+                                                key: value for key, value in decision.items()
+                                                if key != "reason"
+                                            })
+            if self.reid_memory is not None:
+                reason = self._learn_appearance(
+                    self._tracks[track_id], normalized[index],
+                    float(detection.get("confidence", 1.0)),
+                )
+                gallery_updates[reason] += 1
             identified_box = {**detection, "track_id": track_id}
-            if assignment is None and restored is not None:
-                identified_box["match_source"] = "appearance"
+            if restored is not None:
+                identified_box["match_source"] = "appearance_retry" if retried else "appearance"
+            elif self._tracks[track_id].pending_until is not None:
+                identified_box["identity_status"] = "provisional"
             identified.append(identified_box)
         self.last_stats = {
             "covered_tracks": covered,
@@ -313,10 +463,15 @@ class BasicTracker:
             "motion_matches": sum(assignment[1] for assignment in assignments.values()),
             "motion_only_matches": sum(assignment[1] and assignment[2] for assignment in assignments.values()),
             "reid_restores": reid_restores,
+            "reid_retry_restores": retry_restores,
+            "reid_pending": sum(t.pending_until is not None for t in self._tracks.values()),
         }
         if self.reid_memory is not None:
             self.last_stats.update(
                 reid_memory_count=len(self.reid_memory),
+                reid_gallery_updates=dict(gallery_updates),
+                reid_gallery_sizes={str(key): len(track.gallery)
+                                    for key, track in self._tracks.items()},
                 reid_expired_total=self.reid_memory.expired_total,
                 reid_event_counts=dict(self._reid_events),
                 reid_last_event=dict(self._last_reid_event or {}),

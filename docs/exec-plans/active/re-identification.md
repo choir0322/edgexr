@@ -39,6 +39,26 @@ motion must remain unknown rather than an assumed zero.
 
 ## Progress
 
+- [x] 2026-10-22: Resume after the learning explorer; evaluate galleries,
+  temporal retries, learned appearance and weak-detection association.
+- [x] 2026-10-22: Implement four-view galleries, confidence/relative-area
+  enrollment checks, duplicate suppression and gallery preservation on restore.
+- [x] 2026-10-22: Replay 117 recorded updates: first-return continuity improves
+  from 3/7 to 4/7; the recorded 8→9 becomes 8→8. Keep the three unresolved failures.
+- [x] 2026-10-22: Update PIPELINE.md and the detection guide/program graph.
+- [ ] Validate gallery behavior with a new Pi trial containing a second person;
+  measure false restores and runtime overhead before calling it reliable.
+- [x] 2026-10-23: Add opt-in two-second provisional retry and image-motion
+  spatial tie-break, with separate flags and hardware-free tests. Replay the
+  old 117-update development trial; one previously failed person return is
+  restored on a later update. This is not new live crowd validation.
+- [x] 2026-10-23: Review/update `docs/PIPELINE.md`, detection learning guide
+  and program flow map for the new optional paths.
+- [ ] Run the new two-person Pi gallery trial, label true identities, and
+  compare the same recorded detector updates with retry off/on.
+- [ ] Run a separately labelled camera-pan trial and measure spatial coverage,
+  correct/false claims and Pi compute overhead.
+
 - [x] 2026-10-20: User chose re-identification before AP optimization; reorder
   the roadmap and preserve the older AP measurement as a historical baseline.
 - [x] 2026-10-20: Inspect current detector/tracker path and define a bounded,
@@ -179,8 +199,35 @@ The user subsequently observed that re-entry sometimes succeeds and sometimes
 fails. Browser telemetry alone cannot preserve the visual evidence, so the
 opt-in trial records both the continuous camera stream and exact detector
 input frames with decisions. This is not an exposure-synchronized benchmark.
+The 2026-10-23 offline replay with a two-second retry window restores a person
+on detector row 51 after row 50 first assigned a provisional new ID. Earlier
+ID changes cascade into later numbering, so compare physical continuity by
+video, not the literal numbers across runs. Rows 21 and 36 still fail. One
+tvmonitor also receives a retry restore; this is not labelled ground truth.
+The saved trial has no motion-history samples, so it cannot measure spatial
+coverage or evaluate IMU-assisted association.
 
 ## Decision log
+
+- 2026-10-22: User authorized implementation after review of trial failures.
+  Retain at most four diverse vectors per ID; preserve the first eligible
+  anchor and rotate three other slots. Enrollment requires detector confidence
+  ≥0.50 and box area ≥60% of the largest accepted area. Similarity ≥0.98
+  suppresses duplicate views. These are provisional heuristics; area cannot
+  prove crop completeness and a distant object may stop adding new views.
+  Matching remains ≥0.85 with a ≥0.05 margin between IDs, using each ID's best
+  gallery score. Carry galleries across restores. See REIDENTIFICATION_IMPROVEMENTS.md.
+  Defer temporal retries (which revise already-issued IDs), weak-detection
+  association (which changes detector/tracker boundaries), learned embeddings
+  (new model and CPU cost), and spatial gates (calibration still required).
+
+- 2026-10-23: User requested crowd validation, temporal retries and spatial
+  cues. Keep gallery-only as the first live crowd condition. A failed first
+  return may hold a visible provisional new ID for a configurable short time;
+  a later strong match can revise it. Image motion supplies only a small
+  positive ranking bonus for already strong candidates when interval coverage
+  is reliable. Unknown/contradictory motion adds nothing. No IMU fusion or
+  servo movement is implied. See REIDENTIFICATION_NEXT_TRIAL.md.
 
 - 2026-10-20: Prioritize the missing product behavior over AP tuning. Preserve
   the earlier AP data; remeasure the complete workload after memory exists.
@@ -204,3 +251,6 @@ path are in place. The default tracker and hardware protocol are unchanged.
 Production descriptor and matching thresholds still depend on labelled
 positive and lookalike examples; spatial gates additionally depend on
 motion/IMU validation.
+The new retry and spatial options passed the 117 hardware-independent unit
+tests (two optional runtime checks skipped), CLI help and diff whitespace
+checks on the Mac. No new live Pi crowd or pan trial has yet been performed.

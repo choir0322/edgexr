@@ -129,7 +129,8 @@ these two displays are approximate concurrent observations, not synchronized mea
  * @property {string} label One of the model's 20 object category names.
  * @property {number} confidence Model score, not measured probability of correctness.
  * @property {number} [track_id] Positive session-local tracker ID when available.
- * @property {string} [match_source] ``appearance`` marks a tentative restored ID.
+ * @property {string} [match_source] ``appearance`` or ``appearance_retry`` marks a tentative restored ID.
+ * @property {string} [identity_status] ``provisional`` marks an ID still in the retry window.
  */
 /**
  * Independently sampled IMU status; values are absent unless the reader is ready.
@@ -206,8 +207,9 @@ const fmt = (v, unit) => v == null ? '—' : v.toFixed(1) + ' ' + unit;
  */
 function detectionLabel(box) {
   const id = Number.isInteger(box.track_id) && box.track_id > 0 ? `#${box.track_id} ` : '';
-  const restored = box.match_source === 'appearance' ? '↺ ' : '';
-  return `${id}${restored}${box.label} ${box.confidence.toFixed(2)}`;
+  const restored = box.match_source === 'appearance' || box.match_source === 'appearance_retry' ? '↺ ' : '';
+  const provisional = box.identity_status === 'provisional' ? '? ' : '';
+  return `${id}${restored}${provisional}${box.label} ${box.confidence.toFixed(2)}`;
 }
 
 /**
@@ -277,7 +279,7 @@ function render(data) {
     ` Person: ${personDecision.reason}${Number.isFinite(personDecision.best_similarity) ? ` (${personDecision.best_similarity.toFixed(3)} vs ${personDecision.threshold.toFixed(2)})` : ''}.` : '';
   const bottleNote = bottleDecision ? ` Bottle: ${bottleDecision.reason}.` : '';
   const reidNote = detector.reidentify_enabled ?
-    ` Appearance memory: ${tracking.reid_memory_count ?? 0} retired IDs; last decision (class ${reidLast.class_id ?? '—'}): ${reidLast.reason || 'none'}${reidScore}.${personNote}${bottleNote} Restores this update: ${tracking.reid_restores ?? 0} (↺; not verified identity).` : '';
+    ` Appearance memory: ${tracking.reid_memory_count ?? 0} retired IDs; last decision (class ${reidLast.class_id ?? '—'}): ${reidLast.reason || 'none'}${reidScore}.${personNote}${bottleNote} Restores this update: ${tracking.reid_restores ?? 0}; provisional IDs: ${tracking.reid_pending ?? 0}; retry restores: ${tracking.reid_retry_restores ?? 0} (↺ = tentative restore, ? = provisional new ID).` : '';
   put('detect-status', ready ? `${detector.boxes.length} detections on source frame ${detector.sequence} (score ≥${detector.score_threshold?.toFixed(2) ?? '—'}) · boxes may lag behind this view.${trackingNote}${reidNote}` :
     detector.status === 'off' ? 'Detection is off. Add --detect to show boxes.' :
     detector.status === 'error' ? detector.error :

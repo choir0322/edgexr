@@ -12,6 +12,7 @@ import base64
 from collections import deque
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
+import math
 import os
 from pathlib import Path
 import shutil
@@ -80,6 +81,8 @@ class State:
         detection_enabled: bool = False,
         motion_aware_tracking: bool = False,
         reidentify: bool = False,
+        reid_retry_seconds: float = 0.0,
+        reid_spatial: bool = False,
     ) -> None:
         """Create bounded latest-value storage and synchronization for the live workers.
 
@@ -89,6 +92,8 @@ class State:
             motion_aware_tracking (bool): Whether the detector may query recent
                 analyzed image shifts for provisional box prediction.
             reidentify (bool): Enable experimental session-local appearance memory.
+            reid_retry_seconds (float): Optional provisional return window.
+            reid_spatial (bool): Optional image-motion support for retired IDs.
 
         Returns:
             None: initializes shared state without starting workers.
@@ -106,6 +111,8 @@ class State:
         self.motion_history = MotionHistory()
         self.motion_aware_tracking = motion_aware_tracking
         self.reidentify = reidentify
+        self.reid_retry_seconds = reid_retry_seconds
+        self.reid_spatial = reid_spatial
         self.result = None
         self.error = None
         self.started = time.monotonic()
@@ -113,7 +120,10 @@ class State:
 
         # Give IMU and detection their own status stores; either may fail independently.
         self.imu = LiveImu(imu_enabled)
-        self.detector = DetectionState(detection_enabled, motion_aware_tracking, reidentify)
+        self.detector = DetectionState(
+            detection_enabled, motion_aware_tracking, reidentify,
+            reid_retry_seconds, reid_spatial,
+        )
         self.detection_frame = None
 
     def publish_frame(
@@ -683,6 +693,14 @@ def main() -> None:
         help="experimental, uncalibrated appearance memory for retired IDs; requires --detect",
     )
     parser.add_argument(
+        "--reid-retry-seconds", type=float, default=0.0,
+        help="provisional return window, 0 to 5 seconds; requires --reidentify",
+    )
+    parser.add_argument(
+        "--reid-spatial", action="store_true",
+        help="use reliable image motion as a small appearance tie-break; requires --reidentify and --motion-aware-tracking",
+    )
+    parser.add_argument(
         "--trial-output", type=Path,
         help="new ignored recordings/ directory for timed re-ID video and detector decisions",
     )
@@ -710,6 +728,12 @@ def main() -> None:
         parser.error("--motion-aware-tracking requires --detect")
     if args.reidentify and not args.detect:
         parser.error("--reidentify requires --detect")
+    if not math.isfinite(args.reid_retry_seconds) or not 0 <= args.reid_retry_seconds <= 5:
+        parser.error("--reid-retry-seconds must be between 0 and 5")
+    if args.reid_retry_seconds and not args.reidentify:
+        parser.error("--reid-retry-seconds requires --reidentify")
+    if args.reid_spatial and not (args.reidentify and args.motion_aware_tracking):
+        parser.error("--reid-spatial requires --reidentify --motion-aware-tracking")
     if args.trial_output is not None and (not args.reidentify or args.demo):
         parser.error("--trial-output requires a real camera with --detect --reidentify")
     if not 0 < args.trial_seconds <= 600:
@@ -739,6 +763,8 @@ def main() -> None:
         detection_enabled=args.detect,
         motion_aware_tracking=args.motion_aware_tracking,
         reidentify=args.reidentify,
+        reid_retry_seconds=args.reid_retry_seconds,
+        reid_spatial=args.reid_spatial,
     )
     process = None
     server = None
@@ -749,6 +775,12 @@ def main() -> None:
         if args.trial_output is not None:
             recorder = ReidTrialRecorder(
                 args.trial_output, args.trial_seconds, args.trial_notes, cv,
+                tracking_modes={
+                    "reidentify": args.reidentify,
+                    "motion_aware_tracking": args.motion_aware_tracking,
+                    "reid_retry_seconds": args.reid_retry_seconds,
+                    "reid_spatial": args.reid_spatial,
+                },
             )
         process, threads = start_workers(
             state, camera_command(
@@ -821,6 +853,10 @@ def main() -> None:
             )
             if args.reidentify:
                 print("Experimental appearance memory: 10 s, provisional score; ↺ means a tentative restored ID, not verified identity.", flush=True)
+                if args.reid_retry_seconds:
+                    print(f"Return retry window: {args.reid_retry_seconds:g} s; ? marks a provisional new ID.", flush=True)
+                if args.reid_spatial:
+                    print("Spatial support: reliable image shift may break close appearance ties; unknown motion adds no support.", flush=True)
             if args.motion_aware_tracking:
                 print(
                     "Tracking: image-shift prediction on; ordinary box overlap remains available. Coverage shown in browser.",

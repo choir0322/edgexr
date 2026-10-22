@@ -36,11 +36,16 @@ in an expandable explanation.
 With `--detect --reidentify`, the same detector worker uses each current
 1280×720 grayscale source frame and its source-coordinate box to form a
 mean-centered 8×8 brightness-grid descriptor. Tiny or nearly flat crops have
-no descriptor and cannot enter memory. `BasicTracker.update()` still gives
+no descriptor and cannot enter memory. `_learn_appearance()` retains up to four
+distinct views per ID, requiring confidence ≥0.50 and area ≥60% of the largest
+accepted box. This enrollment check is separate from the 0.30 display cutoff.
+The first eligible anchor is retained; three other slots rotate and near-duplicate
+views (cosine ≥0.98) are skipped. A restored ID keeps its gallery.
+`BasicTracker.update()` still gives
 active same-class IoU matches first priority. At the second missed detector
 update, a track with a usable descriptor moves into a worker-local retired-ID
 memory (32 entries maximum; 10 seconds since last sighting). An otherwise
-unmatched same-class current box may claim one old ID if its cosine score is
+unmatched same-class current box may claim one old ID if its best gallery cosine score is
 at least 0.85 and exceeds the runner-up by at least 0.05. Those numbers are
 **provisional test settings**, not calibrated accuracy thresholds. A `↺` label
 marks an appearance-based restore; a new ID is the abstain outcome. No raw
@@ -50,8 +55,21 @@ experiment abstains from appearance restoration for all of them rather than
 letting list order decide who inherits the old ID.
 
 This is not face recognition or verified identity. Similar clothes, lighting,
-pose and background inside a box can create false matches or misses. The IMU
-and visual-motion history do not yet participate in this memory decision.
+pose and background inside a box can create false matches or misses. An optional
+`--reid-retry-seconds 2` gives an unmatched box a visible provisional `?` ID
+for two seconds. If a later matched crop clears the appearance rule, its ID
+changes to the remembered one with a `↺` marker; otherwise the new ID becomes
+final. This can revise a number already shown to the user. Multiple unmatched
+same-class boxes do not start retries.
+
+An optional `--motion-aware-tracking --reid-spatial` queries the 320×180 motion
+history and scales reliable displacement by four to source pixels. It predicts
+where a retired box might reappear. A nearby return receives only a 0.02
+ranking bonus after its raw appearance score already exceeds 0.85. Spatial
+disagreement or missing motion never vetoes a match or rescues weak appearance.
+It is a rough image-location clue, not 3D position. IMU rotation still does not
+enter the matcher; it needs camera/IMU calibration first. These options should
+be compared on labelled trials, including a second person and false restores.
 See [`object_memory.py`](../../src/vision/object_memory.py),
 [`basic_tracker.py`](../../src/vision/basic_tracker.py), and the
 [Pi trial](../LIVE_DETECTION.md) before drawing conclusions from one ID hold.

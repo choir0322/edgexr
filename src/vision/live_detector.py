@@ -29,6 +29,7 @@ class DetectionState:
     def __init__(
         self, enabled: bool = False, motion_aware: bool = False,
         reidentify: bool = False,
+        reid_retry_seconds: float = 0.0, reid_spatial: bool = False,
     ) -> None:
         """Initialize a single latest detector result and bounded completion history.
 
@@ -36,6 +37,8 @@ class DetectionState:
             enabled (bool): Whether this optional live subsystem is requested.
             motion_aware (bool): Whether box matching may use recent image shifts.
             reidentify (bool): Whether experimental appearance memory is enabled.
+            reid_retry_seconds (float): Optional provisional return window.
+            reid_spatial (bool): Optional reliable image-motion ranking clue.
 
         Returns:
             None: does not load a model or start inference.
@@ -45,6 +48,8 @@ class DetectionState:
         self.enabled = enabled
         self.motion_aware = motion_aware
         self.reidentify = reidentify
+        self.reid_retry_seconds = reid_retry_seconds
+        self.reid_spatial = reid_spatial
         self.lock = threading.Lock()
         self.started = time.monotonic()
         self.result = None
@@ -145,6 +150,8 @@ class DetectionState:
                 height=SOURCE_HEIGHT,
                 tracking_mode="motion-aware" if self.motion_aware else "basic",
                 reidentify_enabled=self.reidentify,
+                reid_retry_seconds=self.reid_retry_seconds,
+                reid_spatial_enabled=self.reid_spatial,
                 score_threshold=LIVE_CONFIDENCE_THRESHOLD,
             )
             if status != "ready":
@@ -233,7 +240,10 @@ def detect_latest(
         # thresholds; defaults never create or query retired-ID memory.
         memory = (RetiredObjectMemory(capacity=32, retention_s=10.0)
                   if state.reidentify else None)
-        tracker = BasicTracker(reid_memory=memory)
+        tracker = BasicTracker(
+            reid_memory=memory, reid_retry_seconds=state.reid_retry_seconds,
+            reid_spatial=state.reid_spatial,
+        )
 
         def source_shift(start: float, end: float) -> tuple[float, float] | None:
             """Scale reliable scene displacement to full detector-image pixels.

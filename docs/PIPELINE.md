@@ -36,7 +36,9 @@ flowchart TD
     BOX["parse_detections: live score at least 0.30<br/>Source-coordinate boxes"]
     TRACK["BasicTracker.update in detector worker<br/>Same-class raw/predicted IoU; session-local IDs"]
     DESC["Optional --reidentify<br/>8x8 mean-centered grayscale crop descriptor<br/>1280x720 source box; no raw crop retained"]
-    MEMORY["RetiredObjectMemory in detector worker<br/>Up to 32 IDs, at most 10 s since last sighting<br/>Provisional cosine score + ambiguity abstain"]
+    MEMORY["RetiredObjectMemory in detector worker<br/>Up to 32 IDs, at most 10 s since last sighting<br/>Gallery cosine score + ambiguity abstain"]
+    RETRY["Optional --reid-retry-seconds<br/>Provisional new ID ?; retry on later detector update<br/>Restore ↺ or confirm new ID at deadline"]
+    SPATIAL["Optional --reid-spatial<br/>Reliable image shift predicts last box region<br/>Small positive tie-break for strong appearances"]
     MODEL["Local deploy.prototxt + caffemodel<br/>Graph and pretrained parameters"]
     IMU["Camera-mounted IMU via I2C<br/>SunFounder SH3001 driver"]
     POLL["poll_imu<br/>Read midpoint timestamp; then wait 50 ms"]
@@ -58,9 +60,11 @@ flowchart TD
     FULL -. "--reidentify source crop" .-> DESC --> TRACK
     TRACK -. "retire after two missed detector updates" .-> MEMORY
     MEMORY -. "same-class tentative ID restore" .-> TRACK
+    TRACK -. "failed first return, eligible old ID" .-> RETRY --> MEMORY
     DET -. "selected input + completed decision" .-> REIDLOG
     MODEL --> NET
     HISTORY -. "interval shift x4 into source pixels" .-> TRACK
+    HISTORY -. "--reid-spatial with motion-aware tracking" .-> SPATIAL --> MEMORY
     IMU --> POLL --> BIAS
     RESULT --> STATE
     TRACK --> STATE
@@ -82,15 +86,27 @@ I2C IMU reader supplies corrected angular rates. A snapshot combines the latest
 available outputs for display, not for a shared-time estimate of camera pose.
 
 With experimental `--reidentify`, the detector worker also computes a 64-value
-grayscale crop descriptor for suitable current boxes. Only after active IoU or
+grayscale crop descriptor for suitable current boxes. Each ID retains up to
+four distinct views; confidence/relative-area gates protect enrollment from
+weak or shrunken crops. Restored IDs keep that gallery for later returns.
+Only after active IoU or
 motion-aware matching fails may an unmatched detection claim a retired ID from
 the worker-local, bounded memory. A `↺` label and per-update restore count mean
 the provisional appearance rule fired, **not** verified physical identity.
 The worker also publishes last-decision reasons by detector class,
-best/runner-up scores when available, retained-entry count and cumulative reason counts through the
+best/runner-up scores between IDs, gallery sizes/enrollment reasons,
+retained-entry count and cumulative reason counts through the
 detector snapshot. These are metadata only, not raw crops or descriptors.
-The IMU and image-motion history do not yet gate this memory decision; that is
-a separately planned XR-context experiment. The default tracker is unchanged.
+With `--reid-retry-seconds 2`, a failed first return can carry a provisional
+new ID (`?`) for at most two host-monotonic seconds. Later matched detector
+updates can restore an old ID (`↺`); the provisional ID is then superseded.
+With `--motion-aware-tracking --reid-spatial`, continuously reliable image
+shift predicts the old box region. A nearby return gets a 0.02 ranking bonus
+only after its raw appearance score reaches 0.85. An unavailable or disagreeing
+shift contributes nothing, and spatial support never rescues weak appearance.
+These are opt-in experiments; default tracking and gallery-only matching are
+unchanged. The IMU does not enter re-identification until camera/IMU geometry
+and timing have been calibrated.
 With optional `--trial-output`, the same FFmpeg camera input is also packet-
 copied to a local MJPEG-in-Matroska file, and the detector worker writes its
 selected 1280×720 grayscale frame (lossless PNG) alongside boxes, IDs, scores,

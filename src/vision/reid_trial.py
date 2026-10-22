@@ -25,6 +25,7 @@ class ReidTrialRecorder:
     def __init__(
         self, output: Path, seconds: float, notes: str, cv: Any,
         *, width: int = 1280, height: int = 720,
+        tracking_modes: dict[str, Any] | None = None,
     ) -> None:
         """Create a new ignored recording directory before opening the camera.
 
@@ -35,6 +36,8 @@ class ReidTrialRecorder:
             cv (Any): Existing OpenCV module used only for lossless PNG encoding.
             width (int): Grayscale detector source width.
             height (int): Grayscale detector source height.
+            tracking_modes (dict[str, Any] | None): Selected optional matching
+                modes and retry duration for reproducible trial comparisons.
         """
         if seconds <= 0 or width <= 0 or height <= 0:
             raise ValueError("Trial duration and dimensions must be positive")
@@ -55,6 +58,7 @@ class ReidTrialRecorder:
             "notes": notes,
             "git_commit": current_commit(),
             "requested_camera_mode": "1280x720 MJPEG 30 fps",
+            "tracking_modes": dict(tracking_modes or {}),
             "video": "camera.mkv; FFmpeg copies incoming MJPEG packets",
             "detector_frames": "Lossless PNG grayscale frames sampled at detector updates, at most about 2 Hz",
             "timing_limit": "Host frame receipt and detector completion are monotonic observations, not exposure synchronization or an exact video-PTS map.",

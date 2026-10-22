@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import math
-from typing import Sequence
+from typing import Callable, Sequence
 
 
 def grayscale_grid_descriptor(
@@ -67,6 +67,9 @@ class MemoryEntry:
     class_id: int
     descriptor: tuple[float, ...]
     seen_at: float
+    gallery: tuple[tuple[float, ...], ...] = ()
+    reference_area: float = 0.0
+    box: tuple[float, float, float, float] | None = None
 
 
 def normalize_descriptor(values: Sequence[float]) -> tuple[float, ...]:
@@ -117,6 +120,7 @@ class RetiredObjectMemory:
         self._last_now: float | None = None
         self.expired_total = 0
         self.last_decision: dict[str, float | int | str | None] | None = None
+        self.last_match_entry: MemoryEntry | None = None
 
     def __len__(self) -> int:
         """Return the number of stored retired IDs before the next expiry check."""
@@ -141,6 +145,8 @@ class RetiredObjectMemory:
     def remember(
         self, track_id: int, class_id: int, descriptor: Sequence[float],
         *, seen_at: float, now: float,
+        gallery: Sequence[Sequence[float]] = (), reference_area: float = 0.0,
+        box: Sequence[float] | None = None,
     ) -> bool:
         """Store a retired ID if it is still within the explicit age limit.
 
@@ -150,6 +156,10 @@ class RetiredObjectMemory:
             descriptor (Sequence[float]): Compact vector, never a raw image crop.
             seen_at (float): Monotonic time of the object's last actual detection.
             now (float): Current monotonic time when retirement is processed.
+            gallery (Sequence[Sequence[float]]): Up to four selected appearances.
+            reference_area (float): Largest accepted source-box area, in pixels squared.
+            box (Sequence[float] | None): Last source-coordinate box for optional
+                image-motion spatial support.
 
         Returns:
             bool: Whether the entry was stored; already-expired entries return False.
@@ -161,12 +171,27 @@ class RetiredObjectMemory:
         if not math.isfinite(seen_at) or seen_at < 0 or seen_at > now:
             raise ValueError("seen_at must be finite and no later than now")
         normalized = normalize_descriptor(descriptor)
+        if len(gallery) > 4:
+            raise ValueError("Gallery supports at most four appearances")
+        appearances = tuple(normalize_descriptor(value) for value in gallery) or (normalized,)
+        if any(len(value) != len(normalized) for value in appearances):
+            raise ValueError("Gallery descriptor lengths must match")
+        if not math.isfinite(reference_area) or reference_area < 0:
+            raise ValueError("reference_area must be finite and nonnegative")
+        saved_box = None
+        if box is not None:
+            if (len(box) != 4 or not all(math.isfinite(v) for v in box)
+                    or box[2] <= box[0] or box[3] <= box[1]):
+                raise ValueError("box must be a finite positive-area xyxy rectangle")
+            saved_box = tuple(float(v) for v in box)
         self._advance(now)
         if now - seen_at > self.retention_s:
             return False
 
         # A duplicate ID updates one entry; capacity evicts the oldest sighting.
-        self._entries[track_id] = MemoryEntry(track_id, class_id, normalized, seen_at)
+        self._entries[track_id] = MemoryEntry(
+            track_id, class_id, normalized, seen_at, appearances, reference_area, saved_box
+        )
         if len(self._entries) > self.capacity:
             oldest_id = min(self._entries, key=lambda ident: (
                 self._entries[ident].seen_at, ident
@@ -174,9 +199,23 @@ class RetiredObjectMemory:
             del self._entries[oldest_id]
         return True
 
+    def eligible_count(self, class_id: int, now: float) -> int:
+        """Count unexpired same-class retired IDs without claiming one.
+
+        Args:
+            class_id (int): Current detector category.
+            now (float): Monotonic detector-source time in seconds.
+
+        Returns:
+            int: Number of eligible retired IDs.
+        """
+        self._advance(now)
+        return sum(entry.class_id == class_id for entry in self._entries.values())
+
     def take_match(
         self, class_id: int, descriptor: Sequence[float], *, now: float,
         min_similarity: float, min_margin: float,
+        spatial_support: Callable[[MemoryEntry], bool | None] | None = None,
     ) -> tuple[int, float] | None:
         """Claim one same-class old ID only if its cosine score is unambiguous.
 
@@ -186,6 +225,9 @@ class RetiredObjectMemory:
             now (float): Current monotonic seconds, not a camera exposure time.
             min_similarity (float): Explicit score floor in [-1, 1].
             min_margin (float): Positive gap required over the runner-up score.
+            spatial_support (Callable | None): Optional reliable image-motion
+                prediction. True gives a small ranking tie-break; false or
+                unknown never vetoes appearance or lifts a weak score.
 
         Returns:
             tuple[int, float] | None: Claimed old ID and score, or no match.
@@ -198,6 +240,7 @@ class RetiredObjectMemory:
         if not math.isfinite(min_margin) or not 0 < min_margin <= 2:
             raise ValueError("min_margin must be finite and in (0, 2]")
         current = normalize_descriptor(descriptor)
+        self.last_match_entry = None
         expired_before = self.expired_total
         expiring_class_candidates = sum(
             entry.class_id == class_id and len(entry.descriptor) == len(current)
@@ -208,21 +251,29 @@ class RetiredObjectMemory:
 
         # Different descriptor versions (lengths) and detector classes cannot
         # compete. Ranking alone never proves identity; weak/tied scores abstain.
-        ranked = sorted(
-            (
-                (sum(a * b for a, b in zip(current, entry.descriptor)), entry.track_id)
-                for entry in self._entries.values()
-                if entry.class_id == class_id and len(entry.descriptor) == len(current)
-            ),
-            reverse=True,
-        )
-        best = ranked[0][0] if ranked else None
-        runner_up = ranked[1][0] if len(ranked) > 1 else None
+        ranked = []
+        spatial_covered = spatial_supported = 0
+        for entry in self._entries.values():
+            if entry.class_id != class_id or len(entry.descriptor) != len(current):
+                continue
+            similarity = max(sum(a * b for a, b in zip(current, view))
+                             for view in entry.gallery)
+            support = spatial_support(entry) if spatial_support is not None else None
+            spatial_covered += support is not None
+            spatial_supported += support is True
+            # Only rank already-strong appearances slightly differently. A
+            # spatial prediction cannot turn a weak appearance into an ID claim.
+            bonus = 0.02 if support is True and similarity >= min_similarity else 0.0
+            ranked.append((similarity + bonus, similarity, entry.track_id))
+        ranked.sort(reverse=True)
+        best = ranked[0][1] if ranked else None
+        runner_up = ranked[1][1] if len(ranked) > 1 else None
+        ranked_margin = ranked[0][0] - ranked[1][0] if len(ranked) > 1 else None
         reason = (
             "expired" if not ranked and expiring_class_candidates else
             "no_candidate" if not ranked else
             "below_threshold" if best < min_similarity else
-            "ambiguous" if runner_up is not None and best - runner_up < min_margin else
+            "ambiguous" if ranked_margin is not None and ranked_margin < min_margin else
             "restored"
         )
         self.last_decision = {
@@ -232,10 +283,13 @@ class RetiredObjectMemory:
             "runner_up_similarity": runner_up,
             "threshold": min_similarity,
             "required_margin": min_margin,
+            "spatial_covered_candidates": spatial_covered,
+            "spatial_supported_candidates": spatial_supported,
             "expired_during_check": self.expired_total - expired_before,
+            "best_gallery_size": len(self._entries[ranked[0][2]].gallery) if ranked else 0,
         }
         if reason != "restored":
             return None
-        score, track_id = ranked[0]
-        del self._entries[track_id]
+        _, score, track_id = ranked[0]
+        self.last_match_entry = self._entries.pop(track_id)
         return track_id, score

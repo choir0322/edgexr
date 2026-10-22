@@ -181,7 +181,7 @@
     'vision/basic_tracker.py','BasicTracker.update(): retirement',[],'age');
   node('memory','Optional appearance memory','--reidentify','Unmatched detection + retired same-class appearances','Tentative old ID (↺), or a fresh ID',
     'Describe each suitable crop by an 8×8 brightness grid, subtract its mean and normalize its vector length. Compare unit vectors with a dot product: cosine similarity.',
-    'Current policy: up to 32 retired IDs; ≤10 s since last sighting; score ≥0.85 and margin ≥0.05 over runner-up. Multiple unmatched same-class returns abstain. Current code keeps one latest template, not the proposed gallery. IMU does not gate this decision.',
+    'Default policy: up to 32 retired IDs; ≤10 s since last sighting; best gallery score ≥0.85 and margin ≥0.05 over another ID. Each ID keeps up to four views. Opt-in retry holds a ? provisional ID up to two seconds before confirming or restoring ↺. Opt-in spatial support uses reliable image shift only as a small tie-break among strong appearances. IMU does not gate this decision.',
     'vision/object_memory.py','grayscale_grid_descriptor() / take_match()',[],'cosine');
   node('publishDetection','Publish boxes + IDs','DetectionState.publish','Completed detector result with original source receipt time','One latest detector result, compute time and tracking diagnostics',
     'The source identity survives inference and matching. Compute time measures inference, whereas box source age includes time since capture receipt.',

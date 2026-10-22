@@ -1,5 +1,9 @@
 # Re-identification trial analysis
 
+Historical diagnosis of the original single-template implementation. The
+[2026-10-22 gallery experiment](REIDENTIFICATION_IMPROVEMENTS.md) now implements
+and replays a bounded improvement; this report preserves the original evidence.
+
 Trial: `reid-person-bottle-01` (private recording retained outside Git).
 Recorded/current source commit: `49145eb3e84d2b0277ec70c11a67d8634c6844be`.
 
