@@ -24,6 +24,10 @@ remain unresolved; do not silently use acceleration as trusted tilt or position.
 
 ## Progress
 
+- [x] 2026-10-23: Complete a focused online primary-source review; document
+  evidence, alternatives and Pi-specific limits in
+  [SPATIAL_AWARENESS_RESEARCH.md](../../SPATIAL_AWARENESS_RESEARCH.md).
+
 - [x] 2026-10-23: User redirected priority; preserve re-ID checkpoint and pause tuning.
 - [x] 2026-10-23: Record standing goal-relevance reminders in AGENTS.md.
 - [ ] Audit current sensor units, axis mapping, clocks, gaps and calibration.
@@ -48,6 +52,101 @@ remain unresolved; do not silently use acceleration as trusted tilt or position.
    diagnostic display. Propose translation/3D mapping separately afterward.
 
 ## Concrete steps
+
+### Research-backed execution sequence (proposed; review before implementation)
+
+**Step 1 — Calibration and data-validity checkpoint (immediate next work).**
+Audit capture timestamps, gyro sample intervals and camera calibration files.
+Retain requested 1280x720 MJPEG/30 initially; verify actual negotiation. Record
+current Pi OS/RAM, exposure/focus, power, passive cooling and software versions.
+The observed approximately 19 Hz IMU rate is an application observation, not a
+hardware limit; inspect the polling sleep and driver before proposing changes.
+Keep detection/re-ID disabled for this new orientation baseline and label it as
+a different workload from the old AP benchmark.
+
+Proposed new tool `src/recording/orientation_baseline.py` will reuse capture
+helpers, save raw timestamps/read durations and check gaps, not move servos.
+Proposed `docs/ORIENTATION_BASELINE.md` will give a finite-duration procedure:
+60 s still, then separately labelled pan and tilt movements with pauses, then
+five turn-away/return cycles. Confirm safe movement method and range with the
+user before running; no forced manual back-driving of powered servos. Keep the
+base fixed and camera/IMU rigid. Use independent reference marks or, if approved,
+a calibrated printed target; servo command zero is not ground truth.
+
+Calibrate camera intrinsics/distortion with multiple target views before
+claiming angular accuracy. Store calibration resolution and focus state; scale
+intrinsics correctly for analysis images. First establish axis/sign mapping;
+a rigorous camera-to-IMU rotation requires more than identifying one dominant
+axis. Estimate/check timestamp lag across repeated nonconstant motions and
+report jitter; do not call uncertain host alignment synchronized exposure.
+
+**Step 2 — Offline visual compass, without an IMU fusion dependency.**
+Prototype `src/spatial/visual_rotation.py` on saved grayscale frames: extract
+bounded ORB features using installed OpenCV, match them, reject outliers, and
+fit a calibrated rotation to bearing rays. Start at 640x360 as a proposed
+experiment, not an established best size; retain source calibration transform.
+Compare the rotation fit with a general homography and inspect spatially spread
+residuals. Reject translation/parallax/weak evidence rather than converting every
+homography to an angle. Use synthetic known-rotation tests and held-out scene
+pairs. Retain FFT as a comparison diagnostic, not the angle estimator.
+
+**Step 3 — Short-term gyro propagation and visual correction.**
+Proposed `src/spatial/orientation.py` holds a quaternion/rotation matrix relative
+to session start, bias, timestamps and validity. Integrate mapped angular rate
+in radians with actual sample intervals; never bridge a gap silently. Compare
+gyro-only, vision-only and combined outputs on the SAME saved input. Calibrate
+the sensor-to-camera rotation and time alignment before fusion. Visual matches
+to old keyframes can correct drift; uncertain vision must not overwrite a good
+estimate. Do not integrate accelerometer into position or use its current raw
+values as trusted gravity. No magnetometer heading claim near the servos.
+
+**Step 4 — Directional scene memory.**
+Proposed `src/spatial/scene_memory.py` stores at most 30 keyframes initially:
+session orientation, angular coverage, timestamp, bounded descriptors/features,
+private thumbnail and validity evidence. Compare to a small candidate set and
+verify scene geometry; gyro direction narrows search but does not prove a revisit.
+On loss of tracking, mark orientation unknown and attempt visual relocalization
+against the bounded memory. Do not overwrite a known region on a weak match.
+Use fixed-capacity eviction, explicit reset and stale-region labels; moving
+objects must not become permanent spatial landmarks. No 360-degree sweep is
+required: observe only the safe reachable sector and mark the rest unobserved.
+
+**Step 5 — Pi integration and honest demonstration.**
+Add one optional orientation worker and a minimal status snapshot only after
+offline gates pass. Show relative yaw/pitch, validity, last visual correction,
+known/unknown region and reference keyframe ID. Preserve latest-frame scheduling,
+bounded memory and independent timestamps. Update docs/PIPELINE.md and the IMU
+learning guide; do not build another learning website. Measure estimator latency,
+CPU, RSS, temperature, sample gaps and revisit latency on Pi before re-enabling
+optional detection. Later decide whether base translation warrants a measured
+ORB-SLAM3/OpenVINS/VINS/SVO evaluation rather than a home-built full SLAM system.
+
+### Proposed acceptance gates (not measured results)
+
+- Calibration: report reprojection residuals on held-out target images, not just
+  the fitting set. Agree on reference precision before claiming degrees accuracy.
+- Orientation: initial engineering target is median <=3 degrees and p95 <=5
+  degrees reference error on at least 10 held-out, slow fixed-base turns. Also
+  report 60-second stationary drift and return error; reject this target if the
+  reference measurement cannot resolve it. Limits are project proposals, not
+  promises derived from research papers.
+- Revisit: test at least 20 labelled old/new scene queries including repeated
+  patterns and moving foregrounds. Aim for >=90% correct known-region retrieval
+  and no false revisits in that small set; report unknowns separately and never
+  interpret zero observed errors as a population guarantee. Keep tuning and
+  evaluation clips separate.
+- Integrity: every injected missing/invalid timestamp interval must produce an
+  explicit gap/unknown state; no unexplained continuous pose through a dropout.
+- Pi feasibility: tentative >=5 visual orientation updates/s with p95 compute
+  <=200 ms on the orientation-only workload. Measure, then revisit scope if
+  unmet; do not silently lower thresholds or hide dropped frames.
+- Failure tests: blank wall, fast turn, near/far parallax, obscured camera and
+  base translation. Require conservative rejection when evidence is insufficient.
+
+Only Step 1 is the immediate implementation milestone. Check in with the user
+with its findings before starting Step 2. All module names above are planned,
+not files already created. No new dependency/model or hardware action is approved
+implicitly by this plan.
 
 Next session: read the modules above and the IMU hardware notes; explain which
 measurements already exist and which need confirmation. Present the axis/timing

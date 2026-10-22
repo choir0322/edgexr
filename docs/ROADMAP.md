@@ -30,6 +30,10 @@ scene regions by direction and validate revisits. Preserve uncertainty and rejec
 unsupported motion rather than inventing a position. Follow the
 [orientation-aware surroundings plan](exec-plans/active/orientation-aware-surroundings.md).
 Translation, metric depth and full 3D mapping require a separate later scope.
+The [research review](SPATIAL_AWARENESS_RESEARCH.md) supports a calibrated visual
+compass, gyro assistance and bounded scene keyframes before a full SLAM stack.
+The immediate gate is sensor/camera calibration and timestamp validity, not
+another identity or visualization feature.
 
 ### Supporting branch — Object re-identification (paused 2026-10-23)
 
