@@ -1,5 +1,16 @@
 # Roadmap
 
+## Priority clarification — 2026-10-24
+
+AP workload/systems engineering is the primary learning objective. Spatial
+awareness remains the current bounded application task, not a prerequisite to
+finish full mapping before learning AP engineering. Use the
+[AP handoff](exec-plans/active/EdgeXR_AP_Workload_Benchmark_Handoff.md) flexibly:
+retain verified hardware facts and existing Caffe/OpenCV MobileNet-SSD, IMU,
+tracking, capture and profiler work. No NPU is available. Review the AP question,
+bounded feature and measurements at each milestone; avoid indefinite identity,
+mapping or learning-website expansion.
+
 ## Phase 0 — Know the equipment
 
 Verify the Pi environment, USB camera modes, and raw IMU readings independently.
@@ -58,10 +69,13 @@ or display overhead. Explain each tradeoff in a committed result summary.
 The earlier sustained, unchanged basic-tracking measurement in
 [`ap-baseline.md`](exec-plans/active/ap-baseline.md) remains a historical
 reference. It was collected **before** re-identification and is not a fair
-final-workload optimization baseline. Defer thread, model, camera-mode and
-other tuning until the orientation-aware workload and its cost are measured;
-then establish a comparable full-workload baseline. No tuning experiment has
-started.
+final-workload optimization baseline. AP measurement accompanies current work;
+full spatial mapping is not a gate for model/thread/runtime experiments. After
+the bounded orientation-input checkpoint, explicitly choose the next feature or
+controlled AP comparison. Establish a baseline for each exact workload before
+tuning. Model/runtime candidates in the handoff require compatibility and license
+checks; preserve the working detector as one reference. No new tuning experiment
+has started as part of this direction update.
 
 Explicit future objective: **find the best detector configuration for this Pi
 and EdgeXR's requirements**, including model efficiency and whole-application

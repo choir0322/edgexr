@@ -101,6 +101,80 @@ def numeric_csv(path: Path) -> list[NumericRow]:
     return rows
 
 
+def analyze_stationary(folder: Path, window_seconds: float = 10.0) -> Record:
+    """Summarize stationary camera/IMU timing and short-term gyro bias change.
+
+    Args:
+        folder (Path): Complete combined-capture directory with metadata and CSVs.
+        window_seconds (float): Length of first and last assumed-still windows,
+            measured from the recording cue in host monotonic seconds.
+
+    Returns:
+        Record: JSON-ready timing, gyro and gap diagnostics; no pose estimate or
+            physical sensor-loss count.
+    """
+    # Validate the completed capture and select only the timed recording window.
+    # Startup frames and IMU samples are excluded from this comparison.
+    meta = json.loads((folder / "metadata.json").read_text())
+    duration = float(meta["requested_seconds_after_first_frame"])
+    cue = float(meta["recording_cue_host_s"])
+    if meta["status"] != "complete" or not all(map(math.isfinite, (duration, cue))):
+        raise ValueError("Need complete capture with finite recording times")
+    if not math.isfinite(window_seconds) or not 0 < 2 * window_seconds < duration:
+        raise ValueError("First and last windows must be positive and nonoverlapping")
+    frames = numeric_csv(folder / "frames.csv")
+    imu = numeric_csv(folder / "imu.csv")
+    if len(frames) != meta["decoded_frames"] or len(imu) != meta["imu_samples"]:
+        raise ValueError("CSV counts disagree with metadata")
+    end = cue + duration
+    frames = [r for r in frames if cue <= r["host_receipt_s"] <= end]
+    imu = [r for r in imu if cue <= r["host_read_midpoint_s"] <= end]
+    first = [r for r in imu if r["host_read_midpoint_s"] < cue + window_seconds]
+    last = [r for r in imu if r["host_read_midpoint_s"] >= end - window_seconds]
+    first_bias, last_bias = mean_axes(first), mean_axes(last)
+
+    # Separate camera PTS, host receipts and IMU read-midpoint timing. Flag
+    # unusually long observed intervals without claiming missed sensor samples.
+    camera_pts = timing([r["camera_pts_s"] for r in frames])
+    camera_host = timing([r["host_receipt_s"] for r in frames])
+    imu_times = [r["host_read_midpoint_s"] for r in imu]
+    imu_host = timing(imu_times)
+    gaps = [b - a for a, b in zip(imu_times, imu_times[1:])]
+    gap_limit = 3 * statistics.median(gaps)
+    durations = sorted(r["read_duration_s"] for r in imu)
+    if min(durations) < 0:
+        raise ValueError("IMU read duration cannot be negative")
+    keys = ("gx_dps", "gy_dps", "gz_dps")
+    return {
+        "recording": folder.name,
+        "status": meta["status"],
+        "requested_mode": meta["requested_mode"],
+        "requested_seconds": duration,
+        "imu_sleep_seconds": meta["imu_sleep_seconds"],
+        "analysis_window_after_cue_s": [0, duration],
+        "camera_pts": camera_pts,
+        "camera_host_receipts": camera_host,
+        "imu_host_midpoints": imu_host,
+        "imu_read_duration_ms_median": 1000 * statistics.median(durations),
+        "imu_read_duration_ms_p95": 1000 * durations[math.ceil(0.95 * len(durations)) - 1],
+        "imu_gap_threshold_ms": 1000 * gap_limit,
+        "imu_long_gap_count": sum(gap > gap_limit for gap in gaps),
+        "first_still_samples": len(first),
+        "last_still_samples": len(last),
+        "first_gyro_mean_dps": first_bias,
+        "last_gyro_mean_dps": last_bias,
+        "gyro_mean_change_dps": [b - a for a, b in zip(first_bias, last_bias)],
+        "first_gyro_std_dps": [statistics.pstdev(r[k] for r in first) for k in keys],
+        "last_gyro_std_dps": [statistics.pstdev(r[k] for r in last) for k in keys],
+        "limits": (
+            "Both windows must actually be still. This compares raw gyro rates, "
+            "not calibrated camera orientation. Host timestamps do not establish "
+            "exposure synchronization or count physical sensor losses. No CPU, "
+            "power or full-pipeline latency is measured."
+        ),
+    }
+
+
 def analyze(folder: Path, baseline_seconds: float = 1.0) -> Record:
     """Validate a saved run and summarize host/PTS timing and assumed-still gyro correction.
 
@@ -213,6 +287,14 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("folder", type=Path)
     parser.add_argument(
+        "--stationary", action="store_true",
+        help="report first/last stationary gyro windows and camera/IMU timing",
+    )
+    parser.add_argument(
+        "--window-seconds", type=float, default=10.0,
+        help="first and last assumed-still window length with --stationary",
+    )
+    parser.add_argument(
         "--baseline-seconds",
         type=float,
         default=1.0,
@@ -220,9 +302,13 @@ def main() -> None:
     )
     args = parser.parse_args()
     try:
+        if args.stationary:
+            report = analyze_stationary(args.folder, args.window_seconds)
+        else:
+            report = analyze(args.folder, args.baseline_seconds)
         print(
             json.dumps(
-                analyze(args.folder, args.baseline_seconds), indent=2, allow_nan=False
+                report, indent=2, allow_nan=False
             )
         )
     except (OSError, ValueError, KeyError, TypeError) as error:

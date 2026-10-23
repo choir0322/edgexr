@@ -1,5 +1,13 @@
 # Intended architecture
 
+This document sketches responsibilities; see `PIPELINE.md` for implemented
+workers and data flow. As of 2026-10-24, AP engineering is the primary learning
+goal and spatial awareness is the current workload. Keep profiling separate
+from perception logic, preserve recorded-input replay, and distinguish stage
+compute time, sampling interval and result age. No NPU is present. Proposed
+model/runtime adapters must preserve the current detector until a measured
+comparison justifies change; a new architecture framework is not required.
+
 The first implementation should remain a pipeline of small, visible pieces:
 
 ```text

@@ -1,9 +1,52 @@
 from __future__ import annotations
 import unittest
-from recording.analyze_capture import timing, integrate, mean_axes
+from pathlib import Path
+from tempfile import TemporaryDirectory
+import json
+
+from recording.analyze_capture import analyze_stationary, timing, integrate, mean_axes
 
 
 class CaptureAnalysisTests(unittest.TestCase):
+    def test_stationary_report_excludes_startup_and_detects_bias_change(self) -> None:
+        """Check one complete synthetic recording with known timing and drift.
+
+        Args:
+            None.
+
+        Returns:
+            None: Assertions fail if windowing, units or gap reporting changes.
+        """
+        with TemporaryDirectory() as temporary:
+            folder = Path(temporary)
+            metadata = dict(
+                status="complete", requested_seconds_after_first_frame=30,
+                recording_cue_host_s=10, decoded_frames=6, imu_samples=11,
+                requested_mode="1280x720 MJPEG 30 fps", imu_sleep_seconds=.05,
+            )
+            (folder / "metadata.json").write_text(json.dumps(metadata))
+            (folder / "frames.csv").write_text(
+                "frame_index,camera_pts_s,host_receipt_s\n"
+                "0,0,9\n1,1,10\n2,2,11\n3,3,20\n4,4,30\n5,5,39\n"
+            )
+            (folder / "imu.csv").write_text(
+                "host_read_midpoint_s,read_duration_s,ax_g,ay_g,az_g,gx_dps,gy_dps,gz_dps\n"
+                "9,.002,0,0,1,99,99,99\n"
+                "10,.002,0,0,1,1,2,3\n11,.002,0,0,1,1,2,3\n"
+                "12,.002,0,0,1,1,2,3\n13,.002,0,0,1,1,2,3\n"
+                "14,.002,0,0,1,1,2,3\n30,.004,0,0,1,3,4,5\n"
+                "31,.004,0,0,1,3,4,5\n32,.004,0,0,1,3,4,5\n"
+                "38,.006,0,0,1,3,4,5\n39,.006,0,0,1,3,4,5\n"
+            )
+            report = analyze_stationary(folder, 10)
+            self.assertEqual(report["first_gyro_mean_dps"], [1, 2, 3])
+            self.assertEqual(report["last_gyro_mean_dps"], [3, 4, 5])
+            self.assertEqual(report["gyro_mean_change_dps"], [2, 2, 2])
+            self.assertEqual(report["first_still_samples"], 5)
+            self.assertEqual(report["imu_long_gap_count"], 2)
+            self.assertEqual(report["camera_pts"]["count"], 5)
+            self.assertEqual(report["imu_read_duration_ms_p95"], 6)
+
     def test_timing_preserves_startup_gap_and_nearest_rank_percentile(self) -> None:
         """Verify timing preserves startup gap and nearest rank percentile.
 

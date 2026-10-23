@@ -9,14 +9,29 @@ not to produce opaque code quickly.
 
 ## Main goal and relevance checks
 
-The primary goal is orientation-aware surroundings: estimate where the camera
-is looking and remember the space it has observed. Begin with a stationary base
-and relative camera orientation; do not claim 3D position, depth or SLAM from
-image displacement or gyro integration alone. Detection and identity tracking
-are supporting capabilities, not the main success criterion.
+The primary learning goal is Application Processor (AP) workload and systems
+engineering on a Raspberry Pi 4: understand scheduling, compute and memory cost,
+latency, throughput, resource contention and measured quality/performance
+tradeoffs. There is no NPU. Spatial perception is the meaningful application
+workload, not an independent ambition to build production XR or full SLAM.
 
-Before each new milestone, explain how it directly advances this goal, enables
-it, or is a less-relevant detour. Explicitly remind the user when a request would
+Use `docs/exec-plans/active/EdgeXR_AP_Workload_Benchmark_Handoff.md` as a flexible
+anchor, not a rigid specification. The user's 2026-10-24 clarification and
+verified repository/hardware facts take precedence over its proposed runtimes,
+hardware assumptions, checklist and sequencing. Preserve existing progress;
+do not restart the working Caffe/OpenCV MobileNet-SSD pipeline or add YOLO just
+because the handoff suggests it. Use public sources/personal hardware only;
+never introduce employer-confidential material or claim measured NPU results.
+
+The current application milestone remains orientation-aware surroundings:
+estimate where the camera looks and remember observed directions, beginning
+with a fixed base. Do not claim 3D position, depth or SLAM from image shift or
+gyro integration alone. Bound this milestone and tie it to AP learning.
+
+Before each new milestone and after its results, revisit the anchor briefly:
+state the AP question, bounded application outcome and measurement. Explain
+whether work directly advances the goal, enables it, or is a less-relevant
+detour. Explicitly remind the user when a request would
 shift effort toward identity tuning, learning websites or cosmetic visualization.
 Offer the goal-aligned next step and ask before expanding a detour. Respect an
 explicit user choice to take it. Prefer minimal diagnostic displays and measured

@@ -2,6 +2,13 @@
 
 ## Purpose / big picture
 
+2026-10-24 clarification: this is a bounded application workload in an AP
+engineering learning project, not the overarching goal. Use
+[the AP handoff](EdgeXR_AP_Workload_Benchmark_Handoff.md) as a flexible anchor.
+Do not delay all AP comparisons until full scene memory or mapping is complete.
+At each stage report the application benefit, timing/resource cost and next
+controlled experiment; keep existing hardware/software facts authoritative.
+
 Help the Pi understand where its camera is looking and remember the scene in
 those directions. Start with a fixed base and relative orientation. A successful
 demo turns away and back, reports the viewing direction and uncertainty, and
@@ -23,6 +30,16 @@ camera exposure synchronization. Existing raw accelerometer calibration issues
 remain unresolved; do not silently use acceleration as trusted tilt or position.
 
 ## Progress
+
+- [x] 2026-10-24: Review AP handoff against existing capture, IMU, tracker,
+  detector and profiler; preserve it as an anchor rather than a replacement plan.
+- [x] 2026-10-24: Inspect existing timestamp/polling paths; prepare the
+  [stationary input baseline](../../ORIENTATION_BASELINE.md) using existing code.
+- [ ] Run that baseline on the Pi and examine timing/bias stability before
+  adding orientation estimation or changing polling cadence.
+- [x] 2026-10-24: Extend the existing offline capture analyzer with a
+  stationary timing/bias report; review docs/PIPELINE.md and docs/learning/IMU.md
+  during this implementation. Existing live flow is unchanged.
 
 - [x] 2026-10-23: Complete a focused online primary-source review; document
   evidence, alternatives and Pi-specific limits in
@@ -64,8 +81,10 @@ hardware limit; inspect the polling sleep and driver before proposing changes.
 Keep detection/re-ID disabled for this new orientation baseline and label it as
 a different workload from the old AP benchmark.
 
-Proposed new tool `src/recording/orientation_baseline.py` will reuse capture
-helpers, save raw timestamps/read durations and check gaps, not move servos.
+2026-10-24 refinement: first reuse `src/recording/combined_capture.py` under
+`docs/ORIENTATION_BASELINE.md`. It already saves read durations and timestamps;
+do not create another recorder until analysis demonstrates missing information.
+The separate orientation-baseline module is deferred, not implemented.
 Proposed `docs/ORIENTATION_BASELINE.md` will give a finite-duration procedure:
 60 s still, then separately labelled pan and tilt movements with pauses, then
 five turn-away/return cycles. Confirm safe movement method and range with the
@@ -172,6 +191,17 @@ is spatial awareness. Those components remain useful but are not prerequisites
 for the next orientation milestone.
 
 ## Decision log
+
+- 2026-10-24: AP learning is primary; spatial awareness is its current bounded
+  workload. Handoff model/runtime suggestions are not verified selections.
+- 2026-10-24: Start with one stationary 60-second recording and inspect saved
+  timing rather than changing hardware settings or duplicating recorder code.
+- 2026-10-24: Reuse `recording.analyze_capture` for first/last still windows,
+  measured intervals and read duration. No new camera/IMU worker was needed;
+  live pipeline diagram reviewed and unchanged. The IMU guide remains accurate
+  about raw gyro units and lack of camera pose.
+- 2026-10-24: Pipeline and IMU learning guide reviewed; unchanged because this
+  step reuses the existing raw recorder, without fusion or live topology changes.
 
 - 2026-10-23: Fixed-base relative orientation first; full position/depth deferred.
 - 2026-10-23: Pause re-ID tuning and learning-site expansion; keep AP optimization

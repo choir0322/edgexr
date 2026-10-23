@@ -2,13 +2,19 @@
 
 ## Current priority
 
-As of 2026-10-23, focus on **orientation-aware surroundings**: where the camera
-is looking and what space it has observed. Re-identification improvements and
+As clarified on 2026-10-24, the primary goal is **AP workload and systems
+engineering**, without an NPU. The
+[AP handoff](docs/exec-plans/active/EdgeXR_AP_Workload_Benchmark_Handoff.md)
+is a flexible anchor, not a mandate to replace working code or follow its
+proposed model/runtime sequence. The current application milestone remains
+**orientation-aware surroundings**: where the camera looks and what it has
+observed, with measured timing and resource costs. Re-identification improvements and
 learning-site expansion are paused, not removed. Start with the
 [orientation and directional-memory plan](docs/exec-plans/active/orientation-aware-surroundings.md).
 This is planned work, not an existing 3D pose or mapping capability.
 See the [research review](docs/SPATIAL_AWARENESS_RESEARCH.md) for the papers,
 alternative approaches and why a relative visual compass comes before full SLAM.
+Next runnable step: [stationary orientation-input baseline](docs/ORIENTATION_BASELINE.md).
 
 ## Learn the implementation
 

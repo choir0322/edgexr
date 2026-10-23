@@ -2,11 +2,15 @@
 
 ## Goal
 
-Priority clarified 2026-10-23: understand and remember the space the camera
-observes, rather than maximize object-ID continuity or build learning websites.
-The next milestone is relative camera orientation and directional scene memory
-with a stationary base. Existing perception and profiling remain supporting
-tools. Full 3D position and mapping are later questions, not current claims.
+Priority clarified 2026-10-24: learn Application Processor workload and systems
+engineering. Spatial perception supplies a meaningful workload for studying
+timing, buffering, concurrency, compute/memory cost and quality/performance
+tradeoffs on the Pi 4 CPU; no NPU is available. The AP handoff in
+`exec-plans/active/EdgeXR_AP_Workload_Benchmark_Handoff.md` is a flexible anchor,
+not a reset of the existing implementation. The next bounded application
+milestone remains relative camera orientation and directional scene memory
+with a stationary base. Full 3D mapping and visualization expansion are not
+prerequisites for AP experiments or a successful project.
 
 Build and understand a Raspberry Pi 4 workload that observes a small physical
 scene through a USB global-shutter camera, tracks objects across frames, uses
