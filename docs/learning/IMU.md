@@ -1,5 +1,10 @@
 # Study 3: IMU reading, timestamp and gyro display
 
+For the measured polling tradeoff and definitions of CPU seconds/return
+residual, read [IMU_POLLING_FINDINGS.md](../IMU_POLLING_FINDINGS.md). The next
+[camera-axis mapping step](../exec-plans/active/imu-camera-axis-mapping.md) reuses
+the recorder; its mapping is planned and not yet part of the live pipeline.
+
 The new [offline relative-orientation experiment](../RELATIVE_ORIENTATION.md)
 reads saved IMU samples after a run. `spatial.relative_orientation.analyze`
 estimates a per-run gyro offset from an assumed-still window;

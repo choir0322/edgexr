@@ -14,15 +14,17 @@ learning-site expansion are paused, not removed. Start with the
 This is planned work, not an existing 3D pose or mapping capability.
 See the [research review](docs/SPATIAL_AWARENESS_RESEARCH.md) for the papers,
 alternative approaches and why a relative visual compass comes before full SLAM.
-Next runnable step: [stationary orientation-input baseline](docs/ORIENTATION_BASELINE.md).
+Next runnable step: [tilt measurement for camera-axis mapping](docs/exec-plans/active/imu-camera-axis-mapping.md).
 An [offline IMU-relative orientation estimator](docs/RELATIVE_ORIENTATION.md)
-now reads combined-capture logs; camera-axis calibration and Pi performance
-measurement are still upcoming.
+now reads combined-capture logs; camera-axis mapping remains upcoming and the
+first polling quality/resource cycle is complete.
 
 AP measurement: [fixed IMU polling resource comparison](docs/IMU_RESOURCE_BENCHMARK.md)
 measures the CPU cost of 50 ms versus 10 ms sleep on the same servo/camera workload.
 The [recorded fixed-rate results](benchmarks/results/imu-resource-fixed-2026-10-24.md)
-now support the next [command-driven polling comparison](docs/IMU_ADAPTIVE_POLLING.md).
+and [complete polling findings](docs/IMU_POLLING_FINDINGS.md) document fixed and
+adaptive results, CPU seconds, return residuals and limits. The adaptive policy
+reduced reads without demonstrating recorder CPU savings on this workload.
 
 ## Learn the implementation
 

@@ -1,5 +1,10 @@
 # Command-driven IMU polling experiment
 
+The six-run experiment is now complete. See [all polling findings](IMU_POLLING_FINDINGS.md)
+and the [full small report](../benchmarks/results/imu-resource-three-policy-2026-10-24.json).
+Adaptive reduced reads by 15.97%, with no demonstrated recorder CPU saving in
+this workload. The procedure below remains the reproducible experiment record.
+
 The [fixed-rate benchmark](../benchmarks/results/imu-resource-fixed-2026-10-24.md)
 found that 10 ms sleep used an extra 0.47 recorder CPU seconds per roughly
 21.4-second measured trial. Median apparent return residual fell from 10.77°

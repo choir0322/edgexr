@@ -13,6 +13,8 @@ and FFmpeg CPU work only during the recording window, then compares orientation
 quality. Its scope differs from the live detector AP baseline.
 The next [three-policy experiment](IMU_ADAPTIVE_POLLING.md) adds optional
 servo-command-driven polling under the same capture/resource measurement scope.
+Its [reviewed findings and metric definitions](IMU_POLLING_FINDINGS.md) now
+record the completed fixed/adaptive quality/resource cycle.
 
 A number without conditions is not a result. Every EdgeXR benchmark must say
 what was run, where it ran, how long it ran, and how the camera was configured.

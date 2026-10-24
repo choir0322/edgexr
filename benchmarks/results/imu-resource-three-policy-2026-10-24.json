@@ -1,0 +1,439 @@
+{
+  "runs": [
+    {
+      "recording": "imu-policy-50ms-01",
+      "imu_sleep_seconds": 0.05,
+      "imu_policy": "fixed",
+      "imu_active_sleep_seconds": null,
+      "imu_policy_transitions": [],
+      "imu_policy_sample_counts_all": null,
+      "requested_seconds": 21.5,
+      "camera_mode": "1280x720 MJPEG 30 fps",
+      "host": "Linux-6.12.47+rpt-rpi-v8-aarch64-with-glibc2.36",
+      "python": "3.11.2",
+      "git_commit": "a083d5f3077dd5661051d8f636cffc0aba61d546",
+      "notes": "Guarded servo test; sequential pan/tilt, wide pan commission ±20 degrees; scene=fixed base; same lit scene; pan and return; three-policy comparison; power=unknown; cooling=passive metal heatsink",
+      "planned_phases": [
+        {
+          "name": "pan-5dps",
+          "axis": "pan",
+          "speed_deg_s": 5,
+          "amplitude_deg": 20,
+          "start_s": 2.5,
+          "end_s": 18.499999999999968
+        }
+      ],
+      "measured_seconds": 21.451152870999067,
+      "observation_count": 22,
+      "recorder_cpu_seconds": 0.41,
+      "recorder_mean_cpu_pct_one_core": 1.9113191839413928,
+      "recorder_max_sampled_rss_mib": 37.94140625,
+      "ffmpeg_cpu_seconds": 7.08,
+      "ffmpeg_mean_cpu_pct_one_core": 33.00521907879283,
+      "ffmpeg_max_sampled_rss_mib": 153.53125,
+      "combined_cpu_seconds": 7.49,
+      "combined_mean_cpu_pct_one_core": 34.91653826273422,
+      "temperature_first_c": 43.816,
+      "temperature_last_c": 44.303,
+      "imu_rate_hz": 18.95003038174281,
+      "imu_samples_in_window": 407,
+      "imu_max_gap_ms": 55.22900249889062,
+      "imu_median_read_ms": 2.6177365,
+      "final_rotation_residual_deg": 2.6782486046070146,
+      "final_rotation_vector_deg": [
+        0.4700501290715678,
+        2.635904960905899,
+        -0.06382398695548716
+      ],
+      "camera_pts": {
+        "count": 648,
+        "span_s": 21.506881,
+        "rate_hz": 30.08339517013183,
+        "median_gap_ms": 32.00999999999965,
+        "p95_gap_ms": 36.000000000001364,
+        "max_gap_ms": 36.099999999999355
+      },
+      "throttle_before": "0x0",
+      "throttle_after": "0x0"
+    },
+    {
+      "recording": "imu-policy-10ms-01",
+      "imu_sleep_seconds": 0.01,
+      "imu_policy": "fixed",
+      "imu_active_sleep_seconds": null,
+      "imu_policy_transitions": [],
+      "imu_policy_sample_counts_all": null,
+      "requested_seconds": 21.5,
+      "camera_mode": "1280x720 MJPEG 30 fps",
+      "host": "Linux-6.12.47+rpt-rpi-v8-aarch64-with-glibc2.36",
+      "python": "3.11.2",
+      "git_commit": "a083d5f3077dd5661051d8f636cffc0aba61d546",
+      "notes": "Guarded servo test; sequential pan/tilt, wide pan commission ±20 degrees; scene=fixed base; same lit scene; pan and return; three-policy comparison; power=unknown; cooling=passive metal heatsink",
+      "planned_phases": [
+        {
+          "name": "pan-5dps",
+          "axis": "pan",
+          "speed_deg_s": 5,
+          "amplitude_deg": 20,
+          "start_s": 2.5,
+          "end_s": 18.499999999999968
+        }
+      ],
+      "measured_seconds": 21.435514331999002,
+      "observation_count": 23,
+      "recorder_cpu_seconds": 0.89,
+      "recorder_mean_cpu_pct_one_core": 4.151988080227238,
+      "recorder_max_sampled_rss_mib": 37.9609375,
+      "ffmpeg_cpu_seconds": 7.73,
+      "ffmpeg_mean_cpu_pct_one_core": 36.06164928107478,
+      "ffmpeg_max_sampled_rss_mib": 153.51953125,
+      "combined_cpu_seconds": 8.620000000000001,
+      "combined_mean_cpu_pct_one_core": 40.21363736130203,
+      "temperature_first_c": 48.199,
+      "temperature_last_c": 46.738,
+      "imu_rate_hz": 77.34024710116863,
+      "imu_samples_in_window": 1670,
+      "imu_max_gap_ms": 18.400107999696047,
+      "imu_median_read_ms": 2.662893,
+      "final_rotation_residual_deg": 1.0370124670449032,
+      "final_rotation_vector_deg": [
+        -0.5725792227546584,
+        0.8635354173094778,
+        0.04306359864634924
+      ],
+      "camera_pts": {
+        "count": 647,
+        "span_s": 21.474881,
+        "rate_hz": 30.081656797073755,
+        "median_gap_ms": 32.00999999999965,
+        "p95_gap_ms": 36.000000000001364,
+        "max_gap_ms": 36.10000000000113
+      },
+      "throttle_before": "0x0",
+      "throttle_after": "0x0"
+    },
+    {
+      "recording": "imu-policy-adaptive-01",
+      "imu_sleep_seconds": 0.05,
+      "imu_policy": "command-driven",
+      "imu_active_sleep_seconds": 0.01,
+      "imu_policy_transitions": [
+        {
+          "host_s": 0,
+          "mode": "idle",
+          "sleep_seconds": 0.05
+        },
+        {
+          "host_s": 3.534586047,
+          "mode": "fast",
+          "sleep_seconds": 0.01
+        },
+        {
+          "host_s": 20.715696686,
+          "mode": "idle",
+          "sleep_seconds": 0.05
+        }
+      ],
+      "imu_policy_sample_counts_all": {
+        "idle": 100,
+        "fast": 1323
+      },
+      "requested_seconds": 21.5,
+      "camera_mode": "1280x720 MJPEG 30 fps",
+      "host": "Linux-6.12.47+rpt-rpi-v8-aarch64-with-glibc2.36",
+      "python": "3.11.2",
+      "git_commit": "a083d5f3077dd5661051d8f636cffc0aba61d546",
+      "notes": "Guarded servo test; sequential pan/tilt, wide pan commission ±20 degrees; scene=fixed base; same lit scene; pan and return; three-policy comparison; power=unknown; cooling=passive metal heatsink",
+      "planned_phases": [
+        {
+          "name": "pan-5dps",
+          "axis": "pan",
+          "speed_deg_s": 5,
+          "amplitude_deg": 20,
+          "start_s": 2.5,
+          "end_s": 18.499999999999968
+        }
+      ],
+      "measured_seconds": 21.437664338000104,
+      "observation_count": 23,
+      "recorder_cpu_seconds": 0.86,
+      "recorder_mean_cpu_pct_one_core": 4.011631054767361,
+      "recorder_max_sampled_rss_mib": 37.97265625,
+      "ffmpeg_cpu_seconds": 7.71,
+      "ffmpeg_mean_cpu_pct_one_core": 35.964738874716694,
+      "ffmpeg_max_sampled_rss_mib": 153.515625,
+      "combined_cpu_seconds": 8.57,
+      "combined_mean_cpu_pct_one_core": 39.97636992948405,
+      "temperature_first_c": 49.66,
+      "temperature_last_c": 46.251,
+      "imu_rate_hz": 70.33982852824964,
+      "imu_samples_in_window": 1404,
+      "imu_max_gap_ms": 54.8392460004834,
+      "imu_median_read_ms": 2.687404,
+      "final_rotation_residual_deg": 0.7387905970138263,
+      "final_rotation_vector_deg": [
+        0.528777736128066,
+        -0.5151801923988216,
+        -0.028196123337020484
+      ],
+      "camera_pts": {
+        "count": 648,
+        "span_s": 21.506779,
+        "rate_hz": 30.083537846369275,
+        "median_gap_ms": 32.00999999999965,
+        "p95_gap_ms": 36.000000000001364,
+        "max_gap_ms": 36.04000000000007
+      },
+      "throttle_before": "0x0",
+      "throttle_after": "0x0"
+    },
+    {
+      "recording": "imu-policy-adaptive-02",
+      "imu_sleep_seconds": 0.05,
+      "imu_policy": "command-driven",
+      "imu_active_sleep_seconds": 0.01,
+      "imu_policy_transitions": [
+        {
+          "host_s": 0,
+          "mode": "idle",
+          "sleep_seconds": 0.05
+        },
+        {
+          "host_s": 3.517550668,
+          "mode": "fast",
+          "sleep_seconds": 0.01
+        },
+        {
+          "host_s": 20.707949173,
+          "mode": "idle",
+          "sleep_seconds": 0.05
+        }
+      ],
+      "imu_policy_sample_counts_all": {
+        "idle": 100,
+        "fast": 1324
+      },
+      "requested_seconds": 21.5,
+      "camera_mode": "1280x720 MJPEG 30 fps",
+      "host": "Linux-6.12.47+rpt-rpi-v8-aarch64-with-glibc2.36",
+      "python": "3.11.2",
+      "git_commit": "a083d5f3077dd5661051d8f636cffc0aba61d546",
+      "notes": "Guarded servo test; sequential pan/tilt, wide pan commission ±20 degrees; scene=fixed base; same lit scene; pan and return; three-policy comparison; power=unknown; cooling=passive metal heatsink",
+      "planned_phases": [
+        {
+          "name": "pan-5dps",
+          "axis": "pan",
+          "speed_deg_s": 5,
+          "amplitude_deg": 20,
+          "start_s": 2.5,
+          "end_s": 18.499999999999968
+        }
+      ],
+      "measured_seconds": 21.443893138999556,
+      "observation_count": 23,
+      "recorder_cpu_seconds": 0.87,
+      "recorder_mean_cpu_pct_one_core": 4.05709912076436,
+      "recorder_max_sampled_rss_mib": 37.97265625,
+      "ffmpeg_cpu_seconds": 7.71,
+      "ffmpeg_mean_cpu_pct_one_core": 35.95429220815313,
+      "ffmpeg_max_sampled_rss_mib": 153.51171875,
+      "combined_cpu_seconds": 8.58,
+      "combined_mean_cpu_pct_one_core": 40.01139132891748,
+      "temperature_first_c": 50.147,
+      "temperature_last_c": 49.173,
+      "imu_rate_hz": 70.23504001051727,
+      "imu_samples_in_window": 1405,
+      "imu_max_gap_ms": 54.407192999860854,
+      "imu_median_read_ms": 2.6741175,
+      "final_rotation_residual_deg": 0.552960732748008,
+      "final_rotation_vector_deg": [
+        -0.21037587292163532,
+        -0.33008632003429744,
+        -0.39057724636733426
+      ],
+      "camera_pts": {
+        "count": 648,
+        "span_s": 21.506781,
+        "rate_hz": 30.083535048782984,
+        "median_gap_ms": 32.00999999999965,
+        "p95_gap_ms": 36.000000000001364,
+        "max_gap_ms": 36.04000000000029
+      },
+      "throttle_before": "0x0",
+      "throttle_after": "0x0"
+    },
+    {
+      "recording": "imu-policy-10ms-02",
+      "imu_sleep_seconds": 0.01,
+      "imu_policy": "fixed",
+      "imu_active_sleep_seconds": null,
+      "imu_policy_transitions": [],
+      "imu_policy_sample_counts_all": null,
+      "requested_seconds": 21.5,
+      "camera_mode": "1280x720 MJPEG 30 fps",
+      "host": "Linux-6.12.47+rpt-rpi-v8-aarch64-with-glibc2.36",
+      "python": "3.11.2",
+      "git_commit": "a083d5f3077dd5661051d8f636cffc0aba61d546",
+      "notes": "Guarded servo test; sequential pan/tilt, wide pan commission ±20 degrees; scene=fixed base; same lit scene; pan and return; three-policy comparison; power=unknown; cooling=passive metal heatsink",
+      "planned_phases": [
+        {
+          "name": "pan-5dps",
+          "axis": "pan",
+          "speed_deg_s": 5,
+          "amplitude_deg": 20,
+          "start_s": 2.5,
+          "end_s": 18.499999999999968
+        }
+      ],
+      "measured_seconds": 21.43495571800122,
+      "observation_count": 23,
+      "recorder_cpu_seconds": 0.84,
+      "recorder_mean_cpu_pct_one_core": 3.9188324485063544,
+      "recorder_max_sampled_rss_mib": 37.94921875,
+      "ffmpeg_cpu_seconds": 7.75,
+      "ffmpeg_mean_cpu_pct_one_core": 36.15589461419553,
+      "ffmpeg_max_sampled_rss_mib": 153.5234375,
+      "combined_cpu_seconds": 8.59,
+      "combined_mean_cpu_pct_one_core": 40.07472706270188,
+      "temperature_first_c": 50.634,
+      "temperature_last_c": 50.147,
+      "imu_rate_hz": 77.47677726676213,
+      "imu_samples_in_window": 1673,
+      "imu_max_gap_ms": 14.952096000342863,
+      "imu_median_read_ms": 2.658961,
+      "final_rotation_residual_deg": 1.0854458296866716,
+      "final_rotation_vector_deg": [
+        0.8740545847424014,
+        -0.5550833181128252,
+        -0.32573569351213477
+      ],
+      "camera_pts": {
+        "count": 647,
+        "span_s": 21.474785,
+        "rate_hz": 30.081791272881194,
+        "median_gap_ms": 32.00999999999965,
+        "p95_gap_ms": 36.000000000001364,
+        "max_gap_ms": 36.10000000000113
+      },
+      "throttle_before": "0x0",
+      "throttle_after": "0x0"
+    },
+    {
+      "recording": "imu-policy-50ms-02",
+      "imu_sleep_seconds": 0.05,
+      "imu_policy": "fixed",
+      "imu_active_sleep_seconds": null,
+      "imu_policy_transitions": [],
+      "imu_policy_sample_counts_all": null,
+      "requested_seconds": 21.5,
+      "camera_mode": "1280x720 MJPEG 30 fps",
+      "host": "Linux-6.12.47+rpt-rpi-v8-aarch64-with-glibc2.36",
+      "python": "3.11.2",
+      "git_commit": "a083d5f3077dd5661051d8f636cffc0aba61d546",
+      "notes": "Guarded servo test; sequential pan/tilt, wide pan commission ±20 degrees; scene=fixed base; same lit scene; pan and return; three-policy comparison; power=unknown; cooling=passive metal heatsink",
+      "planned_phases": [
+        {
+          "name": "pan-5dps",
+          "axis": "pan",
+          "speed_deg_s": 5,
+          "amplitude_deg": 20,
+          "start_s": 2.5,
+          "end_s": 18.499999999999968
+        }
+      ],
+      "measured_seconds": 21.461982531000103,
+      "observation_count": 22,
+      "recorder_cpu_seconds": 0.43,
+      "recorder_mean_cpu_pct_one_core": 2.0035427732684976,
+      "recorder_max_sampled_rss_mib": 37.9609375,
+      "ffmpeg_cpu_seconds": 7.1,
+      "ffmpeg_mean_cpu_pct_one_core": 33.08175276792171,
+      "ffmpeg_max_sampled_rss_mib": 153.5234375,
+      "combined_cpu_seconds": 7.529999999999999,
+      "combined_mean_cpu_pct_one_core": 35.0852955411902,
+      "temperature_first_c": 52.095,
+      "temperature_last_c": 49.173,
+      "imu_rate_hz": 18.941799444783996,
+      "imu_samples_in_window": 407,
+      "imu_max_gap_ms": 55.18479900092643,
+      "imu_median_read_ms": 2.6248325,
+      "final_rotation_residual_deg": 9.84695676146206,
+      "final_rotation_vector_deg": [
+        -1.1304370342905083,
+        -9.507417734728339,
+        -2.300799337400139
+      ],
+      "camera_pts": {
+        "count": 649,
+        "span_s": 21.542786,
+        "rate_hz": 30.079674931552493,
+        "median_gap_ms": 32.00999999999965,
+        "p95_gap_ms": 36.000000000001364,
+        "max_gap_ms": 36.10000000000113
+      },
+      "throttle_before": "0x0",
+      "throttle_after": "0x0"
+    }
+  ],
+  "medians": {
+    "50ms": {
+      "run_count": 2,
+      "recorder_cpu_seconds": 0.42,
+      "ffmpeg_cpu_seconds": 7.09,
+      "combined_cpu_seconds": 7.51,
+      "recorder_mean_cpu_pct_one_core": 1.957430978604945,
+      "ffmpeg_mean_cpu_pct_one_core": 33.04348592335727,
+      "combined_mean_cpu_pct_one_core": 35.00091690196221,
+      "imu_rate_hz": 18.9459149132634,
+      "imu_samples_in_window": 407,
+      "final_rotation_residual_deg": 6.262602683034538
+    },
+    "10ms": {
+      "run_count": 2,
+      "recorder_cpu_seconds": 0.865,
+      "ffmpeg_cpu_seconds": 7.74,
+      "combined_cpu_seconds": 8.605,
+      "recorder_mean_cpu_pct_one_core": 4.035410264366797,
+      "ffmpeg_mean_cpu_pct_one_core": 36.108771947635155,
+      "combined_mean_cpu_pct_one_core": 40.14418221200195,
+      "imu_rate_hz": 77.40851218396537,
+      "imu_samples_in_window": 1671.5,
+      "final_rotation_residual_deg": 1.0612291483657874
+    },
+    "adaptive": {
+      "run_count": 2,
+      "recorder_cpu_seconds": 0.865,
+      "ffmpeg_cpu_seconds": 7.71,
+      "combined_cpu_seconds": 8.575,
+      "recorder_mean_cpu_pct_one_core": 4.034365087765861,
+      "ffmpeg_mean_cpu_pct_one_core": 35.95951554143491,
+      "combined_mean_cpu_pct_one_core": 39.99388062920077,
+      "imu_rate_hz": 70.28743426938345,
+      "imu_samples_in_window": 1404.5,
+      "final_rotation_residual_deg": 0.6458756648809172
+    }
+  },
+  "faster_minus_slower": {
+    "recorder_cpu_seconds": 0.445,
+    "ffmpeg_cpu_seconds": 0.6500000000000004,
+    "combined_cpu_seconds": 1.0950000000000006,
+    "recorder_mean_cpu_pct_one_core": 2.0779792857618515,
+    "ffmpeg_mean_cpu_pct_one_core": 3.0652860242778885,
+    "combined_mean_cpu_pct_one_core": 5.143265310039737,
+    "imu_rate_hz": 58.46259727070197,
+    "imu_samples_in_window": 1264.5,
+    "final_rotation_residual_deg": -5.20137353466875
+  },
+  "limits": "Short paired trials, not a significance test. CPU differences describe the recorder/FFmpeg workload with observer overhead included, not pure I2C time. Match scene, power and thermal state manually using run notes and temperatures. Residual assumes a physical return; camera command angles are not ground truth. CPU time is not electrical energy.",
+  "adaptive_minus_fixed_10ms": {
+    "recorder_cpu_seconds": 0,
+    "ffmpeg_cpu_seconds": -0.03000000000000025,
+    "combined_cpu_seconds": -0.030000000000001137,
+    "recorder_mean_cpu_pct_one_core": -0.0010451766009360597,
+    "ffmpeg_mean_cpu_pct_one_core": -0.14925640620024438,
+    "combined_mean_cpu_pct_one_core": -0.150301582801184,
+    "imu_rate_hz": -7.121077914581917,
+    "imu_samples_in_window": -267,
+    "final_rotation_residual_deg": -0.4153534834848702
+  }
+}

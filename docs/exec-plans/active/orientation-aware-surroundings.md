@@ -56,10 +56,15 @@ remain unresolved; do not silently use acceleration as trusted tilt or position.
   Replay decimation to roughly 20 Hz yielded 3.24–13.10° across four offsets.
 - [x] 2026-10-24: Measure short paired fixed-rate Pi resource cost: median
   recorder work 0.415/0.885 CPU s, residual 10.77/0.79° for 50/10 ms sleeps.
-  Follow the recorded results and next adaptive comparison in
-  [the fixed-rate/adaptive plan](imu-resource-scheduling.md) and
+  Follow the recorded results in
+  [the completed fixed-rate/adaptive plan](../completed/imu-resource-scheduling.md) and
   [resource protocol](../../IMU_RESOURCE_BENCHMARK.md).
-- [ ] Validate command-driven polling on Pi before choosing a live default.
+- [x] 2026-10-24: Validate command-driven polling: 15.97% fewer reads than fixed
+  10 ms, similar small residuals, no demonstrated recorder CPU saving. Record
+  all findings and terminology in [IMU_POLLING_FINDINGS.md](../../IMU_POLLING_FINDINGS.md).
+  Keep explicit fixed 10 ms as the reference for the next offline step.
+- [x] 2026-10-24: User approved the next
+  [camera-axis mapping protocol](imu-camera-axis-mapping.md); tilt data pending.
 - [x] 2026-10-24: Extend the existing offline capture analyzer with a
   stationary timing/bias report; review docs/PIPELINE.md and docs/learning/IMU.md
   during this implementation. Existing live flow is unchanged.

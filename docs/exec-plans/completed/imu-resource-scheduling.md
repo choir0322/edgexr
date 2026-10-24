@@ -24,7 +24,7 @@ capture and must be excluded from capture CPU measurements.
   window and a fixed-rate quality/resource comparison command.
 - [x] 2026-10-24: Test CPU accounting, identity/counter/missing-data failures,
   recorder lifecycle, complete-file reading and workload-mismatch rejection.
-  All 130 unit tests passed (two skipped); Pi observations remain pending.
+  At this stage the suite ran 130 tests (two skipped); Pi observations followed.
 - [x] 2026-10-24: Update docs/PIPELINE.md and docs/learning/IMU.md with the
   offline observer, timing scope and source route. Live topology is unchanged.
 - [x] 2026-10-24: Fixed-rate ABBA complete. Median recorder CPU work 0.415 versus
@@ -34,10 +34,15 @@ capture and must be excluded from capture CPU measurements.
 - [x] 2026-10-24: Implement command-driven pipe control with 0.3 s pre-command
   lead and 1 s settling after actual command completion; log receipt times and
   sample counts. Add pipe, lifecycle, scheduling and comparison-coverage tests.
-  All 135 unit tests passed (two skipped); no Pi adaptive result yet.
+  At this stage the suite ran 135 tests (two skipped); Pi validation followed.
 - [x] 2026-10-24: Update pipeline and IMU guide for the optional offline control
   pipe. Live workers retain their existing behavior.
-- [ ] Compare fixed 50 ms, fixed 10 ms and adaptive on the same workload.
+- [x] 2026-10-24: Six-run matched comparison complete. Adaptive reduced reads
+  15.97% versus fixed 10 ms; both recorder CPU medians were 0.865 s. All modes
+  retained about 30.08 camera fps, flags 0x0. Record the complete metrics/chart
+  and explanations in [IMU_POLLING_FINDINGS.md](../../IMU_POLLING_FINDINGS.md).
+- [x] 2026-10-24: User approved proceeding to camera-axis mapping. Preserve
+  fixed 10 ms as explicit experimental reference and adaptive as optional.
 
 ## Plan of work
 
@@ -58,7 +63,7 @@ capture and must be excluded from capture CPU measurements.
 
 Follow [IMU_RESOURCE_BENCHMARK.md](../../IMU_RESOURCE_BENCHMARK.md) for the completed
 fixed-rate stage and [IMU_ADAPTIVE_POLLING.md](../../IMU_ADAPTIVE_POLLING.md) for
-the next six-run three-policy comparison. The same
+the completed six-run three-policy comparison. The same
 resource observer must be enabled in every compared trial. Existing recordings
 without resource logs cannot supply historical CPU measurements.
 
@@ -91,10 +96,17 @@ supporting sparse-sampling sensitivity. Those trials did not measure CPU work.
   Use a bounded nonblocking stdin pipe, preserving CSV schema and command
   deadlines. Log sent and observed requests separately; broken control fails
   capture rather than silently claiming correct active coverage.
+- 2026-10-24: No demonstrated adaptive recorder CPU saving in this mostly-moving
+  workload. Added control work is a possible contributor, not a separately
+  measured cause. The policy follows servo commands and does not estimate
+  physical motor speed. Finish this bounded cycle and proceed to axis mapping.
 
 ## Outcomes and retrospective
 
-Fixed-rate measurements are reviewed and recorded. The command-driven policy
-is implemented and covered by hardware-free tests; its Pi quality and net CPU
-benefit remain unmeasured. All three modes must run under the same new revision
-for the next comparison. Unexpected base motion during idle remains unhandled.
+The bounded quality/resource cycle is complete. Short fixed-rate and matched
+adaptive results are reviewed and saved; two trials per policy establish
+screening evidence, not statistical significance or calibrated angle accuracy.
+Adaptive worked and reduced reads but did not demonstrate lower recorder CPU
+work. This is a valid AP result. Live defaults and unexpected-base-motion
+handling remain unchanged; those are explicit limits rather than claimed work.
+The next capability is the separate camera-axis mapping plan.

@@ -138,9 +138,9 @@ a default. Report integration time alongside sample count; more samples mean
 more integration work. CPU, memory and sustained energy cost remain to be
 measured under a fixed protocol, so this run alone cannot establish efficiency.
 
-The next approved checkpoint is the [fixed-rate resource benchmark](IMU_RESOURCE_BENCHMARK.md).
-It repeats the same movement with an opt-in capture-window CPU observer before
-implementing command-driven adaptive reads.
+The [fixed/adaptive resource cycle is complete](IMU_POLLING_FINDINGS.md).
+The approved next step is [camera-axis mapping](exec-plans/active/imu-camera-axis-mapping.md),
+using explicit fixed 10 ms polling as the reference configuration.
 
 After polling is understood, calibrate the IMU-to-camera axes and obtain an
 independent rotation reference before reporting viewing direction.
