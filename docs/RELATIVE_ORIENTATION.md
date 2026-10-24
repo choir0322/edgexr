@@ -138,5 +138,9 @@ a default. Report integration time alongside sample count; more samples mean
 more integration work. CPU, memory and sustained energy cost remain to be
 measured under a fixed protocol, so this run alone cannot establish efficiency.
 
+The next approved checkpoint is the [fixed-rate resource benchmark](IMU_RESOURCE_BENCHMARK.md).
+It repeats the same movement with an opt-in capture-window CPU observer before
+implementing command-driven adaptive reads.
+
 After polling is understood, calibrate the IMU-to-camera axes and obtain an
 independent rotation reference before reporting viewing direction.

@@ -14,6 +14,14 @@ after each read and logs the requested pause in `metadata.json`. The 10 ms
 experiment changes this software pause; the sensor's internal sampling and
 filtering are separate. See [the comparison procedure](../RELATIVE_ORIENTATION.md).
 
+The [resource experiment](../IMU_RESOURCE_BENCHMARK.md) adds `--measure-resources`
+to that recorder. `CaptureResources` samples cumulative Linux CPU counters,
+not wall-clock duration of an IMU read. A blocked I2C read can take wall time
+without using a CPU throughout. CPU seconds divided by observed wall seconds
+give one-core utilization: 0.5 CPU seconds over 20 wall seconds is 2.5%.
+`compare_imu_resources` compares these costs alongside the orientation residual.
+It does not change the live worker's polling or introduce adaptive scheduling.
+
 Read [the live diagram](../PIPELINE.md) and [image-motion guide](IMAGE_MOTION.md).
 The gyroscope measures angular rate around the board's axes. The live path
 shows bias-corrected rates; it does not yet calculate camera orientation or

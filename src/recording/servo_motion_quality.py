@@ -324,7 +324,7 @@ def capture_command(args: argparse.Namespace, duration: float) -> list[str]:
     """
     # combined_capture owns polling and records --interval as imu_sleep_seconds
     # in metadata.json. Read duration and scheduling add to this requested sleep.
-    return [
+    command = [
         sys.executable, "-u", "src/recording/combined_capture.py",
         "--device", args.device, "--seconds", f"{duration:.2f}",
         "--interval", str(args.imu_interval),
@@ -335,6 +335,9 @@ def capture_command(args: argparse.Namespace, duration: float) -> list[str]:
            "commission ±2 degrees" if args.commission else "series ±8/±6 degrees")
         + f"; scene={args.scene}; power={args.power}; cooling={args.cooling}",
     ]
+    if getattr(args, "measure_resources", False):
+        command.append("--measure-resources")
+    return command
 
 
 def run_capture(args: argparse.Namespace, commands: list[ServoCommand], phases: list[Phase],
@@ -363,7 +366,8 @@ def run_capture(args: argparse.Namespace, commands: list[ServoCommand], phases: 
 
     command = capture_command(args, duration)
     process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                               text=True, bufsize=1)
+                               text=True, bufsize=1,
+                               env={**os.environ, "PYTHONPATH": "src"})
     cue = threading.Event()
 
     def read_capture_output() -> None:
@@ -455,6 +459,12 @@ def analyze_run(output: Path, phases: Sequence[Phase]) -> dict[str, object]:
         timestamp_scope=metadata["timestamp_scope"],
         phases=phase_report(phases, issued, metadata, motion_rows, frame_rows, patch_rows),
     )
+    if metadata.get("measure_resources"):
+        resources = json.loads((output / "resources.json").read_text())
+        if resources["status"] != "complete":
+            raise ValueError("Resource measurement incomplete; inspect resources.json")
+        result["resource_measurement"] = {key: value for key, value in resources.items()
+                                          if key != "samples"}
     (output / "servo_quality_summary.json").write_text(json.dumps(result, indent=2) + "\n")
     return result
 
@@ -490,6 +500,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--device")
     parser.add_argument("--imu-interval", type=positive_interval, default=0.05,
                         help="seconds to sleep after each IMU read (default: 0.05); not a fixed sample period")
+    parser.add_argument("--measure-resources", action="store_true",
+                        help="save capture-window CPU/RSS observations to resources.json")
     parser.add_argument("--output", type=Path)
     parser.add_argument("--scene", default="unknown")
     parser.add_argument("--power", default="unknown")

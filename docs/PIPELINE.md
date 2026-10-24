@@ -13,6 +13,13 @@ to the combined recorder's post-read sleep. The explicit 0.01 s polling trial
 is documented in [RELATIVE_ORIENTATION.md](RELATIVE_ORIENTATION.md). Actual
 sample rate is measured from timestamps; this option does not alter live workers.
 
+With `--measure-resources`, the offline combined recorder also observes itself
+and its FFmpeg child at the recording cue, about 1 Hz, and before shutdown.
+`profiling.capture_resources` writes CPU/RSS observations to `resources.json`;
+`profiling.compare_imu_resources` combines complete fixed-rate trials with the
+offline orientation residual. See [the resource protocol](IMU_RESOURCE_BENCHMARK.md).
+This observer runs in the existing recording loop, outside the live graph.
+
 Reviewed 2026-10-21 while building the interactive
 [whole-program flow explorer](learning/program-flow-explorer.html). Runtime
 topology, shapes, units, worker schedules and freshness policies still match

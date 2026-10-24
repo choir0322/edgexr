@@ -12,6 +12,11 @@ also includes read, logging and scheduling time. This option changes no servo
 positions or speeds. The recorder metadata and final servo-quality summary
 store the selected sleep as `imu_sleep_seconds`.
 
+Add `--measure-resources` to save recorder/FFmpeg CPU, sampled RSS and temperature
+observations during capture to `resources.json`. Startup, shutdown and offline
+diagnostics are excluded from that measurement. The final servo summary includes
+the compact resource result. See [the fixed-rate protocol](IMU_RESOURCE_BENCHMARK.md).
+
 SunFounder's [AI Fusion pan/tilt example](https://docs.sunfounder.com/projects/ai-lab-kit/en/latest/python/4.16_pan_tilt_camera.html)
 uses `Servo(channel).angle(degrees)` and shows channels 2 and 3. Its
 [servo API](https://docs.sunfounder.com/projects/fusion-hat/en/latest/api/fusion_hat.servo.html)

@@ -42,12 +42,13 @@ class ServoQualityTests(unittest.TestCase):
                 with patch("recording.servo_motion_quality.validate_arming"), \
                      patch("recording.servo_motion_quality.run_capture", return_value=Path("test")) as run, \
                      patch("recording.servo_motion_quality.analyze_run", return_value={}):
-                    self.assertEqual(main(["--execute", "--commission", "--wide-pan",
+                    self.assertEqual(main(["--execute", "--measure-resources", "--commission", "--wide-pan",
                                            "--axes", "pan", "--device", "/dev/video0",
                                            "--output", "recordings/test", *options]), 0)
                 args, commands, phases, duration = run.call_args.args
                 command = capture_command(args, duration)
                 self.assertEqual(float(command[command.index("--interval") + 1]), expected)
+                self.assertIn("--measure-resources", command)
                 self.assertEqual(len(commands), 80)
                 self.assertEqual(commands[-1].angle_deg, 0)
                 self.assertEqual(phases[0].amplitude_deg, 20)

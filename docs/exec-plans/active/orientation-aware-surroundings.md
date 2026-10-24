@@ -54,7 +54,9 @@ remain unresolved; do not silently use acceleration as trusted tilt or position.
   offline interval forwarding. Live topology and live polling are unchanged.
 - [ ] Run the same pan/return with 0.01 s sleep; compare measured rate, timing,
   return residual and integration work, then repeat before selecting a default.
-- [ ] Measure repeatable Pi resource cost before a live implementation.
+- [ ] Measure repeatable Pi resource cost before a live implementation, following
+  [the fixed-rate/adaptive plan](imu-resource-scheduling.md) and
+  [resource protocol](../../IMU_RESOURCE_BENCHMARK.md).
 - [x] 2026-10-24: Extend the existing offline capture analyzer with a
   stationary timing/bias report; review docs/PIPELINE.md and docs/learning/IMU.md
   during this implementation. Existing live flow is unchanged.

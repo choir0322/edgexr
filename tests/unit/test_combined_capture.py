@@ -169,7 +169,7 @@ class CombinedCaptureTests(unittest.TestCase):
         self.assertIn("-n", command)
 
     def run_fake(
-        self, sensor: Sensor, directory: str
+        self, sensor: Sensor, directory: str, measure_resources: bool = False
     ) -> tuple[int, Record, argparse.Namespace]:
         """Run the recorder against fake sensors/processes in an isolated directory.
 
@@ -177,6 +177,7 @@ class CombinedCaptureTests(unittest.TestCase):
             sensor (Sensor): Read-only object implementing read_raw: acceleration g, gyro
                 degrees/s, temperature C.
             directory (str): Synthetic input used by this test double.
+            measure_resources (bool): Enable optional capture-window observations.
 
         Returns:
             tuple[int, Record, argparse.Namespace]: The declared test-double result; only
@@ -191,6 +192,7 @@ class CombinedCaptureTests(unittest.TestCase):
             seconds=0.02,
             interval=0.001,
             notes="unit test",
+            measure_resources=measure_resources,
         )
         with patch(
             "recording.combined_capture.platform.platform", return_value="test host"
@@ -199,6 +201,33 @@ class CombinedCaptureTests(unittest.TestCase):
         data = json.loads((args.output / "metadata.json").read_text())
         self.assertEqual(process.returncode, 255)
         return code, data, args
+
+    def test_resource_window_ends_before_ffmpeg_shutdown(self) -> None:
+        """Resource accounting must exclude shutdown and later offline diagnostics.
+
+        Args:
+            None.
+
+        Returns:
+            None: Verifies lifecycle ordering using the fake camera and monitor.
+        """
+        with tempfile.TemporaryDirectory() as directory:
+            with patch('profiling.capture_resources.CaptureResources') as monitor, \
+                 patch('recording.combined_capture.stop_camera') as stop:
+                events = []
+                monitor.return_value.finish.side_effect = lambda **kw: (
+                    events.append(('finish',kw)) or {'status':'complete','samples':[]})
+                stop.side_effect = lambda process: (events.append(('stop',None)),
+                                                    process.send_signal(2))
+                # The fake camera needs an identity only for the opted-in monitor.
+                with patch.object(Process,'pid',123,create=True):
+                    code,metadata,args = self.run_fake(Sensor(),directory,True)
+                self.assertEqual(code,0)
+                self.assertTrue(metadata['measure_resources'])
+                self.assertEqual(events[0],('finish',{'complete':True}))
+                self.assertEqual(events[1][0],'stop')
+                saved=json.loads((args.output/'resources.json').read_text())
+                self.assertEqual(saved['capture_status'],'complete')
 
     def test_success_saves_both_logs_and_metadata_without_overwrite(self) -> None:
         """Verify success saves both logs and metadata without overwrite.
@@ -217,6 +246,7 @@ class CombinedCaptureTests(unittest.TestCase):
             self.assertEqual(data["decoded_frames"], 2)
             self.assertGreater(data["imu_samples"], 1)
             self.assertIn("host_receipt_s", (args.output / "frames.csv").read_text())
+            self.assertFalse((args.output / "resources.json").exists())
             with self.assertRaises(FileExistsError):
                 record(Sensor(), args)
 

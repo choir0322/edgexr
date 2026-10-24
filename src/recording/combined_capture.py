@@ -11,6 +11,7 @@ import argparse
 import csv
 import json
 import math
+import os
 from pathlib import Path
 import platform
 import re
@@ -191,6 +192,7 @@ def record(sensor: Sensor, args: argparse.Namespace) -> int:
         "requested_mode": "1280x720 MJPEG 30 fps",
         "requested_seconds_after_first_frame": args.seconds,
         "imu_sleep_seconds": args.interval,
+        "measure_resources": getattr(args, "measure_resources", False),
         "origin_monotonic_ns": origin,
         "started_unix_seconds": time.time(),
         "command": command,
@@ -208,6 +210,8 @@ def record(sensor: Sensor, args: argparse.Namespace) -> int:
     process = None
     reader = None
     failure = None
+    resource_monitor = None
+    resource_report = None
 
     def drain_camera() -> None:
         """Drain showinfo diagnostics while saving frame receipts and waking the recorder.
@@ -275,6 +279,12 @@ def record(sensor: Sensor, args: argparse.Namespace) -> int:
                 if deadline is None and first_frame.is_set():
                     deadline = now + args.seconds
                     metadata["recording_cue_host_s"] = now - origin / 1e9
+                    if metadata["measure_resources"]:
+                        # Import only for the opt-in Linux experiment. CPU
+                        # endpoints enclose capture, excluding later FFT analysis.
+                        from profiling.capture_resources import CaptureResources
+
+                        resource_monitor = CaptureResources(os.getpid(), process.pid)
                     print(f"RECORDING for {args.seconds:g} seconds.", flush=True)
                 if deadline is not None and now >= deadline:
                     break
@@ -285,6 +295,8 @@ def record(sensor: Sensor, args: argparse.Namespace) -> int:
                 # additional pause, not a guarantee of that exact sample period.
                 writer.writerow(read_row(sensor, origin))
                 imu_count += 1
+                if resource_monitor is not None:
+                    resource_monitor.poll()
                 time.sleep(args.interval)
     except KeyboardInterrupt:
         failure = "Interrupted by user"
@@ -294,6 +306,8 @@ def record(sensor: Sensor, args: argparse.Namespace) -> int:
     # Always finalize camera/log resources and fold shutdown errors into run status.
     # FFmpeg code 255 is allowed for the deliberate interrupt used to stop capture.
     finally:
+        if resource_monitor is not None:
+            resource_report = resource_monitor.finish(complete=failure is None)
         if process is not None:
             try:
                 stop_camera(process)
@@ -327,6 +341,12 @@ def record(sensor: Sensor, args: argparse.Namespace) -> int:
                 b[1] <= a[1] for a, b in zip(frames, frames[1:])
             )
         (output / "metadata.json").write_text(json.dumps(metadata, indent=2) + "\n")
+        if resource_report is not None:
+            resource_report["capture_status"] = metadata["status"]
+            resource_report["requested_seconds"] = args.seconds
+            resource_report["imu_sleep_seconds"] = args.interval
+            (output / "resources.json").write_text(json.dumps(resource_report, indent=2) + "\n")
+            print(f"Resource measurement: {resource_report['status']}; saved resources.json")
 
     # Report what was saved and return failure for incomplete acquisition.
     print(
@@ -357,6 +377,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--device", required=True)
     parser.add_argument("--seconds", type=positive, default=15)
     parser.add_argument("--interval", type=positive, default=0.05)
+    parser.add_argument("--measure-resources", action="store_true",
+                        help="observe recorder and FFmpeg CPU/RSS during recording (Linux)")
     parser.add_argument(
         "--output", type=Path, required=True, help="new directory under recordings/"
     )
