@@ -183,6 +183,11 @@ def record(sensor: Sensor, args: argparse.Namespace) -> int:
     output = args.output
     output.mkdir(parents=True, exist_ok=False)
     origin = time.monotonic_ns()
+    policy = None
+    if getattr(args, "imu_policy", "fixed") == "command-driven":
+        from imu.command_polling import CommandPolling
+
+        policy = CommandPolling(args.interval, args.active_interval)
     command = camera_command(args.device, output / "camera.mkv")
     metadata = {
         "status": "incomplete",
@@ -192,6 +197,8 @@ def record(sensor: Sensor, args: argparse.Namespace) -> int:
         "requested_mode": "1280x720 MJPEG 30 fps",
         "requested_seconds_after_first_frame": args.seconds,
         "imu_sleep_seconds": args.interval,
+        "imu_policy": getattr(args, "imu_policy", "fixed"),
+        "imu_active_sleep_seconds": args.active_interval if policy else None,
         "measure_resources": getattr(args, "measure_resources", False),
         "origin_monotonic_ns": origin,
         "started_unix_seconds": time.time(),
@@ -293,11 +300,15 @@ def record(sensor: Sensor, args: argparse.Namespace) -> int:
 
                 # Write one timestamped raw sample per read, then sleep. The interval is an
                 # additional pause, not a guarantee of that exact sample period.
+                if policy is not None:
+                    policy.poll(sys.stdin.fileno(), (time.monotonic_ns()-origin)/1e9)
                 writer.writerow(read_row(sensor, origin))
                 imu_count += 1
+                if policy is not None:
+                    policy.counts[policy.mode] += 1
                 if resource_monitor is not None:
                     resource_monitor.poll()
-                time.sleep(args.interval)
+                time.sleep(policy.interval if policy is not None else args.interval)
     except KeyboardInterrupt:
         failure = "Interrupted by user"
     except Exception as error:
@@ -334,6 +345,9 @@ def record(sensor: Sensor, args: argparse.Namespace) -> int:
             imu_samples=imu_count,
             elapsed_seconds=(time.monotonic_ns() - origin) / 1e9,
         )
+        if policy is not None:
+            metadata["imu_policy_transitions"] = policy.transitions
+            metadata["imu_policy_sample_counts_all"] = policy.counts
         if frames:
             metadata["first_frame_host_receipt_s"] = frames[0][2]
             metadata["last_frame_host_receipt_s"] = frames[-1][2]
@@ -345,6 +359,8 @@ def record(sensor: Sensor, args: argparse.Namespace) -> int:
             resource_report["capture_status"] = metadata["status"]
             resource_report["requested_seconds"] = args.seconds
             resource_report["imu_sleep_seconds"] = args.interval
+            resource_report["imu_policy"] = metadata["imu_policy"]
+            resource_report["imu_active_sleep_seconds"] = metadata["imu_active_sleep_seconds"]
             (output / "resources.json").write_text(json.dumps(resource_report, indent=2) + "\n")
             print(f"Resource measurement: {resource_report['status']}; saved resources.json")
 
@@ -377,6 +393,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--device", required=True)
     parser.add_argument("--seconds", type=positive, default=15)
     parser.add_argument("--interval", type=positive, default=0.05)
+    parser.add_argument("--imu-policy", choices=("fixed", "command-driven"), default="fixed")
+    parser.add_argument("--active-interval", type=positive, default=0.01,
+                        help="active sleep for command-driven policy; controlled via stdin pipe")
     parser.add_argument("--measure-resources", action="store_true",
                         help="observe recorder and FFmpeg CPU/RSS during recording (Linux)")
     parser.add_argument(
@@ -386,6 +405,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         "--notes", default="Not supplied; experiment conditions unknown"
     )
     args = parser.parse_args(argv)
+    if args.imu_policy == "command-driven" and args.active_interval > args.interval:
+        parser.error("active interval must not exceed idle interval")
 
     # Reject unsafe/existing output paths and missing FFmpeg before touching hardware.
     if not args.output.resolve().is_relative_to(Path("recordings").resolve()):

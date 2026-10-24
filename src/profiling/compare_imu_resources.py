@@ -1,4 +1,4 @@
-"""Compare completed fixed-interval capture resource trials and orientation quality."""
+"""Compare completed fixed/adaptive IMU resource trials and orientation quality."""
 from __future__ import annotations
 
 import argparse
@@ -24,26 +24,52 @@ def read_run(folder: Path) -> dict[str, Any]:
     meta = json.loads((folder/'metadata.json').read_text())
     resources = json.loads((folder/'resources.json').read_text())
     servo = json.loads((folder/'servo_quality_summary.json').read_text())
-    schedule = json.loads((folder/'servo_commands.json').read_text())['planned_phases']
+    commands = json.loads((folder/'servo_commands.json').read_text())
+    schedule = commands['planned_phases']
     if (meta['status'] != 'complete' or resources['status'] != 'complete'
             or resources['capture_status'] != 'complete' or not meta.get('measure_resources')):
         raise ValueError(f'{folder}: recording/resource measurement incomplete')
+    policy = meta.get('imu_policy','fixed')
+    if policy not in ('fixed','command-driven'):
+        raise ValueError('Unknown IMU policy')
     if meta['imu_sleep_seconds'] not in (.05,.01):
-        raise ValueError('This first comparison accepts only fixed 50 ms and 10 ms sleep')
+        raise ValueError('Expected 50 ms or 10 ms base sleep')
     if (resources['imu_sleep_seconds'] != meta['imu_sleep_seconds'] or
             resources['requested_seconds'] != meta['requested_seconds_after_first_frame']):
         raise ValueError('Resource report configuration disagrees with recording metadata')
+    if resources.get('imu_policy','fixed') != policy:
+        raise ValueError('Resource report policy disagrees with recording metadata')
+    if policy == 'command-driven':
+        if (meta['imu_sleep_seconds'] != .05 or meta['imu_active_sleep_seconds'] != .01
+                or resources['imu_active_sleep_seconds'] != .01):
+            raise ValueError('Expected adaptive 50 ms idle and 10 ms active sleeps')
+        events = meta['imu_policy_transitions']
+        if [e['mode'] for e in events] != ['idle','fast','idle']:
+            raise ValueError('Incomplete adaptive transitions')
+        if [e['sleep_seconds'] for e in events] != [.05,.01,.05]:
+            raise ValueError('Adaptive transition sleeps disagree with configured policy')
+        first = (commands['issued_commands'][0]['host_command_ns']-meta['origin_monotonic_ns'])/1e9
+        last = (commands['issued_commands'][-1]['host_command_ns']-meta['origin_monotonic_ns'])/1e9
+        if (not math.isfinite(events[1]['host_s']) or not math.isfinite(events[2]['host_s'])
+                or not 0 <= events[1]['host_s'] <= first
+                or events[2]['host_s'] < last+1.):
+            raise ValueError('Fast IMU window did not cover motion and one-second settling')
     orientation = analyze(folder,bias_seconds=2)
     cpu = resources['summary']
     vector = orientation['final_rotation_vector_deg']
     rows = numeric_csv(folder/'imu.csv')
     return dict(
         recording=folder.name, imu_sleep_seconds=meta['imu_sleep_seconds'],
+        imu_policy=policy,
+        imu_active_sleep_seconds=meta.get('imu_active_sleep_seconds'),
+        imu_policy_transitions=meta.get('imu_policy_transitions',[]),
+        imu_policy_sample_counts_all=meta.get('imu_policy_sample_counts_all'),
         requested_seconds=meta['requested_seconds_after_first_frame'],
         camera_mode=meta['requested_mode'], host=meta['host'], python=meta['python'],
         git_commit=servo['git_commit'], notes=meta['notes'], planned_phases=schedule,
         **cpu,
         imu_rate_hz=(orientation['samples']-1)/orientation['span_s'],
+        imu_samples_in_window=orientation['samples']+orientation['bias_samples'],
         imu_max_gap_ms=orientation['max_gap_ms'],
         imu_median_read_ms=1000*statistics.median(r['read_duration_s'] for r in rows),
         final_rotation_residual_deg=math.sqrt(sum(v*v for v in vector)),
@@ -54,13 +80,13 @@ def read_run(folder: Path) -> dict[str, Any]:
 
 
 def compare(folders: list[Path]) -> dict[str, Any]:
-    """Calculate per-configuration medians and extra CPU work for faster polling.
+    """Calculate per-policy medians and CPU/quality tradeoffs.
 
     Args:
         folders (list[Path]): Completed trials with the same workload and observer.
 
     Returns:
-        dict[str, Any]: Per-run results, group medians and 10 ms minus 50 ms differences.
+        dict[str, Any]: Per-run results, medians and fixed/adaptive differences.
     """
     runs = [read_run(folder) for folder in folders]
     if not runs:
@@ -72,21 +98,29 @@ def compare(folders: list[Path]) -> dict[str, Any]:
     metrics = ('recorder_cpu_seconds','ffmpeg_cpu_seconds','combined_cpu_seconds',
                'recorder_mean_cpu_pct_one_core','ffmpeg_mean_cpu_pct_one_core',
                'combined_mean_cpu_pct_one_core',
-               'imu_rate_hz','final_rotation_residual_deg')
+               'imu_rate_hz','imu_samples_in_window','final_rotation_residual_deg')
     groups = {}
-    for sleep,label in ((.05,'50ms'),(.01,'10ms')):
-        selected = [run for run in runs if run['imu_sleep_seconds'] == sleep]
+    for label in ('50ms','10ms','adaptive'):
+        selected = [run for run in runs if (
+            'adaptive' if run.get('imu_policy','fixed') == 'command-driven'
+            else '50ms' if run['imu_sleep_seconds'] == .05 else '10ms') == label]
         if not selected:
+            if label == 'adaptive':
+                continue
             raise ValueError('Need both fixed 50 ms and 10 ms trials')
         groups[label] = dict(run_count=len(selected), **{
             key: statistics.median(row[key] for row in selected) for key in metrics})
-    return dict(runs=runs, medians=groups, faster_minus_slower={
+    result = dict(runs=runs, medians=groups, faster_minus_slower={
         key:groups['10ms'][key]-groups['50ms'][key] for key in metrics},
         limits=('Short paired trials, not a significance test. CPU differences describe '
                 'the recorder/FFmpeg workload with observer overhead included, not pure '
                 'I2C time. Match scene, power and thermal state manually using run notes '
                 'and temperatures. Residual assumes a physical return; camera command '
                 'angles are not ground truth. CPU time is not electrical energy.'))
+    if 'adaptive' in groups:
+        result['adaptive_minus_fixed_10ms'] = {
+            key:groups['adaptive'][key]-groups['10ms'][key] for key in metrics}
+    return result
 
 
 def main() -> None:

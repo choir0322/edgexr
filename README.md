@@ -19,8 +19,10 @@ An [offline IMU-relative orientation estimator](docs/RELATIVE_ORIENTATION.md)
 now reads combined-capture logs; camera-axis calibration and Pi performance
 measurement are still upcoming.
 
-Next AP experiment: [fixed IMU polling resource comparison](docs/IMU_RESOURCE_BENCHMARK.md)
+AP measurement: [fixed IMU polling resource comparison](docs/IMU_RESOURCE_BENCHMARK.md)
 measures the CPU cost of 50 ms versus 10 ms sleep on the same servo/camera workload.
+The [recorded fixed-rate results](benchmarks/results/imu-resource-fixed-2026-10-24.md)
+now support the next [command-driven polling comparison](docs/IMU_ADAPTIVE_POLLING.md).
 
 ## Learn the implementation
 

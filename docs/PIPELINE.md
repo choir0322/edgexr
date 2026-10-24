@@ -20,6 +20,13 @@ and its FFmpeg child at the recording cue, about 1 Hz, and before shutdown.
 offline orientation residual. See [the resource protocol](IMU_RESOURCE_BENCHMARK.md).
 This observer runs in the existing recording loop, outside the live graph.
 
+The optional offline `--imu-policy command-driven` adds a servo-controller →
+recorder stdin pipe. `execute_commands` requests fast reads before motion;
+`CommandPolling.poll` switches post-read sleep and logs receipt. The parent
+requests idle reads one second after its last servo call finishes. These
+controls affect the recording experiment described in
+[IMU_ADAPTIVE_POLLING.md](IMU_ADAPTIVE_POLLING.md); live workers are unchanged.
+
 Reviewed 2026-10-21 while building the interactive
 [whole-program flow explorer](learning/program-flow-explorer.html). Runtime
 topology, shapes, units, worker schedules and freshness policies still match

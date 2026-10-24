@@ -52,11 +52,14 @@ remain unresolved; do not silently use acceleration as trusted tilt or position.
   preserving its 0.05 s default, and document the approved 0.01 s repeat.
 - [x] 2026-10-24: Review/update docs/PIPELINE.md and docs/learning/IMU.md for
   offline interval forwarding. Live topology and live polling are unchanged.
-- [ ] Run the same pan/return with 0.01 s sleep; compare measured rate, timing,
-  return residual and integration work, then repeat before selecting a default.
-- [ ] Measure repeatable Pi resource cost before a live implementation, following
+- [x] 2026-10-24: 10 ms sleep reached about 80 reads/s with 1.77° residual.
+  Replay decimation to roughly 20 Hz yielded 3.24–13.10° across four offsets.
+- [x] 2026-10-24: Measure short paired fixed-rate Pi resource cost: median
+  recorder work 0.415/0.885 CPU s, residual 10.77/0.79° for 50/10 ms sleeps.
+  Follow the recorded results and next adaptive comparison in
   [the fixed-rate/adaptive plan](imu-resource-scheduling.md) and
   [resource protocol](../../IMU_RESOURCE_BENCHMARK.md).
+- [ ] Validate command-driven polling on Pi before choosing a live default.
 - [x] 2026-10-24: Extend the existing offline capture analyzer with a
   stationary timing/bias report; review docs/PIPELINE.md and docs/learning/IMU.md
   during this implementation. Existing live flow is unchanged.

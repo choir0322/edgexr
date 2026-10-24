@@ -31,6 +31,8 @@ INITIAL_STILL_S = 2.5
 BETWEEN_PHASES_S = 1.0
 FINAL_STILL_S = 2.0
 MAX_TOTAL_S = 60.0
+FAST_READ_LEAD_S = 0.3
+FAST_READ_SETTLE_S = 1.0
 
 
 def positive_interval(value: str) -> float:
@@ -178,6 +180,7 @@ def execute_commands(
     clock: Callable[[], int] = time.monotonic_ns,
     pause: Callable[[float], None] = time.sleep,
     issued: list[dict[str, object]] | None = None,
+    prepare_motion: Callable[[], None] | None = None,
 ) -> list[dict[str, object]]:
     """Issue bounded commands on time, aborting before the next command on fault.
 
@@ -191,6 +194,8 @@ def execute_commands(
         pause (Callable[[float], None]): Bounded pause; injectable for tests.
         issued (list[dict[str, object]] | None): Optional caller-owned command log
             retained even when an interrupted run raises before completion.
+        prepare_motion (Callable[[], None] | None): Request fast reads 0.3 s before
+            the first command; called once without changing command deadlines.
 
     Returns:
         list[dict[str, object]]: Actual host command times and planned values.
@@ -218,6 +223,17 @@ def execute_commands(
             # interval instead of bursting late commands to catch up.
             minimum_gap_ns = round((command.at_s - previous_command.at_s) * 1e9)
             deadline = max(deadline, previous_actual_ns + minimum_gap_ns)
+        if previous_command is None and prepare_motion is not None:
+            # Request fast polling before motion, allowing the child to finish a
+            # slow sleep and receive the pipe message before the first command.
+            prepare_at = deadline-round(FAST_READ_LEAD_S*1e9)
+            while clock() < prepare_at:
+                if not alive():
+                    raise RuntimeError("Camera recorder stopped before motion preparation")
+                pause(min(.05,(prepare_at-clock())/1e9))
+            if not alive():
+                raise RuntimeError("Camera recorder stopped before fast-read request")
+            prepare_motion()
         while clock() < deadline:
             if not alive():
                 raise RuntimeError("Camera recorder stopped during servo schedule")
@@ -316,7 +332,8 @@ def capture_command(args: argparse.Namespace, duration: float) -> list[str]:
     """Build the existing recorder's command with the selected IMU sleep.
 
     Args:
-        args (argparse.Namespace): Parsed camera, output, IMU interval and scene options.
+        args (argparse.Namespace): Parsed camera/output, policy, idle/active sleeps
+            and scene options.
         duration (float): Capture duration in seconds from the unchanged servo schedule.
 
     Returns:
@@ -337,6 +354,9 @@ def capture_command(args: argparse.Namespace, duration: float) -> list[str]:
     ]
     if getattr(args, "measure_resources", False):
         command.append("--measure-resources")
+    if getattr(args, "imu_policy", "fixed") == "command-driven":
+        command.extend(["--imu-policy", "command-driven", "--active-interval",
+                        str(args.imu_active_interval)])
     return command
 
 
@@ -365,7 +385,9 @@ def run_capture(args: argparse.Namespace, commands: list[ServoCommand], phases: 
     time.sleep(1)
 
     command = capture_command(args, duration)
+    adaptive = getattr(args, "imu_policy", "fixed") == "command-driven"
     process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                               stdin=subprocess.PIPE if adaptive else subprocess.DEVNULL,
                                text=True, bufsize=1,
                                env={**os.environ, "PYTHONPATH": "src"})
     cue = threading.Event()
@@ -381,6 +403,21 @@ def run_capture(args: argparse.Namespace, commands: list[ServoCommand], phases: 
     reader = threading.Thread(target=read_capture_output, daemon=True)
     reader.start()
     issued: list[dict[str, object]] = []
+    policy_requests: list[dict[str, object]] = []
+
+    def request_fast_reads() -> None:
+        """Signal the child recorder before the first physical servo command.
+
+        Args:
+            None.
+
+        Returns:
+            None: Writes one small pipe message and logs its send timestamp.
+        """
+        assert process.stdin is not None
+        process.stdin.write("fast\n")
+        process.stdin.flush()
+        policy_requests.append(dict(mode="fast",host_command_ns=time.monotonic_ns()))
     try:
         startup_deadline = time.monotonic() + 15
         while not cue.wait(0.05):
@@ -390,7 +427,21 @@ def run_capture(args: argparse.Namespace, commands: list[ServoCommand], phases: 
                 raise RuntimeError("No camera recording cue within 15 seconds")
         observed_ns = time.monotonic_ns()
         execute_commands(commands, servos, observed_ns,
-                         alive=lambda: process.poll() is None, issued=issued)
+                         alive=lambda: process.poll() is None, issued=issued,
+                         prepare_motion=request_fast_reads if adaptive else None)
+        if adaptive:
+            # The whole sequence remains fast, including command pauses. Wait
+            # after actual command completion, so late commands cannot outlast
+            # a purely precomputed high-rate window.
+            settle_until = time.monotonic()+FAST_READ_SETTLE_S
+            while time.monotonic() < settle_until:
+                if process.poll() is not None:
+                    raise RuntimeError("Recorder stopped before settling completed")
+                time.sleep(min(.05,max(0.,settle_until-time.monotonic())))
+            assert process.stdin is not None
+            process.stdin.write("idle\n")
+            process.stdin.flush()
+            policy_requests.append(dict(mode="idle",host_command_ns=time.monotonic_ns()))
         process.wait(timeout=FINAL_STILL_S + BETWEEN_PHASES_S + 15)
         reader.join(timeout=3)
         if process.returncode != 0:
@@ -406,10 +457,19 @@ def run_capture(args: argparse.Namespace, commands: list[ServoCommand], phases: 
                 process.kill()
                 process.wait(timeout=5)
         reader.join(timeout=3)
+        if process.stdin is not None:
+            try:
+                process.stdin.close()
+            except OSError:
+                pass  # An exited child may have closed its read end; retain the logs.
         if args.output.exists():
             (args.output / "servo_commands.json").write_text(
                 json.dumps(dict(planned_phases=[asdict(p) for p in phases],
-                                issued_commands=issued), indent=2) + "\n"
+                                issued_commands=issued,
+                                imu_policy_requests=policy_requests,
+                                imu_policy=dict(mode="command-driven" if adaptive else "fixed",
+                                                fast_lead_s=FAST_READ_LEAD_S,
+                                                fast_settle_s=FAST_READ_SETTLE_S)), indent=2) + "\n"
             )
     return args.output
 
@@ -455,6 +515,7 @@ def analyze_run(output: Path, phases: Sequence[Phase]) -> dict[str, object]:
         capture_status=metadata["status"],
         requested_camera_mode=metadata["requested_mode"],
         imu_sleep_seconds=metadata["imu_sleep_seconds"],
+        imu_policy=metadata.get("imu_policy", "fixed"),
         decoded_frames=metadata["decoded_frames"],
         timestamp_scope=metadata["timestamp_scope"],
         phases=phase_report(phases, issued, metadata, motion_rows, frame_rows, patch_rows),
@@ -500,6 +561,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--device")
     parser.add_argument("--imu-interval", type=positive_interval, default=0.05,
                         help="seconds to sleep after each IMU read (default: 0.05); not a fixed sample period")
+    parser.add_argument("--imu-policy", choices=("fixed", "command-driven"), default="fixed")
+    parser.add_argument("--imu-active-interval", type=positive_interval, default=0.01,
+                        help="active sleep for command-driven policy (default: 0.01 seconds)")
     parser.add_argument("--measure-resources", action="store_true",
                         help="save capture-window CPU/RSS observations to resources.json")
     parser.add_argument("--output", type=Path)
@@ -507,12 +571,17 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--power", default="unknown")
     parser.add_argument("--cooling", default="unknown")
     args = parser.parse_args(argv)
+    if args.imu_policy == "command-driven" and args.imu_active_interval > args.imu_interval:
+        parser.error("active IMU sleep must not exceed idle sleep")
     commands, phases, duration = build_schedule(
         args.axes, commission=args.commission, wide_pan=args.wide_pan,
         quick_pan=args.quick_pan,
     )
     print(f"Schedule: {len(commands)} 1° commands, {len(phases)} phases, {duration:.1f} s")
     print(f"IMU sleep: {args.imu_interval * 1000:g} ms after each read; measured rate also includes read time.")
+    if args.imu_policy == "command-driven":
+        print(f"Command-driven: {args.imu_active_interval*1000:g} ms active sleep, "
+              f"{FAST_READ_LEAD_S:g} s lead and {FAST_READ_SETTLE_S:g} s settling.")
     for phase in phases:
         path = (f"0° → −{phase.amplitude_deg}° → +{phase.amplitude_deg}°"
                 if args.quick_pan else f"±{phase.amplitude_deg}° → 0°")

@@ -38,6 +38,22 @@ class CompareImuResourceTests(unittest.TestCase):
             self.assertAlmostEqual(row['imu_rate_hz'],20.)
             self.assertEqual(row['final_rotation_residual_deg'],0.)
             self.assertEqual(row['recorder_cpu_seconds'],.2)
+            meta.update(imu_policy='command-driven',imu_active_sleep_seconds=.01,
+                origin_monotonic_ns=0,imu_policy_transitions=[
+                    {'mode':'idle','host_s':0.,'sleep_seconds':.05},
+                    {'mode':'fast','host_s':2.4,'sleep_seconds':.01},
+                    {'mode':'idle','host_s':4.5,'sleep_seconds':.05}])
+            report.update(imu_policy='command-driven',imu_active_sleep_seconds=.01)
+            (folder/'metadata.json').write_text(json.dumps(meta))
+            (folder/'resources.json').write_text(json.dumps(report))
+            commands=dict(planned_phases=[],issued_commands=[
+                {'host_command_ns':2_700_000_000},{'host_command_ns':3_500_000_000}])
+            (folder/'servo_commands.json').write_text(json.dumps(commands))
+            self.assertEqual(read_run(folder)['imu_policy'],'command-driven')
+            meta['imu_policy_transitions'][1]['host_s']=2.8
+            (folder/'metadata.json').write_text(json.dumps(meta))
+            with self.assertRaisesRegex(ValueError,'cover motion'):
+                read_run(folder)
             report['status']='incomplete'
             (folder/'resources.json').write_text(json.dumps(report))
             with self.assertRaisesRegex(ValueError,'incomplete'):
@@ -57,10 +73,10 @@ class CompareImuResourceTests(unittest.TestCase):
                   recorder_cpu_seconds=.2,ffmpeg_cpu_seconds=6.,combined_cpu_seconds=6.2,
                   recorder_mean_cpu_pct_one_core=1.,ffmpeg_mean_cpu_pct_one_core=30.,
                   combined_mean_cpu_pct_one_core=31.,
-                  imu_rate_hz=19.,final_rotation_residual_deg=11.)
+                  imu_rate_hz=19.,imu_samples_in_window=400,final_rotation_residual_deg=11.)
         fast=dict(slow,imu_sleep_seconds=.01,recorder_cpu_seconds=.8,
                   combined_cpu_seconds=6.8,recorder_mean_cpu_pct_one_core=4.,
-                  combined_mean_cpu_pct_one_core=34.,imu_rate_hz=80.,
+                  combined_mean_cpu_pct_one_core=34.,imu_rate_hz=80.,imu_samples_in_window=1700,
                   final_rotation_residual_deg=2.)
         with patch('profiling.compare_imu_resources.read_run',side_effect=[slow,fast]):
             report=compare([Path('slow'),Path('fast')])
@@ -68,6 +84,12 @@ class CompareImuResourceTests(unittest.TestCase):
         self.assertAlmostEqual(delta['recorder_cpu_seconds'],.6)
         self.assertEqual(delta['recorder_mean_cpu_pct_one_core'],3.)
         self.assertEqual(delta['final_rotation_residual_deg'],-9.)
+        adaptive=dict(fast,imu_policy='command-driven',imu_sleep_seconds=.05,
+                      recorder_cpu_seconds=.7,combined_cpu_seconds=6.7)
+        with patch('profiling.compare_imu_resources.read_run',side_effect=[slow,fast,adaptive]):
+            report=compare([Path('slow'),Path('fast'),Path('adaptive')])
+        self.assertAlmostEqual(report['adaptive_minus_fixed_10ms']['recorder_cpu_seconds'],-.1)
+        self.assertEqual(report['medians']['adaptive']['run_count'],1)
         with patch('profiling.compare_imu_resources.read_run',
                    side_effect=[slow,dict(fast,git_commit='different')]):
             with self.assertRaisesRegex(ValueError,'git_commit'):

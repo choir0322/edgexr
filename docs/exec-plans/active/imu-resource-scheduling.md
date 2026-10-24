@@ -27,8 +27,16 @@ capture and must be excluded from capture CPU measurements.
   All 130 unit tests passed (two skipped); Pi observations remain pending.
 - [x] 2026-10-24: Update docs/PIPELINE.md and docs/learning/IMU.md with the
   offline observer, timing scope and source route. Live topology is unchanged.
-- [ ] Run fixed-rate ABBA sequence on Pi; inspect CPU work and orientation quality.
-- [ ] Implement the command-driven policy after inspecting those measurements.
+- [x] 2026-10-24: Fixed-rate ABBA complete. Median recorder CPU work 0.415 versus
+  0.885 s; apparent return residual 10.77 versus 0.79 degrees. Camera near
+  30.08 fps, flags 0x0, temperatures 46.25–52.10 C. Store the reviewed
+  [small results record](../../../benchmarks/results/imu-resource-fixed-2026-10-24.md).
+- [x] 2026-10-24: Implement command-driven pipe control with 0.3 s pre-command
+  lead and 1 s settling after actual command completion; log receipt times and
+  sample counts. Add pipe, lifecycle, scheduling and comparison-coverage tests.
+  All 135 unit tests passed (two skipped); no Pi adaptive result yet.
+- [x] 2026-10-24: Update pipeline and IMU guide for the optional offline control
+  pipe. Live workers retain their existing behavior.
 - [ ] Compare fixed 50 ms, fixed 10 ms and adaptive on the same workload.
 
 ## Plan of work
@@ -48,7 +56,9 @@ capture and must be excluded from capture CPU measurements.
 
 ## Concrete steps
 
-Follow [IMU_RESOURCE_BENCHMARK.md](../../IMU_RESOURCE_BENCHMARK.md). The same
+Follow [IMU_RESOURCE_BENCHMARK.md](../../IMU_RESOURCE_BENCHMARK.md) for the completed
+fixed-rate stage and [IMU_ADAPTIVE_POLLING.md](../../IMU_ADAPTIVE_POLLING.md) for
+the next six-run three-policy comparison. The same
 resource observer must be enabled in every compared trial. Existing recordings
 without resource logs cannot supply historical CPU measurements.
 
@@ -76,10 +86,15 @@ supporting sparse-sampling sensitivity. Those trials did not measure CPU work.
   includes startup and substantial offline FFT diagnostics. Observe the parent
   servo process only in a future whole-system measurement if needed; this first
   report scopes recorder plus FFmpeg explicitly. Do not infer electrical energy.
+- 2026-10-24: Fixed-rate resource results justify the approved adaptive experiment,
+  though absolute potential savings are small on this mostly-moving workload.
+  Use a bounded nonblocking stdin pipe, preserving CSV schema and command
+  deadlines. Log sent and observed requests separately; broken control fails
+  capture rather than silently claiming correct active coverage.
 
 ## Outcomes and retrospective
 
-Fixed-rate instrumentation and comparison implementation are checked locally;
-Pi measurements remain pending. Adaptive policy is an approved
-follow-up, dependent on the fixed-rate resource results rather than implemented
-speculatively in the baseline phase.
+Fixed-rate measurements are reviewed and recorded. The command-driven policy
+is implemented and covered by hardware-free tests; its Pi quality and net CPU
+benefit remain unmeasured. All three modes must run under the same new revision
+for the next comparison. Unexpected base motion during idle remains unhandled.

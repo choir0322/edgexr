@@ -35,6 +35,50 @@ class FakeServo:
 
 
 class ServoQualityTests(unittest.TestCase):
+    def test_fast_read_request_precedes_first_command_without_changing_timing(self) -> None:
+        """Notify the child 300 ms before motion, preserving the command deadline.
+
+        Args:
+            None.
+
+        Returns:
+            None: Checks control lead and physical command timestamp.
+        """
+        now,requests = [0],[]
+
+        def pause(seconds: float) -> None:
+            """Advance the fake clock by the requested seconds.
+
+            Args:
+                seconds (float): Simulated wait duration.
+
+            Returns:
+                None: Updates the deterministic clock.
+            """
+            now[0] += round(seconds*1e9)
+
+        issued=execute_commands([ServoCommand(2.7,'pan',-1,'test')],{'pan':FakeServo()},
+            0,alive=lambda:True,clock=lambda:now[0],pause=pause,
+            prepare_motion=lambda:requests.append(now[0]))
+        self.assertEqual(requests,[2_400_000_000])
+        self.assertEqual(issued[0]['host_command_ns'],2_700_000_000)
+
+    def test_adaptive_capture_arguments_preserve_idle_and_active_settings(self) -> None:
+        """The servo wrapper forwards policy and both sleeps to its child.
+
+        Args:
+            None.
+
+        Returns:
+            None: Checks argument forwarding without hardware.
+        """
+        args=argparse.Namespace(device='test',output=Path('recordings/test'),
+            imu_interval=.05,imu_policy='command-driven',imu_active_interval=.01,
+            quick_pan=False,wide_pan=True,commission=True,scene='test',power='test',cooling='test')
+        command=capture_command(args,21.5)
+        self.assertEqual(command[command.index('--imu-policy')+1],'command-driven')
+        self.assertEqual(command[command.index('--active-interval')+1],'0.01')
+        self.assertEqual(command[command.index('--interval')+1],'0.05')
     def test_imu_sleep_reaches_recorder_without_changing_servo_schedule(self) -> None:
         """CLI selection must reach the child recorder, preserving the 50 ms default."""
         for options, expected in (([], .05), (["--imu-interval", "0.01"], .01)):

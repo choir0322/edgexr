@@ -20,7 +20,14 @@ not wall-clock duration of an IMU read. A blocked I2C read can take wall time
 without using a CPU throughout. CPU seconds divided by observed wall seconds
 give one-core utilization: 0.5 CPU seconds over 20 wall seconds is 2.5%.
 `compare_imu_resources` compares these costs alongside the orientation residual.
-It does not change the live worker's polling or introduce adaptive scheduling.
+It does not change the live worker's polling.
+
+The [offline command-driven policy](../IMU_ADAPTIVE_POLLING.md) now switches
+the recorder's sleep through a stdin pipe. Read `execute_commands`'s
+`prepare_motion` callback, `run_capture.request_fast_reads`, then
+`CommandPolling.poll` and the recorder's `time.sleep` selection. Servo-control
+requests and recorder receipt are separate events with separate host timestamps.
+The comparison verifies that observed fast polling covered motion and settling.
 
 Read [the live diagram](../PIPELINE.md) and [image-motion guide](IMAGE_MOTION.md).
 The gyroscope measures angular rate around the board's axes. The live path

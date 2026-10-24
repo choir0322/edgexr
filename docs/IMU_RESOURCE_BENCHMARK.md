@@ -120,9 +120,8 @@ not direct comparison rows for this experiment.
 
 ## Next: adaptive reads
 
-Review the fixed-rate CPU difference, quality and repeatability first. Then
-implement a command-driven high-rate window before the sweep through settling,
-with lower-rate reads at rest. Run all three policies with the same scene,
-servo schedule, recording duration and resource observer. An adaptive policy
-must also report its transitions/read counts and discuss unexpected base motion.
-This policy is a planned follow-up, not current behavior.
+The [fixed-rate results](../benchmarks/results/imu-resource-fixed-2026-10-24.md)
+show the measured cost and quality difference. The optional
+[command-driven policy](IMU_ADAPTIVE_POLLING.md) is now implemented with observed
+transition logging and a same-revision three-policy protocol. Its Pi results
+are pending. The fixed-rate comparison command remains supported.

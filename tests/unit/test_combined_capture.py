@@ -7,6 +7,7 @@ if TYPE_CHECKING:
 import argparse
 import io
 import json
+import os
 from pathlib import Path
 import tempfile
 import unittest
@@ -87,6 +88,54 @@ class Process:
 
 
 class CombinedCaptureTests(unittest.TestCase):
+    def test_command_policy_records_observed_transitions_and_read_counts(self) -> None:
+        """Run the recorder with real control-pipe bytes and fake camera/sensor.
+
+        Args:
+            None.
+
+        Returns:
+            None: Checks idle/fast/idle metadata and that both modes perform reads.
+        """
+        read_fd,write_fd=os.pipe()
+        sensor=Sensor()
+        calls=[0]
+
+        def sensor_read() -> tuple[Axes, Axes, float]:
+            """Supply fixed readings and emit requests at deterministic read counts.
+
+            Args:
+                None.
+
+            Returns:
+                tuple: Synthetic acceleration, gyro and temperature.
+            """
+            calls[0]+=1
+            if calls[0] == 1:
+                os.write(write_fd,b'fast\n')
+            if calls[0] == 5:
+                os.write(write_fd,b'idle\n')
+            return (0,0,1),(1,2,3),25.
+
+        sensor.read_raw=sensor_read
+        try:
+            with tempfile.TemporaryDirectory() as directory:
+                args=argparse.Namespace(output=Path(directory)/'run',device='fake',
+                    seconds=.06,interval=.001,active_interval=.0005,
+                    imu_policy='command-driven',notes='synthetic policy test')
+                with patch('recording.combined_capture.platform.platform',return_value='test host'), \
+                     patch('recording.combined_capture.subprocess.Popen',return_value=Process()), \
+                     patch('recording.combined_capture.sys.stdin') as stdin:
+                    stdin.fileno.return_value=read_fd
+                    self.assertEqual(record(sensor,args),0)
+                meta=json.loads((args.output/'metadata.json').read_text())
+                self.assertEqual([e['mode'] for e in meta['imu_policy_transitions']],
+                                 ['idle','fast','idle'])
+                self.assertGreater(meta['imu_policy_sample_counts_all']['fast'],0)
+                self.assertGreater(meta['imu_policy_sample_counts_all']['idle'],0)
+        finally:
+            os.close(read_fd)
+            os.close(write_fd)
     def test_pts_and_receipt_are_not_confused(self) -> None:
         """Verify pts and receipt are not confused.
 
