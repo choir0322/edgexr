@@ -71,9 +71,15 @@ sensor, QMC6310 magnetometer, and SPL06_001 barometer.
 The user confirms that pan uses Fusion HAT PWM servo channel 2 and tilt uses
 channel 3. These are HAT channel labels, not Raspberry Pi BCM GPIO pin
 numbers. The user also confirms that commanding 0° is mechanically safe.
-Neither axis has yet been checked in this supervised test. The optional
-[servo quality test](SERVO_MOTION_QUALITY.md) requires explicit channels and a
-supervised ±2° commissioning run before the full small-angle series.
+After supervised movement, the user confirmed that **commanded pan angles from
+−40° to +40° and commanded tilt angles from −25° to +25° are safe for this
+assembly**. This is a reported clearance bound, not a measurement of physical
+shaft travel or a request to run to either endpoint. Confirm cable slack and
+clearance whenever the assembly changes. The current
+`servo_motion_quality.py` software still limits tilt commands to ±6°; do not
+silently raise that limit as part of recording this hardware observation. The
+optional [servo quality test](SERVO_MOTION_QUALITY.md) retains its own guarded
+protocol and explicit channel requirements.
 
 The vendor calibration completed, but it saved identical bias and scale arrays
 for all three sensors. Its shared mutable default arrays and six-face gyro

@@ -110,14 +110,34 @@ class CameraAxesTests(unittest.TestCase):
             basis = ((0, 0, 1), (0, 1, 0), (-1, 0, 0))
             result = validate_recording(folder, basis,
                                         pan_first="right", tilt_first="up")
+            self.assertEqual(result["status"], "pass")
             self.assertEqual(len(result["pan"]["axis_deviation_deg"]), 3)
             self.assertEqual(len(result["tilt"]["axis_deviation_deg"]), 3)
             self.assertLess(max(result["pan"]["axis_deviation_deg"]), 1)
             self.assertLess(max(result["tilt"]["axis_deviation_deg"]), 1)
             reversed_tilt_basis = ((0, 0, -1), (0, 1, 0), (1, 0, 0))
-            with self.assertRaisesRegex(ValueError, "tilt leg 1 disagrees"):
-                validate_recording(folder, reversed_tilt_basis,
-                                   pan_first="right", tilt_first="up")
+            reversed_result = validate_recording(folder, reversed_tilt_basis,
+                                                 pan_first="right", tilt_first="up")
+            self.assertEqual(reversed_result["status"], "direction_mismatch")
+            self.assertEqual(reversed_result["tilt"]["leg_status"][0],
+                             "direction_mismatch")
+
+            # A weaker final return is shown explicitly instead of hiding all
+            # earlier legs behind an exception or counting it as a pass.
+            rows = (folder / "imu.csv").read_text().splitlines()
+            weakened = [rows[0]]
+            for row in rows[1:]:
+                stamp, duration, gx, gy = row.split(",")
+                if 6.7 <= float(stamp) <= 7.05:
+                    gy = "3"
+                weakened.append(",".join((stamp, duration, gx, gy)))
+            (folder / "imu.csv").write_text("\n".join(weakened) + "\n")
+            weak_result = validate_recording(folder, basis,
+                                             pan_first="right", tilt_first="up")
+            self.assertEqual(weak_result["status"], "inconclusive_weak")
+            self.assertEqual(weak_result["tilt"]["leg_status"],
+                             ["pass", "pass", "inconclusive_weak"])
+            self.assertLess(weak_result["tilt"]["leg_magnitude_deg"][2], 0.4)
 
 
 if __name__ == "__main__":

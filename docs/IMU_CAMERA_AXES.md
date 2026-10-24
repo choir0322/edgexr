@@ -69,14 +69,38 @@ PYTHONPATH=src python3 -m spatial.camera_axes \
   --pan-first right --tilt-first up
 ```
 
-The code rejects weak or directionally inconsistent legs, nonorthogonal pan/
+The fit rejects weak or directionally inconsistent legs, nonorthogonal pan/
 tilt fits, incomplete runs and invalid timing. Its `camera_components` helper
 is pure math and can be tested without a Pi. The third leg is held out during
 the fit, but it is still part of the **same recording**. The optional
 `--validate-folder` checks a separate recording with sequential pan and tilt
-legs against the original fixed basis. It rejects weak motion or a leg more
-than 20° from the expected camera axis. A separate controlled run is needed
-before applying this mapping in the live worker. The large
+legs against the original fixed basis. The report includes each leg's magnitude,
+direction error and status. An independent leg needs at least 0.4° integrated
+motion and no more than 20° direction error to pass. A weak leg is reported as
+`inconclusive_weak` even if its direction seems plausible; its angle is
+noise-sensitive. A strong wrong-direction leg is `direction_mismatch`.
+The CLI prints the complete JSON report and exits with status 2 when the
+independent check is not `pass`, so scripts cannot mistake a reported weak leg
+for a successful validation.
+
+The independent `orientation-axis-validation-01-data` capture contained 845
+IMU samples and 293 decoded frames. With the original basis unchanged, all
+three pan legs passed (1.82–3.27° magnitude; 2.18–2.76° error). The first two
+tilt legs passed (0.95°/5.00° and 2.11°/1.20°). The final tilt return was only
+**0.255°**, below the 0.4° minimum. Its computed direction error was 20.08°,
+but that borderline angle is not reliable with such weak movement. The final
+result is **inconclusive**, not validated and not evidence that the fitted axes
+are wrong. The last tilt command occurred around 7.75 s after the recording
+origin; its small gyro response was near that command and the sensor was nearly
+still after roughly 7.9 s. Merely extending the analysis window would not
+recover a clear turn. The capture used a ±2° *servo command* sweep, not a
+measurement of physical head travel. The user reviewed the saved video and
+confirmed that the lens turned **right first, then left**, followed by **up,
+then down**. Thus the independent recording's physical pan/tilt signs agree
+with the fit inputs; the weak final tilt leg remains inconclusive.
+
+A further controlled run with a sufficiently visible but hardware-safe tilt
+return is needed before applying this mapping in the live worker. The large
 difference between the two runs' raw stationary gyro offsets also reinforces
 why each run needs its own still bias. Accelerometer calibration remains
 untrusted; the transform does not use it. Neither servo commands nor host

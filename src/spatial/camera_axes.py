@@ -232,32 +232,48 @@ def validate_recording(folder: Path, basis: Sequence[Sequence[float]], *,
         tilt_first (str): Physical first tilt direction for this mounting.
 
     Returns:
-        dict[str, object]: Per-leg mapped components and angular deviations;
-            weak, wrong-sign or off-axis motion raises ValueError.
+        dict[str, object]: Per-leg mapped components, magnitudes and status.
+            Weak movement is inconclusive, not a successful validation.
     """
     if pan_first not in ("right", "left") or tilt_first not in ("up", "down"):
         raise ValueError("Physical first-leg directions must be supplied")
     results: dict[str, object] = {"recording": folder.name}
+    statuses: list[str] = []
     for axis, component, first_sign in (
             ("pan", 1, 1 if pan_first == "right" else -1),
             ("tilt", 0, 1 if tilt_first == "up" else -1)):
         legs = movement_legs(folder, axis)
         mapped = [camera_components(leg, basis) for leg in legs]
         deviations = []
+        magnitudes = []
+        leg_statuses = []
         for index, (leg, values) in enumerate(zip(legs, mapped)):
             magnitude = math.sqrt(dot(leg, leg))
             expected_sign = first_sign * (-1 if index == 1 else 1)
-            if magnitude < 0.4:
-                raise ValueError(f"Independent {axis} leg {index + 1} is too weak")
-            cosine = expected_sign * values[component] / magnitude
-            deviation = math.degrees(math.acos(max(-1.0, min(1.0, cosine))))
+            deviation = None
+            if magnitude >= 1e-9:
+                cosine = expected_sign * values[component] / magnitude
+                deviation = math.degrees(math.acos(max(-1.0, min(1.0, cosine))))
+            magnitudes.append(magnitude)
             deviations.append(deviation)
-            if deviation > 20:
-                raise ValueError(f"Independent {axis} leg {index + 1} disagrees with fit")
+            # A weak leg's angle is still shown for diagnosis but cannot pass:
+            # dividing by a tiny magnitude makes its direction noise-sensitive.
+            status = ("inconclusive_weak" if magnitude < 0.4 else
+                      "direction_mismatch" if deviation is not None and deviation > 20
+                      else "pass")
+            leg_statuses.append(status)
+            statuses.append(status)
         results[axis] = {
             "legs_camera_xyz_deg": mapped,
+            "leg_magnitude_deg": magnitudes,
             "axis_deviation_deg": deviations,
+            "leg_status": leg_statuses,
         }
+    results["status"] = ("direction_mismatch" if "direction_mismatch" in statuses
+                         else "inconclusive_weak" if "inconclusive_weak" in statuses
+                         else "pass")
+    results["criteria"] = {"minimum_leg_magnitude_deg": 0.4,
+                           "maximum_axis_deviation_deg": 20}
     return results
 
 
@@ -319,13 +335,17 @@ def main() -> None:
                         help="separate combined pan/tilt recording for direction checks")
     args = parser.parse_args()
     try:
-        print(json.dumps(analyze_recordings(args.pan_folder, args.tilt_folder,
-                                            pan_first=args.pan_first,
-                                            tilt_first=args.tilt_first,
-                                            validation_folder=args.validate_folder),
-                         indent=2, allow_nan=False))
+        report = analyze_recordings(args.pan_folder, args.tilt_folder,
+                                    pan_first=args.pan_first,
+                                    tilt_first=args.tilt_first,
+                                    validation_folder=args.validate_folder)
+        print(json.dumps(report, indent=2, allow_nan=False))
     except (OSError, ValueError, KeyError, TypeError) as error:
         parser.exit(1, f"Camera-axis fit failed: {error}\n")
+    if args.validate_folder is not None:
+        validation = report["independent_validation"]
+        if validation["status"] != "pass":
+            parser.exit(2, f"Independent validation: {validation['status']}\n")
 
 
 if __name__ == "__main__":

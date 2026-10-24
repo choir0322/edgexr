@@ -17,6 +17,9 @@ This is the next bounded application step after the completed
 Pi 4, aarch64 Bookworm/Linux 6.12.47+rpt-rpi-v8, Python 3.11.2, OV9281 USB camera
 requested 1280x720 MJPEG/30, camera-head-mounted SH3001, passive metal heatsink.
 Pan channel 2, tilt channel 3, commanded zero previously confirmed safe.
+The user now confirms clearance for commanded pan within ±40° and tilt within
+±25° on this assembly. These are safety bounds, not a chosen test amplitude;
+the current recorder still enforces a ±6° tilt software limit.
 Keep the IMU rigid relative to the camera and base fixed. The existing fast
 pan recording is `/Users/ryanchoi/Desktop/orientation-pan-10ms-01-data` on the
 Mac, with raw IMU/servo timing/metadata available. Reuse it only if mounting is
@@ -45,6 +48,14 @@ orientation output is a rotation vector in initial sensor axes, not Euler XYZ.
   candidate mapping in `spatial.camera_axes`; keep it out of the live worker.
 - [x] Review `docs/PIPELINE.md` and `docs/learning/IMU.md` for the offline fit;
   no live diagram edge was added.
+- [x] Inspect independent combined run: pan and first two tilt legs pass the
+  fixed basis; final tilt return is 0.255° and inconclusive under the 0.4° gate.
+- [x] Make independent validation report all leg measurements and status
+  instead of discarding useful evidence behind the first weak-leg exception.
+- [x] User reviewed the independent video: lens turned right, then left,
+  followed by up, then down; first-leg physical signs match the fit inputs.
+- [x] Record user-confirmed safe command bounds: pan ±40°, tilt ±25°; keep
+  current smaller test schedule and software limit unchanged for now.
 - [ ] Validate on independent pan/tilt motions before using the mapping live.
 - [ ] Measure transform cost on Pi before a live integration/default change.
 
@@ -142,9 +153,11 @@ PYTHONPATH=src python3 -m spatial.camera_axes \
 ```
 
 The new capture is not included in the fitted directions. Its
-`independent_validation` field reports three pan and three tilt directions
-relative to the fixed camera axes. An explicit error means the fit has not
-passed this check; inspect motion and mounting before changing thresholds.
+`independent_validation` field reports the three pan and three tilt magnitudes,
+directions and statuses relative to the fixed camera axes. Overall `pass` is
+required before live use. `inconclusive_weak` does not pass, even if the weak
+vector points roughly along the expected axis. Inspect motion and mounting
+before changing thresholds.
 
 ## Validation and acceptance
 
@@ -171,6 +184,19 @@ degrees, respectively. Tilt amplitude is small, so independent validation
 remains required. Raw still gyro offsets differ substantially between runs;
 each fit uses its own two-second offset.
 
+The independent combined capture has 845 IMU samples and 293 frames. Three
+pan legs were 1.82–3.27° with 2.18–2.76° error from the fixed basis. The first
+two tilt legs were 0.95°/5.00° and 2.11°/1.20°. The last tilt leg was only
+0.255°; its computed 20.08° error is noise-sensitive and does not turn the
+weak leg into a direction failure or a pass. After the final command around
+7.75 s, the IMU was nearly still by roughly 7.9 s, so a longer integration
+window is not a justified fix. The user confirmed from the saved video that
+the first pan leg turned the lens right and the first tilt leg pointed it up.
+Keep the basis offline and the validation checkbox open. Next: design one
+supervised, bounded tilt return with enough
+actual motion to check direction; do not weaken the acceptance gate to make
+this run pass.
+
 ## Decision log
 
 - 2026-10-24: Start with the existing ±2-degree tilt schedule and saved pan data.
@@ -184,10 +210,17 @@ each fit uses its own two-second offset.
 - 2026-10-24: Review `docs/PIPELINE.md` and `docs/learning/IMU.md` with the new
   offline code. Add a text note and source route; the live Mermaid diagram
   remains unchanged because no live data-flow edge was added.
+- 2026-10-25: Preserve the 0.4°/20° independent leg criteria. Report weak
+  motion as inconclusive with per-leg evidence, not as a successful mapping.
+- 2026-10-25: User confirmed this assembly can safely command pan through
+  ±40° and tilt through ±25°. Choose the smallest useful bounded follow-up
+  tilt sweep; do not equate a safe endpoint with a required test amplitude or
+  silently change the recorder's present ±6° tilt limit.
 
 ## Outcomes and retrospective
 
 The tilt transfer and provisional offline fit are complete. Synthetic unit
-tests and the two-run local CLI check pass. An independent recording and Pi transform-cost
-measurement remain. No live camera-frame pose or spatial-memory feature is
-claimed as implemented.
+tests and the two-run local CLI check pass. The first independent recording
+is partially supportive but inconclusive because its last tilt leg is weak.
+A strong independent check and Pi transform-cost measurement remain. No live
+camera-frame pose or spatial-memory feature is claimed as implemented.
