@@ -5,8 +5,12 @@ An offline gyro-only experiment now reads the existing combined-capture
 rotation composition → relative **IMU-frame** quaternion and rotation vector.
 See [the orientation guide](RELATIVE_ORIENTATION.md) and
 `spatial.relative_orientation.analyze`. This runs after recording, outside the
-live workers below. It does not provide camera pose or feed the browser. The
-live graph is unchanged.
+live workers below. It does not provide camera pose or feed the browser.
+`spatial.camera_axes.analyze_recordings` now also fits a **provisional offline**
+IMU-to-camera basis from saved pan and tilt command legs plus physically observed
+first-movement directions. It reports a neutral-pose coordinate transform and
+within-run return checks; no live worker consumes it. See
+[the camera-axis record](IMU_CAMERA_AXES.md). The live graph is unchanged.
 
 The offline servo recorder now accepts `--imu-interval` (default 0.05 s), passed
 to the combined recorder's post-read sleep. The explicit 0.01 s polling trial

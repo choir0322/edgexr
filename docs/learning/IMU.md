@@ -1,9 +1,19 @@
 # Study 3: IMU reading, timestamp and gyro display
 
 For the measured polling tradeoff and definitions of CPU seconds/return
-residual, read [IMU_POLLING_FINDINGS.md](../IMU_POLLING_FINDINGS.md). The next
-[camera-axis mapping step](../exec-plans/active/imu-camera-axis-mapping.md) reuses
-the recorder; its mapping is planned and not yet part of the live pipeline.
+residual, read [IMU_POLLING_FINDINGS.md](../IMU_POLLING_FINDINGS.md). The
+[offline camera-axis fit](../IMU_CAMERA_AXES.md) reuses saved pan/tilt recordings;
+it is provisional and not part of the live pipeline.
+
+Read `spatial.camera_axes.movement_legs` after the relative-orientation code:
+it checks the saved command order, aligns command and IMU **host** times, and
+integrates bias-corrected XYZ rates within three movement legs. Read
+`fitted_direction` next: two opposing legs fit an axis and the third checks
+its sign. `fit_camera_axes` uses the user's observed lens directions to set
+camera-X and camera-Y signs, makes the axes perpendicular, then uses their
+cross product for camera-Z. `camera_components` projects an IMU angular vector
+onto those camera axes. Neither servo sign nor raw IMU board labels alone tell
+us which way the lens points.
 
 The new [offline relative-orientation experiment](../RELATIVE_ORIENTATION.md)
 reads saved IMU samples after a run. `spatial.relative_orientation.analyze`
