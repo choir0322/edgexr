@@ -1,5 +1,13 @@
 # Study 3: IMU reading, timestamp and gyro display
 
+The new [offline relative-orientation experiment](../RELATIVE_ORIENTATION.md)
+reads saved IMU samples after a run. `spatial.relative_orientation.analyze`
+estimates a per-run gyro offset from an assumed-still window;
+`integrate_gyro` composes angular changes with actual host time intervals into
+a quaternion. Its output stays in the IMU's initial frame and cannot yet tell
+which direction the camera is looking. It does not change the live `--imu` path
+described below.
+
 Read [the live diagram](../PIPELINE.md) and [image-motion guide](IMAGE_MOTION.md).
 The gyroscope measures angular rate around the board's axes. The live path
 shows bias-corrected rates; it does not yet calculate camera orientation or

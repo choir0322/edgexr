@@ -15,6 +15,9 @@ This is planned work, not an existing 3D pose or mapping capability.
 See the [research review](docs/SPATIAL_AWARENESS_RESEARCH.md) for the papers,
 alternative approaches and why a relative visual compass comes before full SLAM.
 Next runnable step: [stationary orientation-input baseline](docs/ORIENTATION_BASELINE.md).
+An [offline IMU-relative orientation estimator](docs/RELATIVE_ORIENTATION.md)
+now reads combined-capture logs; camera-axis calibration and Pi performance
+measurement are still upcoming.
 
 ## Learn the implementation
 

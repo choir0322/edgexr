@@ -1,5 +1,13 @@
 # Current live pipeline
 
+An offline gyro-only experiment now reads the existing combined-capture
+`imu.csv`: first still window → per-run raw gyro offset → timestamped 3D
+rotation composition → relative **IMU-frame** quaternion and rotation vector.
+See [the orientation guide](RELATIVE_ORIENTATION.md) and
+`spatial.relative_orientation.analyze`. This runs after recording, outside the
+live workers below. It does not provide camera pose or feed the browser. The
+live graph is unchanged.
+
 Reviewed 2026-10-21 while building the interactive
 [whole-program flow explorer](learning/program-flow-explorer.html). Runtime
 topology, shapes, units, worker schedules and freshness policies still match

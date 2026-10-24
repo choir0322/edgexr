@@ -35,8 +35,15 @@ remain unresolved; do not silently use acceleration as trusted tilt or position.
   detector and profiler; preserve it as an anchor rather than a replacement plan.
 - [x] 2026-10-24: Inspect existing timestamp/polling paths; prepare the
   [stationary input baseline](../../ORIENTATION_BASELINE.md) using existing code.
-- [ ] Run that baseline on the Pi and examine timing/bias stability before
-  adding orientation estimation or changing polling cadence.
+- [x] 2026-10-24: User ran the 60-second stationary Pi input baseline; 1804
+  in-window camera frames at 30.08 Hz and 1126 IMU reads at 18.75 Hz, with no
+  observed IMU interval over the diagnostic 160 ms threshold. First-to-last
+  ten-second raw gyro means changed by (+0.034, +0.085, −0.033) deg/s. The
+  run does not validate camera-axis alignment or AP compute cost.
+- [x] 2026-10-24: Build and test the first **offline, gyro-only, IMU-frame**
+  relative orientation estimate on prior still and turn-return recordings.
+- [ ] Run the new estimator on `orientation-still-01` on the Pi, then measure
+  repeatable Pi compute/resource cost before a live implementation.
 - [x] 2026-10-24: Extend the existing offline capture analyzer with a
   stationary timing/bias report; review docs/PIPELINE.md and docs/learning/IMU.md
   during this implementation. Existing live flow is unchanged.
@@ -49,7 +56,8 @@ remain unresolved; do not silently use acceleration as trusted tilt or position.
 - [x] 2026-10-23: Record standing goal-relevance reminders in AGENTS.md.
 - [ ] Audit current sensor units, axis mapping, clocks, gaps and calibration.
 - [ ] Agree on a small orientation measurement protocol before hardware work.
-- [ ] Implement/test relative orientation with explicit reset and uncertainty.
+- [ ] Calibrate IMU-to-camera axes and validate relative camera orientation
+  with an independent reference; current gyro-only IMU rotation is preliminary.
 - [ ] Build bounded directional scene memory and a revisit check.
 - [ ] Review/update docs/PIPELINE.md and docs/learning/IMU.md at implementation.
 
@@ -200,6 +208,11 @@ for the next orientation milestone.
   measured intervals and read duration. No new camera/IMU worker was needed;
   live pipeline diagram reviewed and unchanged. The IMU guide remains accurate
   about raw gyro units and lack of camera pose.
+- 2026-10-24: Add an offline quaternion composition of bias-corrected gyro
+  samples. Reject timing gaps over 0.2 s rather than produce a continuous pose.
+  `docs/PIPELINE.md` and `docs/learning/IMU.md` now describe the offline branch;
+  their live-worker descriptions remain unchanged. Existing Oct 4 recordings
+  are useful sanity checks, not calibrated accuracy or Pi AP benchmarks.
 - 2026-10-24: Pipeline and IMU learning guide reviewed; unchanged because this
   step reuses the existing raw recorder, without fusion or live topology changes.
 
