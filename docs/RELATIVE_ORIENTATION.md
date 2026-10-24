@@ -67,18 +67,76 @@ the rig is believed stationary. These two recordings are historical input checks
 from the Mac, not new Pi performance benchmarks. No energy, CPU, temperature,
 memory or end-to-end latency comparison follows from them.
 
-## Next check
+## Current Pi results and polling experiment (2026-10-24)
 
-Run this command on the Pi for `orientation-still-01` using its **own** ten-second
-bias window, then paste the JSON report. Compare its drift against the older
-stationary check, noting different duration and device state:
+`orientation-still-01` used its own ten-second still bias window and showed
+2.72° apparent rotation over 49.96 subsequent seconds. The one-run integration
+time was 22.45 ms on the Pi, excluding parsing and recording.
+
+`orientation-pan-01` commanded 0° → −20° → +20° → 0° at 5 commanded °/s,
+with the camera-head-mounted IMU, fixed base, 1280x720 MJPEG/30 and passive
+metal heatsink. It recorded 649 decoded frames and 427 IMU samples. With a
+two-second bias window, the integration used 369 samples over 19.46 s; the
+largest IMU gap was 53.88 ms. Peak relative rotation was 20.30°, but final
+rotation magnitude was about 11.44°. The user observed the physical return.
+
+Offline video inspection supports that return: direct start/end comparison
+estimated (−1.615, −0.039) pixels at 320x180, with all nine patches agreeing.
+Cumulative horizontal image motion traversed roughly 79, 161 and 83 pixels
+across the three legs, whereas the gyro's Y rotation-vector component changed
+approximately +19°, −29° and +21°. Pixel translations are scene-dependent,
+and commanded servo angles are not calibrated ground truth.
+
+Most visible movement above one pixel per pair occurred in bursts of one or two
+video intervals, comparable to the approximately 53 ms IMU polling period.
+Missing parts of these bursts is a leading hypothesis for the gyro discrepancy.
+Sensor filtering and transient bias remain possible contributors. No precise
+exposure/gyro alignment has been established.
+
+### Repeat the same movement with 10 ms post-read sleep
+
+The AP question is whether spending more work on IMU reads improves the
+orientation estimate. Change only polling sleep, from 0.05 s to 0.01 s. Keep
+the scene, mounting, camera mode, power, cooling, servo path and commanded
+speed the same. `servo_motion_quality --imu-interval` forwards the value to
+`combined_capture --interval`; `metadata.json` records `imu_sleep_seconds`
+and the full capture command. The servo-quality summary also includes sleep.
+The existing default is 0.05 s. This experiment does not change the live IMU
+worker's polling cadence or the sensor's internal output rate.
+
+After updating the Pi checkout, close any live preview using the camera and run:
 
 ```bash
 cd ~/projects/edgexr
+git pull --ff-only
+sudo env PYTHONPATH=src python3 -m recording.servo_motion_quality \
+  --commission --wide-pan --axes pan --execute \
+  --confirm-centered --confirm-cable-slack --confirm-wide-pan-clearance \
+  --pan-channel 2 --tilt-channel 3 --device /dev/video0 \
+  --imu-interval 0.01 \
+  --output recordings/orientation-pan-10ms-01 \
+  --scene "fixed base; camera-head pan and return; same scene as orientation-pan-01" \
+  --cooling "passive metal heatsink"
+
 PYTHONPATH=src python3 -m spatial.relative_orientation \
-  recordings/orientation-still-01 --bias-seconds 10
+  recordings/orientation-pan-10ms-01 --bias-seconds 2
+PYTHONPATH=src python3 -m recording.analyze_capture \
+  recordings/orientation-pan-10ms-01 --baseline-seconds 2
 ```
 
-Next, calibrate the IMU-to-camera axes and obtain a controlled pan or tilt
-reference before reporting viewing direction. A visual estimate can later bound
-gyro drift; object IDs and scene-memory UI are not needed for this first step.
+The command uses previously confirmed pan channel 2, tilt channel 3, safe zero
+and ±20° travel; verify the camera still uses `/dev/video0`. It commands the
+same 21.5-second recording, followed by offline visual diagnostics. Use a new
+output directory for each repeat; existing recordings are preserved.
+
+Compare the measured IMU rate/gaps/read durations, final rotation vector and
+magnitude, peak angle, initial/final raw rates, and camera timing. Confirm
+`imu_sleep_seconds` is 0.01 in the new metadata. A 10 ms sleep does not promise
+100 Hz: reading, CSV writing and scheduling also take time. A lower residual
+on one run is preliminary evidence; repeat both configurations before choosing
+a default. Report integration time alongside sample count; more samples mean
+more integration work. CPU, memory and sustained energy cost remain to be
+measured under a fixed protocol, so this run alone cannot establish efficiency.
+
+After polling is understood, calibrate the IMU-to-camera axes and obtain an
+independent rotation reference before reporting viewing direction.

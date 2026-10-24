@@ -8,6 +8,12 @@ a quaternion. Its output stays in the IMU's initial frame and cannot yet tell
 which direction the camera is looking. It does not change the live `--imu` path
 described below.
 
+For the offline servo experiment, `servo_motion_quality.capture_command`
+passes `--imu-interval` into `combined_capture --interval`. That recorder sleeps
+after each read and logs the requested pause in `metadata.json`. The 10 ms
+experiment changes this software pause; the sensor's internal sampling and
+filtering are separate. See [the comparison procedure](../RELATIVE_ORIENTATION.md).
+
 Read [the live diagram](../PIPELINE.md) and [image-motion guide](IMAGE_MOTION.md).
 The gyroscope measures angular rate around the board's axes. The live path
 shows bias-corrected rates; it does not yet calculate camera orientation or

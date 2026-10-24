@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import argparse
+import contextlib
+import io
 from pathlib import Path
 import unittest
 from unittest.mock import patch
@@ -12,6 +14,7 @@ from recording.servo_motion_quality import (
     Phase,
     ServoCommand,
     build_schedule,
+    capture_command,
     execute_commands,
     main,
     phase_report,
@@ -32,6 +35,34 @@ class FakeServo:
 
 
 class ServoQualityTests(unittest.TestCase):
+    def test_imu_sleep_reaches_recorder_without_changing_servo_schedule(self) -> None:
+        """CLI selection must reach the child recorder, preserving the 50 ms default."""
+        for options, expected in (([], .05), (["--imu-interval", "0.01"], .01)):
+            with self.subTest(expected=expected), contextlib.redirect_stdout(io.StringIO()):
+                with patch("recording.servo_motion_quality.validate_arming"), \
+                     patch("recording.servo_motion_quality.run_capture", return_value=Path("test")) as run, \
+                     patch("recording.servo_motion_quality.analyze_run", return_value={}):
+                    self.assertEqual(main(["--execute", "--commission", "--wide-pan",
+                                           "--axes", "pan", "--device", "/dev/video0",
+                                           "--output", "recordings/test", *options]), 0)
+                args, commands, phases, duration = run.call_args.args
+                command = capture_command(args, duration)
+                self.assertEqual(float(command[command.index("--interval") + 1]), expected)
+                self.assertEqual(len(commands), 80)
+                self.assertEqual(commands[-1].angle_deg, 0)
+                self.assertEqual(phases[0].amplitude_deg, 20)
+                self.assertAlmostEqual(duration, 21.5)
+
+    def test_invalid_imu_sleep_is_rejected_before_hardware(self) -> None:
+        """Zero, negative and nonfinite sleep values cannot arm a real run."""
+        for value in ("0", "-0.01", "nan", "inf"):
+            with self.subTest(value=value), contextlib.redirect_stderr(io.StringIO()):
+                with patch("recording.servo_motion_quality.run_capture") as run:
+                    with self.assertRaises(SystemExit) as error:
+                        main(["--execute", "--imu-interval", value])
+                    self.assertEqual(error.exception.code, 2)
+                    run.assert_not_called()
+
     def test_schedule_is_small_sequential_and_rate_limited(self) -> None:
         """Every command stays near center and each phase returns to zero."""
         commands, phases, duration = build_schedule()

@@ -33,6 +33,21 @@ FINAL_STILL_S = 2.0
 MAX_TOTAL_S = 60.0
 
 
+def positive_interval(value: str) -> float:
+    """Parse a finite positive post-read sleep duration in seconds.
+
+    Args:
+        value (str): Text supplied to --imu-interval.
+
+    Returns:
+        float: Valid sleep duration, or raises argparse.ArgumentTypeError.
+    """
+    interval = float(value)
+    if not math.isfinite(interval) or interval <= 0:
+        raise argparse.ArgumentTypeError("IMU interval must be finite and greater than zero")
+    return interval
+
+
 @dataclass(frozen=True)
 class ServoCommand:
     """One scheduled 1-degree command relative to the recording cue."""
@@ -297,6 +312,31 @@ def phase_report(
     return results
 
 
+def capture_command(args: argparse.Namespace, duration: float) -> list[str]:
+    """Build the existing recorder's command with the selected IMU sleep.
+
+    Args:
+        args (argparse.Namespace): Parsed camera, output, IMU interval and scene options.
+        duration (float): Capture duration in seconds from the unchanged servo schedule.
+
+    Returns:
+        list[str]: Subprocess arguments; building them never opens hardware.
+    """
+    # combined_capture owns polling and records --interval as imu_sleep_seconds
+    # in metadata.json. Read duration and scheduling add to this requested sleep.
+    return [
+        sys.executable, "-u", "src/recording/combined_capture.py",
+        "--device", args.device, "--seconds", f"{duration:.2f}",
+        "--interval", str(args.imu_interval),
+        "--output", str(args.output),
+        "--notes", "Guarded servo test; sequential pan/tilt, "
+        + ("quick pan 0 to -40 to +40 degrees" if args.quick_pan else
+           "wide pan commission ±20 degrees" if args.wide_pan else
+           "commission ±2 degrees" if args.commission else "series ±8/±6 degrees")
+        + f"; scene={args.scene}; power={args.power}; cooling={args.cooling}",
+    ]
+
+
 def run_capture(args: argparse.Namespace, commands: list[ServoCommand], phases: list[Phase],
                 duration: float) -> Path:
     """Arm servos, capture one bounded run, and save actual command timestamps.
@@ -321,16 +361,7 @@ def run_capture(args: argparse.Namespace, commands: list[ServoCommand], phases: 
     servos["tilt"].angle(0)
     time.sleep(1)
 
-    command = [
-        sys.executable, "-u", "src/recording/combined_capture.py",
-        "--device", args.device, "--seconds", f"{duration:.2f}",
-        "--output", str(args.output),
-        "--notes", "Guarded servo test; sequential pan/tilt, "
-        + ("quick pan 0 to -40 to +40 degrees" if args.quick_pan else
-           "wide pan commission ±20 degrees" if args.wide_pan else
-           "commission ±2 degrees" if args.commission else "series ±8/±6 degrees")
-        + f"; scene={args.scene}; power={args.power}; cooling={args.cooling}",
-    ]
+    command = capture_command(args, duration)
     process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                                text=True, bufsize=1)
     cue = threading.Event()
@@ -419,6 +450,7 @@ def analyze_run(output: Path, phases: Sequence[Phase]) -> dict[str, object]:
         notes=metadata["notes"],
         capture_status=metadata["status"],
         requested_camera_mode=metadata["requested_mode"],
+        imu_sleep_seconds=metadata["imu_sleep_seconds"],
         decoded_frames=metadata["decoded_frames"],
         timestamp_scope=metadata["timestamp_scope"],
         phases=phase_report(phases, issued, metadata, motion_rows, frame_rows, patch_rows),
@@ -456,6 +488,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--pan-channel", type=int)
     parser.add_argument("--tilt-channel", type=int)
     parser.add_argument("--device")
+    parser.add_argument("--imu-interval", type=positive_interval, default=0.05,
+                        help="seconds to sleep after each IMU read (default: 0.05); not a fixed sample period")
     parser.add_argument("--output", type=Path)
     parser.add_argument("--scene", default="unknown")
     parser.add_argument("--power", default="unknown")
@@ -466,6 +500,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         quick_pan=args.quick_pan,
     )
     print(f"Schedule: {len(commands)} 1° commands, {len(phases)} phases, {duration:.1f} s")
+    print(f"IMU sleep: {args.imu_interval * 1000:g} ms after each read; measured rate also includes read time.")
     for phase in phases:
         path = (f"0° → −{phase.amplitude_deg}° → +{phase.amplitude_deg}°"
                 if args.quick_pan else f"±{phase.amplitude_deg}° → 0°")

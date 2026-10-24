@@ -8,6 +8,11 @@ See [the orientation guide](RELATIVE_ORIENTATION.md) and
 live workers below. It does not provide camera pose or feed the browser. The
 live graph is unchanged.
 
+The offline servo recorder now accepts `--imu-interval` (default 0.05 s), passed
+to the combined recorder's post-read sleep. The explicit 0.01 s polling trial
+is documented in [RELATIVE_ORIENTATION.md](RELATIVE_ORIENTATION.md). Actual
+sample rate is measured from timestamps; this option does not alter live workers.
+
 Reviewed 2026-10-21 while building the interactive
 [whole-program flow explorer](learning/program-flow-explorer.html). Runtime
 topology, shapes, units, worker schedules and freshness policies still match

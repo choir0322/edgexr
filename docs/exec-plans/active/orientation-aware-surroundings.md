@@ -42,8 +42,19 @@ remain unresolved; do not silently use acceleration as trusted tilt or position.
   run does not validate camera-axis alignment or AP compute cost.
 - [x] 2026-10-24: Build and test the first **offline, gyro-only, IMU-frame**
   relative orientation estimate on prior still and turn-return recordings.
-- [ ] Run the new estimator on `orientation-still-01` on the Pi, then measure
-  repeatable Pi compute/resource cost before a live implementation.
+- [x] 2026-10-24: Pi stationary estimate: 2.72° apparent rotation over 49.96 s
+  after a ten-second bias window; one integration took 22.45 ms. Sustained
+  resource cost and repeatability remain unmeasured.
+- [x] 2026-10-24: Controlled ±20° pan/return produced an 11.44° final gyro
+  residual despite a close visual return. Video shows brief movement bursts;
+  insufficient polling is a hypothesis, not a confirmed sensor failure.
+- [x] 2026-10-24: Add explicit `--imu-interval` forwarding to the servo recorder,
+  preserving its 0.05 s default, and document the approved 0.01 s repeat.
+- [x] 2026-10-24: Review/update docs/PIPELINE.md and docs/learning/IMU.md for
+  offline interval forwarding. Live topology and live polling are unchanged.
+- [ ] Run the same pan/return with 0.01 s sleep; compare measured rate, timing,
+  return residual and integration work, then repeat before selecting a default.
+- [ ] Measure repeatable Pi resource cost before a live implementation.
 - [x] 2026-10-24: Extend the existing offline capture analyzer with a
   stationary timing/bias report; review docs/PIPELINE.md and docs/learning/IMU.md
   during this implementation. Existing live flow is unchanged.

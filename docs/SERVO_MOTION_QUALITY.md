@@ -5,6 +5,13 @@ at a time** while the existing recorder saves USB camera video and raw IMU
 readings. It then runs the existing visual-motion and per-patch analyses.
 Default mode is a dry run: no camera, IMU or servo library is loaded.
 
+`--imu-interval SECONDS` selects the sleep **after** each IMU read (default
+0.05). Use `--imu-interval 0.01` for the approved orientation polling experiment
+in [RELATIVE_ORIENTATION.md](RELATIVE_ORIENTATION.md). Actual sample spacing
+also includes read, logging and scheduling time. This option changes no servo
+positions or speeds. The recorder metadata and final servo-quality summary
+store the selected sleep as `imu_sleep_seconds`.
+
 SunFounder's [AI Fusion pan/tilt example](https://docs.sunfounder.com/projects/ai-lab-kit/en/latest/python/4.16_pan_tilt_camera.html)
 uses `Servo(channel).angle(degrees)` and shows channels 2 and 3. Its
 [servo API](https://docs.sunfounder.com/projects/fusion-hat/en/latest/api/fusion_hat.servo.html)
