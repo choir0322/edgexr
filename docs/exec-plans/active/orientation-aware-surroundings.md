@@ -65,6 +65,12 @@ remain unresolved; do not silently use acceleration as trusted tilt or position.
   Keep explicit fixed 10 ms as the reference for the next offline step.
 - [x] 2026-10-24: User approved the next
   [camera-axis mapping protocol](imu-camera-axis-mapping.md); tilt data pending.
+- [x] 2026-10-25: Validate neutral-head camera-axis directions and measure
+  isolated/live projection cost; record the controlled
+  [AP result](../../../benchmarks/results/camera-axis-live-ab-2026-10-25.md).
+- [x] 2026-10-25: Draft the bounded
+  [live relative camera-orientation plan](live-relative-camera-orientation.md)
+  before integrating camera-axis rates into a quaternion state.
 - [x] 2026-10-24: Extend the existing offline capture analyzer with a
   stationary timing/bias report; review docs/PIPELINE.md and docs/learning/IMU.md
   during this implementation. Existing live flow is unchanged.
