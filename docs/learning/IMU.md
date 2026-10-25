@@ -31,6 +31,18 @@ Next, `profiling.camera_axis_cost.measure` repeatedly calls the real
 `camera_components` conversion using the fitted basis to estimate its isolated
 Pi CPU cost. It excludes camera, IMU reads and the live worker. See the
 [AP cost procedure](../IMU_CAMERA_AXES.md#uncovered-lens-repeat-and-ap-cost-check).
+The subsequent [controlled live A/B test](../IMU_CAMERA_AXIS_AB.md) adds a
+**separate opt-in branch**: `live_preview.main` loads the validated neutral
+basis only with `--camera-axis-basis`, passes it through `State.__init__` to
+`LiveImu`, and `LiveImu.publish` converts each valid new gyro sample after its
+first-second offset exists. `LiveImu.snapshot` exposes both the original
+sensor-axis `gyro_dps` and optional `camera_gyro_dps`, each in degrees/second,
+plus a conversion count. A stale/error sample exposes neither rate as current.
+The browser still displays the sensor-axis rate; no camera orientation is
+integrated or fed to tracking. `profiling.ap_baseline.validate_preview`
+requires the declared A/B mode, and the collector records CPU, rates, skipped
+frames and temperature without opening a second camera. The fit is only for
+the unchanged neutral-head mounting.
 
 The new [offline relative-orientation experiment](../RELATIVE_ORIENTATION.md)
 reads saved IMU samples after a run. `spatial.relative_orientation.analyze`

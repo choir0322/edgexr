@@ -238,3 +238,11 @@ motors or integrate an orientation. Camera mode, scene and power are not
 applicable during this isolated CPU experiment; the Pi is the device under
 test. A later integrated benchmark must measure real scheduling/contention
 before choosing the live conversion rate.
+
+The Pi 4 ran three isolated measurements at commit `a5ce2e9` with one-second
+warm-up and five seconds measured each. The process CPU cost per call was
+28.00, 28.63 and 27.73 microseconds; median 28.00 microseconds. The measured
+batch-median wall times were 28.01, 28.65 and 27.74 microseconds. The
+100-conversions/s projection was 0.277–0.286% of one logical core. These
+stable, small isolated costs motivate the [live A/B measurement](IMU_CAMERA_AXIS_AB.md),
+but do not demonstrate a live CPU difference or justify changing sensor polling.

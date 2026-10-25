@@ -7,11 +7,23 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 import unittest
 
-from spatial.camera_axes import camera_components, fit_camera_axes, validate_recording
+from spatial.camera_axes import camera_components, fit_camera_axes, load_camera_basis, validate_recording
 
 
 class CameraAxesTests(unittest.TestCase):
     """Verify signed axes, handedness and rejection of misleading sweeps."""
+
+    def test_loads_only_a_right_handed_mounting_basis(self) -> None:
+        """Reject malformed or mirrored live settings before starting workers."""
+        with TemporaryDirectory() as temporary:
+            path = Path(temporary) / "basis.json"
+            rows = [[0, 0, 1], [0, 1, 0], [-1, 0, 0]]
+            path.write_text(json.dumps({"camera_axes_in_imu_xyz": rows}))
+            self.assertEqual(load_camera_basis(path), tuple(tuple(row) for row in rows))
+            rows[2] = [1, 0, 0]
+            path.write_text(json.dumps({"camera_axes_in_imu_xyz": rows}))
+            with self.assertRaisesRegex(ValueError, "right-handed"):
+                load_camera_basis(path)
 
     def test_observed_up_and_right_define_camera_coordinates(self) -> None:
         """Independent tilt and pan sweeps map into positive camera X and Y.

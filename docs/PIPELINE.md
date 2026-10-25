@@ -9,13 +9,16 @@ live workers below. It does not provide camera pose or feed the browser.
 `spatial.camera_axes.analyze_recordings` now also fits a **provisional offline**
 IMU-to-camera basis from saved pan and tilt command legs plus physically observed
 first-movement directions. It reports a neutral-pose coordinate transform and
-within-run return checks; no live worker consumes it. See
-[the camera-axis record](IMU_CAMERA_AXES.md). The live graph is unchanged.
+within-run return checks; the default live worker does not consume it. See
+[the camera-axis record](IMU_CAMERA_AXES.md). The default live path still does
+not consume it.
 An independent pan check and uncovered-lens tilt check now support that offline
 mapping's axis directions. `profiling.camera_axis_cost` times repeated pure
 vector conversions separately from sensor reads and camera work; its rate
-figures are projections, not a live scheduling policy. This leaves the live
-graph unchanged.
+figures are projections. The new **opt-in** `--camera-axis-basis` path projects
+each valid post-bias IMU rate into those neutral-head axes and exposes a
+separately named rate/count through telemetry. The image-motion, detector and
+tracker paths do not consume it. See [the A/B protocol](IMU_CAMERA_AXIS_AB.md).
 
 The offline servo recorder now accepts `--imu-interval` (default 0.05 s), passed
 to the combined recorder's post-read sleep. The explicit 0.01 s polling trial
@@ -79,6 +82,8 @@ flowchart TD
     IMU["Camera-mounted IMU via I2C<br/>SunFounder SH3001 driver"]
     POLL["poll_imu<br/>Read midpoint timestamp; then wait 50 ms"]
     BIAS["LiveImu<br/>First-second stationary gyro offset<br/>Latest corrected XYZ rates in degrees/s"]
+    BASIS["Optional --camera-axis-basis<br/>Validated neutral-head XYZ axes in IMU coordinates"]
+    CAMRATE["camera_components per valid post-bias IMU sample<br/>Separate camera XYZ rates in degrees/s + conversion count<br/>No orientation integration"]
     STATE["State.snapshot<br/>Latest independent results + ages/errors<br/>Not exposure-synchronized sensor fusion"]
     TRIAL["Optional second SSH process: tracking_trial<br/>/api/telemetry omits image bytes<br/>JSONL + summary under ignored recordings/"]
     REIDVIDEO["Optional --trial-output<br/>MJPEG packet copy to camera.mkv<br/>Same camera input, no second opener"]
@@ -102,9 +107,12 @@ flowchart TD
     HISTORY -. "interval shift x4 into source pixels" .-> TRACK
     HISTORY -. "--reid-spatial with motion-aware tracking" .-> SPATIAL --> MEMORY
     IMU --> POLL --> BIAS
+    BASIS -. "opt-in projection" .-> CAMRATE
+    BIAS -. "post-bias gyro rate" .-> CAMRATE
     RESULT --> STATE
     TRACK --> STATE
     BIAS --> STATE
+    CAMRATE -. "optional telemetry only" .-> STATE
     STATE --> WEB --> UI
     STATE -. "metrics-only HTTP" .-> TRIAL
     STATE -. "metrics-only HTTP, PIDs" .-> AP

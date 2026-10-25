@@ -10,6 +10,28 @@ from imu.live_reader import LiveImu, stationary_offset, poll_imu
 
 
 class LiveImuTests(unittest.TestCase):
+    def test_opt_in_conversion_runs_once_per_valid_post_bias_sample(self) -> None:
+        """Keep camera rates distinct from original sensor rates and count work."""
+        basis = ((0, 0, 1), (0, 1, 0), (-1, 0, 0))
+        imu = LiveImu(enabled=True, camera_axis_basis=basis)
+        for index in range(11):
+            imu.publish(index * 0.1, (-4.0, 15.0, -3.0))
+        self.assertEqual(imu.snapshot(1.01)["camera_axis_mode"], "on")
+        self.assertEqual(imu.snapshot(1.01)["camera_axis_conversions"], 1)
+        imu.publish(1.1, (-4.0, 25.0, -1.0))
+        result = imu.snapshot(1.11)
+        self.assertEqual(result["gyro_dps"], [0.0, 10.0, 2.0])
+        self.assertEqual(result["camera_gyro_dps"], [2.0, 10.0, 0.0])
+        self.assertEqual(result["camera_axis_conversions"], 2)
+        self.assertIsNone(imu.snapshot(2.0)["camera_gyro_dps"])
+        control = LiveImu(enabled=True)
+        for index in range(11):
+            control.publish(index * 0.1, (-4.0, 15.0, -3.0))
+        self.assertEqual(control.snapshot(1.01)["camera_axis_mode"], "off")
+        self.assertEqual(control.snapshot(1.01)["camera_axis_conversions"], 0)
+        with self.assertRaisesRegex(ValueError, "requires the IMU"):
+            LiveImu(camera_axis_basis=basis)
+
     def test_independent_still_window_estimates_offset_and_corrects_new_sample(
         self,
     ) -> None:

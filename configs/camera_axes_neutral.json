@@ -1,0 +1,13 @@
+{
+  "camera_axes_in_imu_xyz": [
+    [-0.05508889386133572, 0.04336969080146373, 0.9975391138661782],
+    [0.18820433128499112, 0.9815991693448528, -0.03228312913991416],
+    [-0.9805836748889428, 0.18596273998110616, -0.06223757610974021]
+  ],
+  "source_pan": "orientation-pan-10ms-01",
+  "source_tilt": "orientation-tilt-10ms-01",
+  "validation_pan": "orientation-axis-validation-01",
+  "validation_tilt": "orientation-tilt-validation-03",
+  "mounting": "Neutral head; IMU rigid beside lens. Revalidate after remounting.",
+  "scope": "Rate coordinates only; not position, absolute heading, or camera pose."
+}

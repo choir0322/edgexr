@@ -86,6 +86,35 @@ def camera_components(vector: Sequence[float], basis: Sequence[Sequence[float]])
     return tuple(dot(vector, axis) for axis in basis)  # type: ignore[return-value]
 
 
+def load_camera_basis(path: Path) -> tuple[Vector, Vector, Vector]:
+    """Load a mounting-specific, right-handed camera basis for the live trial.
+
+    Args:
+        path (Path): JSON file containing ``camera_axes_in_imu_xyz`` rows.
+
+    Returns:
+        tuple[Vector, Vector, Vector]: Camera right, down and forward unit axes
+            expressed in IMU XYZ. Bad or stale mounting must be judged by the
+            operator; numeric checks only reject malformed geometry.
+    """
+    record = json.loads(path.read_text())
+    rows = record["camera_axes_in_imu_xyz"]
+    if len(rows) != 3:
+        raise ValueError("Camera basis must contain three axes")
+    if any(abs(math.sqrt(dot(row, row)) - 1) > 0.02 for row in rows):
+        raise ValueError("Camera basis axes must have unit length")
+    axes = tuple(unit(row) for row in rows)
+    if any(abs(dot(axes[left], axes[right])) > 0.02
+           for left, right in ((0, 1), (0, 2), (1, 2))):
+        raise ValueError("Camera basis axes must be approximately perpendicular")
+    cross = (axes[0][1] * axes[1][2] - axes[0][2] * axes[1][1],
+             axes[0][2] * axes[1][0] - axes[0][0] * axes[1][2],
+             axes[0][0] * axes[1][1] - axes[0][1] * axes[1][0])
+    if dot(cross, axes[2]) < 0.98:
+        raise ValueError("Camera basis must be right-handed")
+    return axes  # type: ignore[return-value]
+
+
 def movement_legs(folder: Path, axis: str, *, bias_start_seconds: float = 0.0,
                   bias_seconds: float = 2.0) -> tuple[Vector, Vector, Vector]:
     """Integrate bias-corrected gyro rates within three actual command legs.

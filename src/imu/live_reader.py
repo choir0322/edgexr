@@ -13,6 +13,8 @@ import statistics
 import threading
 import time
 
+from spatial.camera_axes import camera_components
+
 
 def validate_gyro(gyro: Iterable[float]) -> Axes:
     """Validate a driver angular-rate reading before publishing it.
@@ -59,11 +61,14 @@ def stationary_offset(
 
 
 class LiveImu:
-    def __init__(self, enabled: bool = False) -> None:
+    def __init__(self, enabled: bool = False,
+                 camera_axis_basis: Sequence[Sequence[float]] | None = None) -> None:
         """Initialize a per-run gyro baseline and bounded live reading history.
 
         Args:
             enabled (bool): Whether this optional live subsystem is requested.
+            camera_axis_basis (Sequence[Sequence[float]] | None): Validated
+                camera XYZ axes in IMU coordinates; None keeps the control path.
 
         Returns:
             None: no I2C read or saved-calibration write occurs here.
@@ -71,6 +76,11 @@ class LiveImu:
         # Keep per-run calibration, latest raw data and bounded rate history together
         # behind a lock; these values are not saved as permanent calibration.
         self.enabled = enabled
+        if camera_axis_basis is not None and not enabled:
+            raise ValueError("Camera-axis conversion requires the IMU")
+        self.camera_axis_basis = camera_axis_basis
+        self.camera_axis_rate = None
+        self.camera_axis_conversions = 0
         self.lock = threading.Lock()
         self.baseline = []
         self.offset = None
@@ -101,6 +111,7 @@ class LiveImu:
             if self.latest and timestamp <= self.latest[0]:
                 raise ValueError("IMU timestamps must increase")
             self.latest = (timestamp, gyro)
+            self.camera_axis_rate = None
             self.samples += 1
             self.sample_times.append(timestamp)
 
@@ -115,6 +126,14 @@ class LiveImu:
                         self.error = str(error)
                     finally:
                         self.baseline = []
+
+            # After the still offset is available, perform exactly one optional
+            # camera-frame projection per valid new sensor sample. No gyro is
+            # integrated into orientation here; both rates retain deg/s units.
+            if self.offset is not None and not self.error and self.camera_axis_basis is not None:
+                corrected = tuple(raw - bias for raw, bias in zip(gyro, self.offset))
+                self.camera_axis_rate = camera_components(corrected, self.camera_axis_basis)
+                self.camera_axis_conversions += 1
 
     def fail(self, message: str) -> None:
         """Retain an IMU-specific failure without stopping the camera pipeline.
@@ -170,6 +189,10 @@ class LiveImu:
             return dict(
                 status=status,
                 gyro_dps=corrected,
+                camera_gyro_dps=list(self.camera_axis_rate) if status == "ready" and self.camera_axis_rate is not None else None,
+                camera_axis_mode="on" if self.camera_axis_basis is not None else "off",
+                camera_axis_conversions=self.camera_axis_conversions,
+                camera_axis_basis=self.camera_axis_basis,
                 offset_dps=self.offset,
                 stationary_std_dps=self.spread,
                 samples=self.samples,

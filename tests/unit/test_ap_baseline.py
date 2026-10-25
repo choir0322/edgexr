@@ -77,12 +77,18 @@ class ApBaselineTests(unittest.TestCase):
         snapshot = {
             "status": "live", "preview_pid": 100, "ffmpeg_pid": 101,
             "detector": {"status": "ready", "tracking_mode": "motion-aware"},
-            "imu": {"status": "ready"},
+            "imu": {"status": "ready", "camera_axis_mode": "off",
+                    "camera_axis_conversions": 0},
         }
         with self.assertRaisesRegex(ValueError, "without --motion-aware-tracking"):
             validate_preview(snapshot)
         snapshot["detector"]["tracking_mode"] = "basic"
         self.assertEqual(validate_preview(snapshot), (100, 101))
+        with self.assertRaisesRegex(ValueError, "Camera-axis mode"):
+            validate_preview(snapshot, "on")
+        snapshot["imu"].update(camera_axis_mode="on", camera_axis_conversions=12)
+        self.assertEqual(validate_preview(snapshot, "on"), (100, 101))
+        snapshot["imu"].update(camera_axis_mode="off", camera_axis_conversions=0)
         snapshot["ffmpeg_pid"] = None
         with self.assertRaisesRegex(ValueError, "process IDs"):
             validate_preview(snapshot)
@@ -152,11 +158,13 @@ class ApBaselineTests(unittest.TestCase):
                 "temperature_c_thermal_zone0": (50, 51, 60)[index],
                 "skipped_decoded_frames_total": (4, 4, 7)[index],
                 "capture_fps": 30, "analysis_fps": 25,
+                "camera_axis_conversions_total": (0, 10, 20)[index],
             })
         report = summarize(samples, 300)
         self.assertEqual(report["distinct_detector_updates_observed"], 2)
         self.assertEqual(report["detector_compute_ms_distinct"]["median"], 220)
         self.assertEqual(report["skipped_decoded_frames_increase"], 3)
+        self.assertEqual(report["camera_axis_conversions_increase"], 20)
         self.assertEqual(report["temperature_first_minute_c"]["median"], 50.5)
         self.assertEqual(report["temperature_last_minute_c"]["median"], 60)
         json.dumps(report, allow_nan=False)

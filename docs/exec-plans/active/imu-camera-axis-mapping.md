@@ -74,8 +74,11 @@ orientation output is a rotation vector in initial sensor axes, not Euler XYZ.
   actual camera-axis conversion. Review `docs/PIPELINE.md` and
   `docs/learning/IMU.md`: the live diagram is unchanged because the new tool
   is offline and no live worker consumes the transform.
-- [ ] Run three transform-cost measurements on Pi before a live
-  integration/default change; review CPU time, wall time and rate projections.
+- [x] Run three transform-cost measurements on Pi: 27.73–28.63 microseconds
+  process CPU/call, projecting 0.277–0.286% of one core at 100 calls/s.
+  These isolated figures do not establish live workload cost.
+- [x] Open a separate [live A/B plan](live-camera-axis-ab.md) to compare
+  current `--imu` with opt-in conversion under the full camera/vision workload.
 
 ## Plan of work
 
@@ -275,5 +278,6 @@ covered. In the uncovered-lens `-03` repeat, the user observed first tilt up,
 and all three tilt legs passed the unchanged numerical gates with the
 preselected explicit still window. The earlier independent pan legs passed.
 The neutral-head axis signs are validated to this bounded protocol, but Pi
-transform-cost measurements and live integration remain. No live camera-frame
-pose or spatial-memory feature is claimed as implemented.
+transform cost has now been measured only in isolation. The optional live
+conversion A/B work is tracked separately; no live camera-frame pose or
+spatial-memory feature is claimed as implemented.

@@ -1,4 +1,4 @@
-"""Measure the unchanged live Pi workload without opening camera or model files."""
+"""Measure a verified live Pi workload without opening camera or model files."""
 
 from __future__ import annotations
 
@@ -225,11 +225,12 @@ def git_commit() -> str | None:
     return result.stdout.strip() if result.returncode == 0 else None
 
 
-def validate_preview(snapshot: Record) -> tuple[int, int]:
-    """Require the agreed basic-tracking full workload before sampling.
+def validate_preview(snapshot: Record, camera_axis_mode: str = "off") -> tuple[int, int]:
+    """Require the agreed basic-tracking workload and camera-axis mode.
 
     Args:
         snapshot (Record): Metrics-only response from the running preview.
+        camera_axis_mode (str): Expected conversion mode, ``off`` or ``on``.
 
     Returns:
         tuple[int, int]: Python preview PID and its FFmpeg child PID.
@@ -242,6 +243,11 @@ def validate_preview(snapshot: Record) -> tuple[int, int]:
         raise ValueError("Run --detect without --motion-aware-tracking for this baseline")
     if imu.get("status") != "ready":
         raise ValueError("IMU is not ready; run the preview with --imu and wait for startup")
+    if camera_axis_mode not in ("off", "on") or imu.get("camera_axis_mode") != camera_axis_mode:
+        raise ValueError("Camera-axis mode differs from the requested A/B condition")
+    if camera_axis_mode == "on" and (not isinstance(imu.get("camera_axis_conversions"), int)
+                                     or imu["camera_axis_conversions"] < 1):
+        raise ValueError("Camera-axis conversion count is unavailable")
     preview_pid, ffmpeg_pid = snapshot.get("preview_pid"), snapshot.get("ffmpeg_pid")
     if not all(type(pid) is int and pid > 0 for pid in (preview_pid, ffmpeg_pid)):
         raise ValueError("Telemetry has no process IDs; update and restart the Pi preview")
@@ -311,6 +317,7 @@ def one_sample(
         "box_source_age_ms": detector.get("age_ms"),
         "imu_status": imu.get("status"),
         "imu_rate_hz": imu.get("rate_hz"),
+        "camera_axis_conversions_total": imu.get("camera_axis_conversions"),
     }
 
 
@@ -360,6 +367,10 @@ def summarize(samples: list[Record], elapsed_s: float) -> Record:
     result["throttle_flag_counts"] = dict(Counter(str(s["throttle_flag_raw"]) for s in samples))
     skipped = [s["skipped_decoded_frames_total"] for s in samples if isinstance(s.get("skipped_decoded_frames_total"), int)]
     result["skipped_decoded_frames_increase"] = skipped[-1] - skipped[0] if len(skipped) >= 2 else None
+    converted = [s["camera_axis_conversions_total"] for s in samples
+                 if isinstance(s.get("camera_axis_conversions_total"), int)]
+    result["camera_axis_conversions_increase"] = (converted[-1] - converted[0]
+                                                  if len(converted) >= 2 else None)
     first = [s["temperature_c_thermal_zone0"] for s in samples if s["observed_s"] < 60 and s["temperature_c_thermal_zone0"] is not None]
     last = [s["temperature_c_thermal_zone0"] for s in samples if s["observed_s"] >= max(0, elapsed_s - 60) and s["temperature_c_thermal_zone0"] is not None]
     result["temperature_first_minute_c"] = median_and_p95(first)
@@ -405,9 +416,9 @@ def model_paths(preview_pid: int, proc_root: Path = Path("/proc")) -> tuple[Path
 
 def run_baseline(
     url: str, output: Path, warmup_s: float, seconds: float, interval_s: float,
-    scene: str, power: str, cooling: str,
+    scene: str, power: str, cooling: str, camera_axis_mode: str = "off",
 ) -> Record:
-    """Warm up the unchanged workload and collect one bounded AP measurement.
+    """Warm up the selected workload and collect one bounded AP measurement.
 
     Args:
         url (str): Local `/api/telemetry` endpoint of the running preview.
@@ -418,12 +429,13 @@ def run_baseline(
         scene (str): User description of the fixed, well-lit scene.
         power (str): User description of Pi supply or explicit unknown.
         cooling (str): User description of cooling or explicit unknown.
+        camera_axis_mode (str): Required live conversion mode for this run.
 
     Returns:
         Record: Summary saved with the raw time series under the output path.
     """
     initial = fetch_snapshot(url)
-    preview_pid, ffmpeg_pid = validate_preview(initial)
+    preview_pid, ffmpeg_pid = validate_preview(initial, camera_axis_mode)
     baseline = read_counters(preview_pid, ffmpeg_pid)
     graph, weights = model_paths(preview_pid)
     metadata: Record = {
@@ -431,6 +443,8 @@ def run_baseline(
         "host": platform.platform(), "git_commit": git_commit(),
         "preview_pid": preview_pid, "ffmpeg_pid": ffmpeg_pid,
         "tracking_mode": "basic", "detector_target_hz": 2,
+        "camera_axis_mode": camera_axis_mode,
+        "camera_axis_basis": (initial.get("imu") or {}).get("camera_axis_basis"),
         "camera_request": "1280x720 MJPEG 30 fps; negotiated mode not measured here",
         "motion_analysis_shape": "320x180 grayscale", "opencv_internal_threads": 2,
         "model_graph_path": str(graph), "model_graph_sha256": sha256_file(graph),
@@ -452,7 +466,7 @@ def run_baseline(
         remaining = warmup_s - (time.monotonic() - warmup_started)
         time.sleep(min(5.0, remaining))
     ready = fetch_snapshot(url)
-    if validate_preview(ready) != (preview_pid, ffmpeg_pid):
+    if validate_preview(ready, camera_axis_mode) != (preview_pid, ffmpeg_pid):
         raise ValueError("Preview process changed during warm-up")
     previous = read_counters(preview_pid, ffmpeg_pid)
     if (previous[0].start_ticks, previous[1].start_ticks) != (baseline[0].start_ticks, baseline[1].start_ticks):
@@ -473,7 +487,7 @@ def run_baseline(
             time.sleep(max(0.0, next_sample - now))
             now = time.monotonic()
             snapshot = fetch_snapshot(url)
-            if validate_preview(snapshot) != (preview_pid, ffmpeg_pid):
+            if validate_preview(snapshot, camera_axis_mode) != (preview_pid, ffmpeg_pid):
                 raise ValueError("Preview process changed during measurement")
             current = read_counters(preview_pid, ffmpeg_pid)
             sample = one_sample(snapshot, now - started, previous, current, now - previous_at, ticks_per_s)
@@ -495,7 +509,7 @@ def run_baseline(
 
 
 def main() -> None:
-    """Parse Pi-only options and report an unchanged-workload AP baseline.
+    """Parse Pi-only options and report a mode-verified AP measurement.
 
     Args:
         None; values come from the user's command line.
@@ -512,6 +526,8 @@ def main() -> None:
     parser.add_argument("--scene", required=True)
     parser.add_argument("--power", required=True)
     parser.add_argument("--cooling", required=True)
+    parser.add_argument("--camera-axis-mode", choices=("off", "on"), default="off",
+                        help="require matching live camera-axis conversion mode")
     args = parser.parse_args()
     parsed = urlsplit(args.url)
     if parsed.scheme != "http" or parsed.hostname not in ("127.0.0.1", "localhost") or parsed.path != "/api/telemetry":
@@ -524,6 +540,7 @@ def main() -> None:
         result = run_baseline(
             args.url, args.output, args.warmup_seconds, args.seconds,
             args.interval, args.scene.strip(), args.power.strip(), args.cooling.strip(),
+            args.camera_axis_mode,
         )
     except (OSError, ValueError, RuntimeError) as error:
         parser.exit(1, f"Baseline failed: {error}\n")

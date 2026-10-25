@@ -23,6 +23,7 @@ from urllib.parse import urlsplit
 import numpy as np
 from recording.visual_motion import WIDTH, HEIGHT, image_shift
 from imu.live_reader import LiveImu, poll_imu
+from spatial.camera_axes import load_camera_basis
 from vision.live_detector import (
     DetectionState,
     CpuDetector,
@@ -78,6 +79,7 @@ class State:
     def __init__(
         self,
         imu_enabled: bool = False,
+        camera_axis_basis: Sequence[Sequence[float]] | None = None,
         detection_enabled: bool = False,
         motion_aware_tracking: bool = False,
         reidentify: bool = False,
@@ -88,6 +90,8 @@ class State:
 
         Args:
             imu_enabled (bool): Whether the optional IMU path is selected.
+            camera_axis_basis (Sequence[Sequence[float]] | None): Optional
+                validated neutral-head camera basis for the AP comparison.
             detection_enabled (bool): Whether full-frame detection storage is required.
             motion_aware_tracking (bool): Whether the detector may query recent
                 analyzed image shifts for provisional box prediction.
@@ -119,7 +123,7 @@ class State:
         self.ffmpeg_pid: int | None = None
 
         # Give IMU and detection their own status stores; either may fail independently.
-        self.imu = LiveImu(imu_enabled)
+        self.imu = LiveImu(imu_enabled, camera_axis_basis)
         self.detector = DetectionState(
             detection_enabled, motion_aware_tracking, reidentify,
             reid_retry_seconds, reid_spatial,
@@ -682,6 +686,10 @@ def main() -> None:
         help="read SunFounder SH3001 gyro on a separate thread",
     )
     parser.add_argument(
+        "--camera-axis-basis", type=Path,
+        help="opt-in per-IMU-sample camera-axis conversion using this validated JSON basis; requires --imu",
+    )
+    parser.add_argument(
         "--detect", action="store_true", help="MobileNet-SSD CPU boxes at a target 2 Hz"
     )
     parser.add_argument(
@@ -726,6 +734,8 @@ def main() -> None:
         parser.error("existing FFmpeg installation required")
     if args.motion_aware_tracking and not args.detect:
         parser.error("--motion-aware-tracking requires --detect")
+    if args.camera_axis_basis is not None and not args.imu:
+        parser.error("--camera-axis-basis requires --imu")
     if args.reidentify and not args.detect:
         parser.error("--reidentify requires --detect")
     if not math.isfinite(args.reid_retry_seconds) or not 0 <= args.reid_retry_seconds <= 5:
@@ -758,8 +768,14 @@ def main() -> None:
 
     # Create shared state and start the server plus core camera/motion workers.
     # Keep resource handles available for cleanup even if later setup fails.
+    try:
+        camera_axis_basis = (load_camera_basis(args.camera_axis_basis)
+                             if args.camera_axis_basis is not None else None)
+    except (OSError, ValueError, KeyError, TypeError) as error:
+        parser.error(f"Invalid camera-axis basis: {error}")
     state = State(
         imu_enabled=args.imu,
+        camera_axis_basis=camera_axis_basis,
         detection_enabled=args.detect,
         motion_aware_tracking=args.motion_aware_tracking,
         reidentify=args.reidentify,
@@ -867,6 +883,8 @@ def main() -> None:
                 "IMU: first second must be still; using per-run raw gyro offset. IMU errors appear in browser.",
                 flush=True,
             )
+            print("Camera-axis conversion: " + ("on, once per valid IMU sample after still bias; neutral-head rates only."
+                  if camera_axis_basis is not None else "off (control mode)."), flush=True)
 
         # Serve browser snapshots until interruption, then stop workers and close
         # the server even when startup or request handling raised an error.

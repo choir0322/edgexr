@@ -25,6 +25,18 @@ if numpy is not None:
 
 @unittest.skipIf(numpy is None, "NumPy required for preview tests")
 class PreviewTests(unittest.TestCase):
+    def test_state_carries_optional_camera_axis_mode_into_telemetry(self) -> None:
+        """Keep the fitted rate branch independent of image/detector results."""
+        basis = ((0, 0, 1), (0, 1, 0), (-1, 0, 0))
+        state = State(imu_enabled=True, camera_axis_basis=basis)
+        for index in range(11):
+            state.imu.publish(index * 0.1, (-4.0, 15.0, -3.0))
+        state.imu.publish(1.1, (-4.0, 20.0, -1.0))
+        result = state.snapshot(1.11)
+        self.assertEqual(result["imu"]["camera_axis_mode"], "on")
+        self.assertEqual(result["imu"]["camera_gyro_dps"], [2.0, 5.0, 0.0])
+        self.assertEqual(result["imu"]["camera_axis_conversions"], 2)
+
     def test_pipe_reads_complete_partial_chunks(self) -> None:
         """Verify pipe reads complete partial chunks.
 
