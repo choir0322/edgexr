@@ -80,6 +80,7 @@ class State:
         self,
         imu_enabled: bool = False,
         camera_axis_basis: Sequence[Sequence[float]] | None = None,
+        relative_orientation: bool = False,
         detection_enabled: bool = False,
         motion_aware_tracking: bool = False,
         reidentify: bool = False,
@@ -92,6 +93,7 @@ class State:
             imu_enabled (bool): Whether the optional IMU path is selected.
             camera_axis_basis (Sequence[Sequence[float]] | None): Optional
                 validated neutral-head camera basis for the AP comparison.
+            relative_orientation (bool): Opt-in bounded gyro-only camera rotation.
             detection_enabled (bool): Whether full-frame detection storage is required.
             motion_aware_tracking (bool): Whether the detector may query recent
                 analyzed image shifts for provisional box prediction.
@@ -123,7 +125,7 @@ class State:
         self.ffmpeg_pid: int | None = None
 
         # Give IMU and detection their own status stores; either may fail independently.
-        self.imu = LiveImu(imu_enabled, camera_axis_basis)
+        self.imu = LiveImu(imu_enabled, camera_axis_basis, relative_orientation)
         self.detector = DetectionState(
             detection_enabled, motion_aware_tracking, reidentify,
             reid_retry_seconds, reid_spatial,
@@ -690,6 +692,10 @@ def main() -> None:
         help="opt-in per-IMU-sample camera-axis conversion using this validated JSON basis; requires --imu",
     )
     parser.add_argument(
+        "--relative-orientation", action="store_true",
+        help="opt-in gyro-only rotation from the startup still reference; requires --imu and --camera-axis-basis",
+    )
+    parser.add_argument(
         "--detect", action="store_true", help="MobileNet-SSD CPU boxes at a target 2 Hz"
     )
     parser.add_argument(
@@ -736,6 +742,8 @@ def main() -> None:
         parser.error("--motion-aware-tracking requires --detect")
     if args.camera_axis_basis is not None and not args.imu:
         parser.error("--camera-axis-basis requires --imu")
+    if args.relative_orientation and (not args.imu or args.camera_axis_basis is None):
+        parser.error("--relative-orientation requires --imu and --camera-axis-basis")
     if args.reidentify and not args.detect:
         parser.error("--reidentify requires --detect")
     if not math.isfinite(args.reid_retry_seconds) or not 0 <= args.reid_retry_seconds <= 5:
@@ -776,6 +784,7 @@ def main() -> None:
     state = State(
         imu_enabled=args.imu,
         camera_axis_basis=camera_axis_basis,
+        relative_orientation=args.relative_orientation,
         detection_enabled=args.detect,
         motion_aware_tracking=args.motion_aware_tracking,
         reidentify=args.reidentify,
@@ -885,6 +894,8 @@ def main() -> None:
             )
             print("Camera-axis conversion: " + ("on, once per valid IMU sample after still bias; neutral-head rates only."
                   if camera_axis_basis is not None else "off (control mode)."), flush=True)
+            if args.relative_orientation:
+                print("Relative camera rotation: gyro-only quaternion from startup still reference; gaps over 0.2 s become unknown. No world pose or video synchronization.", flush=True)
 
         # Serve browser snapshots until interruption, then stop workers and close
         # the server even when startup or request handling raised an error.

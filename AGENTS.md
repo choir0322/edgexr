@@ -69,6 +69,22 @@ commit as the relevant code. Do not silently add tracking/fusion arrows for
 features that are only planned. Prefer repository-relative links and named
 symbols over brittle line numbers in repository documentation.
 
+## Record each technique and its AP evidence
+
+At each meaningful stage, update `docs/STAGE_RECORDS.md` with a stable stage
+name, status (planned/implemented/measured), the technique and its purpose,
+exact source/config/learning-guide links, and the AP question. Link to the
+small committed result under `benchmarks/results/` when Pi measurements exist.
+That result should retain the device/commit, workload and camera mode, scene,
+power/cooling, warm-up/duration, metric definitions and values, limitations,
+and the resulting decision. Include quality or correctness evidence alongside
+CPU/latency/rate/memory/temperature; write `not measured` instead of filling
+gaps with assumptions. Keep the index concise and preserve detailed evidence
+in linked documents. This structured trail is intended to support a later
+project website, but do not build website features during a measurement stage
+unless the user explicitly chooses that detour. Do not commit raw footage,
+private images, large logs or model weights.
+
 ## Source layout
 
 - `src/` contains small, focused application modules.

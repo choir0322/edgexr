@@ -10,8 +10,7 @@ live workers below. It does not provide camera pose or feed the browser.
 IMU-to-camera basis from saved pan and tilt command legs plus physically observed
 first-movement directions. It reports a neutral-pose coordinate transform and
 within-run return checks; the default live worker does not consume it. See
-[the camera-axis record](IMU_CAMERA_AXES.md). The default live path still does
-not consume it.
+[the camera-axis record](IMU_CAMERA_AXES.md). The optional path below does.
 An independent pan check and uncovered-lens tilt check now support that offline
 mapping's axis directions. `profiling.camera_axis_cost` times repeated pure
 vector conversions separately from sensor reads and camera work; its rate
@@ -19,6 +18,14 @@ figures are projections. The new **opt-in** `--camera-axis-basis` path projects
 each valid post-bias IMU rate into those neutral-head axes and exposes a
 separately named rate/count through telemetry. The image-motion, detector and
 tracker paths do not consume it. See [the A/B protocol](IMU_CAMERA_AXIS_AB.md).
+With the additional opt-in `--relative-orientation` flag, those post-bias
+camera-axis gyro readings also enter `RelativeCameraOrientation.add`. It starts
+at identity at the still reference, averages adjacent rates over their host
+read-midpoint interval, and composes a normalized quaternion. A gap over
+0.2 seconds, IMU error or stale reading makes rotation unknown until restart.
+The browser shows a relative angle/vector separately from the image-shift
+arrow. It is not camera position, world heading, depth, image/IMU fusion or
+exposure-synchronized pose; Pi quality and AP cost remain unmeasured.
 
 The offline servo recorder now accepts `--imu-interval` (default 0.05 s), passed
 to the combined recorder's post-read sleep. The explicit 0.01 s polling trial
@@ -83,7 +90,8 @@ flowchart TD
     POLL["poll_imu<br/>Read midpoint timestamp; then wait 50 ms"]
     BIAS["LiveImu<br/>First-second stationary gyro offset<br/>Latest corrected XYZ rates in degrees/s"]
     BASIS["Optional --camera-axis-basis<br/>Validated neutral-head XYZ axes in IMU coordinates"]
-    CAMRATE["camera_components per valid post-bias IMU sample<br/>Separate camera XYZ rates in degrees/s + conversion count<br/>No orientation integration"]
+    CAMRATE["camera_components per valid post-bias IMU sample<br/>Separate camera XYZ rates in degrees/s + conversion count"]
+    ORIENT["Optional --relative-orientation<br/>Adjacent camera rates × host interval<br/>Compose normalized quaternion; gap/stale → unknown"]
     STATE["State.snapshot<br/>Latest independent results + ages/errors<br/>Not exposure-synchronized sensor fusion"]
     TRIAL["Optional second SSH process: tracking_trial<br/>/api/telemetry omits image bytes<br/>JSONL + summary under ignored recordings/"]
     REIDVIDEO["Optional --trial-output<br/>MJPEG packet copy to camera.mkv<br/>Same camera input, no second opener"]
@@ -109,10 +117,12 @@ flowchart TD
     IMU --> POLL --> BIAS
     BASIS -. "opt-in projection" .-> CAMRATE
     BIAS -. "post-bias gyro rate" .-> CAMRATE
+    CAMRATE -. "opt-in timestamped rates" .-> ORIENT
     RESULT --> STATE
     TRACK --> STATE
     BIAS --> STATE
     CAMRATE -. "optional telemetry only" .-> STATE
+    ORIENT -. "relative rotation telemetry only" .-> STATE
     STATE --> WEB --> UI
     STATE -. "metrics-only HTTP" .-> TRIAL
     STATE -. "metrics-only HTTP, PIDs" .-> AP

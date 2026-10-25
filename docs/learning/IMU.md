@@ -38,11 +38,25 @@ basis only with `--camera-axis-basis`, passes it through `State.__init__` to
 first-second offset exists. `LiveImu.snapshot` exposes both the original
 sensor-axis `gyro_dps` and optional `camera_gyro_dps`, each in degrees/second,
 plus a conversion count. A stale/error sample exposes neither rate as current.
-The browser still displays the sensor-axis rate; no camera orientation is
-integrated or fed to tracking. `profiling.ap_baseline.validate_preview`
+The browser still displays the sensor-axis rate; this A/B conversion mode does
+not by itself integrate orientation or feed tracking. `profiling.ap_baseline.validate_preview`
 requires the declared A/B mode, and the collector records CPU, rates, skipped
 frames and temperature without opening a second camera. The fit is only for
 the unchanged neutral-head mounting.
+
+The additional opt-in `--relative-orientation` path integrates those camera-
+axis rates. `spatial.live_orientation.RelativeCameraOrientation.add` uses actual
+host read-midpoint intervals. A quaternion `(w,x,y,z)` begins at `(1,0,0,0)`
+at the accepted still reference. Its four numbers jointly encode rotation:
+`w` is not time/speed, and `x,y,z` are not image pixels or position. A turn θ
+around unit axis `(ax,ay,az)` gives an increment `(cos(θ/2), ax sin(θ/2),
+ay sin(θ/2), az sin(θ/2))`. The program composes each increment instead of
+adding Euler angles. The displayed shortest rotation vector is not
+yaw/pitch/roll. `preview.html` shows its angle/vector/quaternion separately
+from the image-motion arrow. There is no visual correction or frame pairing.
+A gap over 200 ms, stale reading or error makes it unknown until a new run.
+This is implemented but not yet measured on the Pi; see the
+[active plan](../exec-plans/active/live-relative-camera-orientation.md).
 
 The new [offline relative-orientation experiment](../RELATIVE_ORIENTATION.md)
 reads saved IMU samples after a run. `spatial.relative_orientation.analyze`
@@ -74,9 +88,9 @@ requests and recorder receipt are separate events with separate host timestamps.
 The comparison verifies that observed fast polling covered motion and settling.
 
 Read [the live diagram](../PIPELINE.md) and [image-motion guide](IMAGE_MOTION.md).
-The gyroscope measures angular rate around the board's axes. The live path
-shows bias-corrected rates; it does not yet calculate camera orientation or
-feed a motion-compensation algorithm. Rigid attachment means camera and IMU
+The gyroscope measures angular rate around the board's axes. The default live
+path shows bias-corrected rates; only the new opt-in path estimates relative
+camera rotation, and neither feeds a motion-compensation algorithm. Rigid attachment means camera and IMU
 move together, not that their coordinate axes are automatically identical.
 The optional [motion-aware tracker](MOTION_AWARE_TRACKING.md) uses image shifts,
 not gyro values; the IMU remains a separate readout in that mode.

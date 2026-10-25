@@ -105,6 +105,7 @@ code {
 <div class="card"><span>IMU sample rate</span><strong id="imu-rate">—</strong></div>
 <div class="card"><span>Gyro Y turn rate</span><strong id="imu-y">—</strong></div>
 <div class="card"><span>IMU sample age</span><strong id="imu-age">—</strong></div>
+<div class="card"><span>Relative camera turn</span><strong id="camera-turn">—</strong></div>
 <div class="card"><span>Detection updates (target 2 Hz)</span><strong id="detect-rate">—</strong></div>
 <div class="card"><span>Latest detection compute</span><strong id="detect-cost">—</strong></div>
 <div class="card"><span>Box source age on Pi</span><strong id="detect-age">—</strong></div>
@@ -113,6 +114,7 @@ code {
 </div>
 <p id="motion">Waiting for a frame…</p>
 <p id="imu-status">IMU is off. Restart Pi preview with <code>--imu</code> to show it.</p>
+<p id="orientation-status">Relative camera orientation is off.</p>
 <p id="detect-status">Detection is off. Add <code>--detect</code> to show boxes.</p>
 <small>Amber boxes describe an older frame and may lag during motion; they are hidden after 1.5 seconds.
 Box age starts at frame receipt on Pi and excludes SSH/browser delay. A <code>#ID</code> is provisional and local to this run. With motion-aware tracking, recent image shift can predict box positions for ID matching; displayed boxes still describe their original detector frame.</small>
@@ -139,6 +141,7 @@ these two displays are approximate concurrent observations, not synchronized mea
  * @property {?number} [rate_hz] Observed polling frequency in samples/second.
  * @property {?number} [age_ms] Host time since the read midpoint, in milliseconds.
  * @property {?number[]} [gyro_dps] Bias-corrected sensor XYZ rates in degrees/second.
+ * @property {Object} [relative_orientation] Optional gyro-only rotation from startup still reference.
  * @property {?string} [error] Driver or calibration error message.
  */
 /**
@@ -255,6 +258,13 @@ function render(data) {
     imu.status === 'error' ? `IMU error: ${imu.error || 'unknown'} · camera preview continues.` :
     'IMU is off. Restart Pi preview with --imu to show it.';
   put('imu-status', imuText);
+  const orientation = imu.relative_orientation || {status: 'off'};
+  put('camera-turn', orientation.status === 'ready' ? fmt(orientation.angle_deg, '°') : '—');
+  put('orientation-status', orientation.status === 'ready' ?
+    `Relative camera rotation from startup: vector X ${orientation.rotation_vector_deg[0].toFixed(1)}, Y ${orientation.rotation_vector_deg[1].toFixed(1)}, Z ${orientation.rotation_vector_deg[2].toFixed(1)} °; quaternion (w,x,y,z) ${orientation.quaternion_wxyz.map(v => v.toFixed(3)).join(', ')}. ${orientation.integrated_intervals} intervals; sample age ${orientation.sample_age_ms.toFixed(0)} ms. Gyro-only; not position, world heading or synchronized video pose.` :
+    orientation.status === 'unknown' ? `Relative camera rotation unknown: ${orientation.reason || 'IMU continuity lost'}. Restart with the head still to establish a new reference.` :
+    orientation.status === 'starting' ? 'Relative camera rotation: collecting the startup still reference.' :
+    'Relative camera orientation is off; use --relative-orientation with --imu and --camera-axis-basis.');
 
   // Render detector throughput, compute duration and source age independently.
   // Only ready predictions with a live camera may contribute visible boxes.

@@ -38,13 +38,16 @@ camera estimate or synchronized video pose.
   state, optional camera-axis rate path, AP collector and spatial roadmap.
 - [x] 2026-10-25: Draft this learning-first plan before changing the live
   orientation estimator; user review is pending.
-- [ ] Implement a small incremental orientation state with independent unit
+- [x] 2026-10-25: Add the standing
+  [technique/AP evidence register](../../STAGE_RECORDS.md); future estimator
+  and Pi results must update it for the planned website as well as this plan.
+- [x] Implement a small incremental orientation state with independent unit
   tests and explicit invalid/gap behavior; reuse the existing quaternion math.
-- [ ] Replay known synthetic and saved gyro sequences through the incremental
+- [x] Replay known synthetic and saved gyro sequences through the incremental
   path and compare with the offline result on the same samples.
-- [ ] Add opt-in live telemetry/minimal display only after the offline checks;
+- [x] Add opt-in live telemetry/minimal display after synthetic checks;
   preserve raw and camera-axis rates and avoid linking pose into tracking.
-- [ ] Review/update `docs/PIPELINE.md` and `docs/learning/IMU.md` for the new
+- [x] Review/update `docs/PIPELINE.md` and `docs/learning/IMU.md` for the new
   live branch, including axes, units, timing, freshness, unknown/reset rules.
 - [ ] Run a fixed-base Pi still and supervised return trial; record drift,
   gaps, residual, CPU, IMU rate, motion rate, skips and temperature.
@@ -134,6 +137,13 @@ that live gyro integration will remain accurate indefinitely.
 
 ## Outcomes and retrospective
 
-Plan checkpoint only. No live relative camera orientation has been implemented
-or measured yet. The current live diagram remains accurate for rates only;
-it must be updated in the implementation commit, not ahead of code.
+Hardware-free incremental integration, opt-in telemetry and a minimal browser
+readout are implemented. Synthetic ordered-rotation replay matches the offline
+integrator. A read-only replay of `orientation-pan-10ms-01-data/imu.csv` used
+168 physically-still-window samples in the first two seconds after the cue,
+then 1,552 converted camera-axis samples. Incremental and offline quaternions
+matched exactly in that Python run; both ended at a 1.769° shortest angle.
+That is an algorithm-equivalence check on historical data, **not** measured
+camera-angle accuracy or live AP cost. Pi still/return observation and controlled
+AP cost comparison remain open. The diagram now includes the opt-in branch.
+No physical orientation accuracy or live performance claim follows yet.
