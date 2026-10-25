@@ -11,6 +11,11 @@ IMU-to-camera basis from saved pan and tilt command legs plus physically observe
 first-movement directions. It reports a neutral-pose coordinate transform and
 within-run return checks; no live worker consumes it. See
 [the camera-axis record](IMU_CAMERA_AXES.md). The live graph is unchanged.
+An independent pan check and uncovered-lens tilt check now support that offline
+mapping's axis directions. `profiling.camera_axis_cost` times repeated pure
+vector conversions separately from sensor reads and camera work; its rate
+figures are projections, not a live scheduling policy. This leaves the live
+graph unchanged.
 
 The offline servo recorder now accepts `--imu-interval` (default 0.05 s), passed
 to the combined recorder's post-read sleep. The explicit 0.01 s polling trial

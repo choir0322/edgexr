@@ -183,11 +183,58 @@ tilt legs have magnitudes **2.12°, 7.26°, 1.95°** and signed-axis deviations
 report labels `analysis_protocol` as `explicit_bias_window`; for this run, the
 window was selected retrospectively, not in the original plan. It checks only
 tilt, not pan, and
-the user's observation of this new run's physical first direction remains to
-be confirmed before declaring the camera-axis mapping validated.
+the user's observation of this new run's physical first direction remained
+unknown because the lens was covered. Its numerical pass is preserved as a
+separate, retrospectively selected-window result, not rewritten as a fully
+observed validation.
 
 `independent_validation.axes_checked` must be `["tilt"]`. All three new tilt
 legs need at least 0.4° integrated IMU motion and no more than 20° deviation
 from their signed expected axis; otherwise the result stays inconclusive or
 fails. The earlier independent pan result remains separate evidence. Keep the
 basis offline until the new data and physical movement are reviewed.
+
+### Uncovered-lens repeat and AP cost check
+
+The user repeated the same tilt-only schedule with the lens uncovered as
+`orientation-tilt-validation-03` and confirmed the **first lens movement was
+up**. The capture completed with 311 decoded-frame records and 910 IMU samples;
+24 one-degree tilt commands were issued. The source pan/tilt fit remained
+unchanged. With the **preselected** 1.0–2.5 s still window, 125 bias samples
+had gyro XYZ standard deviations (0.190, 0.188, 0.113)°/s. The three new tilt
+legs measured 4.57°, 7.32° and 1.74° of integrated IMU rotation, with
+signed camera-axis deviations 2.76°, 1.09° and 3.11°. All exceed the 0.4°
+signal minimum and fall below the 20° direction limit. The earlier independent
+combined run had already passed all three **pan** legs. Together these are
+separate, physically signed pan and tilt direction checks of the neutral-head
+mapping. They do not calibrate shaft angle, timing alignment, world pose or
+depth. The automatic horizontal-image/gyro-Y correlation is a pan-oriented
+exploratory diagnostic, not this tilt validation's acceptance metric.
+
+Before adding this transform to the live worker, measure its **compute cost**
+on the Pi with the read-only, no-camera/no-servo benchmark. It refits the
+existing source recordings before timing only repeated calls to
+`spatial.camera_axes.camera_components`; the fit and CSV reads are excluded
+from the timed loop. Close the live preview and use the same Pi software and
+cooling when comparing runs:
+
+```bash
+cd ~/projects/edgexr
+PYTHONPATH=src python3 -m profiling.camera_axis_cost \
+  recordings/orientation-pan-10ms-01 \
+  recordings/orientation-tilt-10ms-01 \
+  --pan-first right --tilt-first up \
+  --warmup-seconds 1 --measure-seconds 5
+```
+
+Run it three times and retain each JSON report with the commit, host, Python
+version, fitted basis, durations and CPU/elapsed-time metrics. The reported
+`process_cpu_us_per_call_total` includes benchmark-loop and timer overhead, so it is a
+conservative allocation estimate rather than isolated arithmetic time.
+The 20, 30 and 100 Hz CPU percentages are **projections** from that single-call
+cost, not measured sensor rates or live-pipeline CPU savings. This benchmark
+uses a fixed finite gyro vector; it does not read I2C, open the camera, move
+motors or integrate an orientation. Camera mode, scene and power are not
+applicable during this isolated CPU experiment; the Pi is the device under
+test. A later integrated benchmark must measure real scheduling/contention
+before choosing the live conversion rate.

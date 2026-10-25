@@ -25,6 +25,12 @@ stays inconclusive. The [run and retrospective bias-window procedure](../IMU_CAM
 keeps this offline until measured evidence supports live use. The original
 first-two-seconds bias protocol remains the default; the new window is
 explicitly selected only for the validation recording and is reported.
+The uncovered-lens `-03` repeat passed all three tilt legs and physically
+confirmed the first tilt sign; the earlier independent pan legs had passed.
+Next, `profiling.camera_axis_cost.measure` repeatedly calls the real
+`camera_components` conversion using the fitted basis to estimate its isolated
+Pi CPU cost. It excludes camera, IMU reads and the live worker. See the
+[AP cost procedure](../IMU_CAMERA_AXES.md#uncovered-lens-repeat-and-ap-cost-check).
 
 The new [offline relative-orientation experiment](../RELATIVE_ORIENTATION.md)
 reads saved IMU samples after a run. `spatial.relative_orientation.analyze`

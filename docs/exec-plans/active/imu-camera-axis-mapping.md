@@ -67,8 +67,15 @@ orientation output is a rotation vector in initial sensor axes, not Euler XYZ.
   new tilt-leg numerical checks.
 - [x] Review `docs/PIPELINE.md` and `docs/learning/IMU.md` for the bias-window
   option: offline analysis only; live data-flow diagram remains unchanged.
-- [ ] Validate on independent pan/tilt motions before using the mapping live.
-- [ ] Measure transform cost on Pi before a live integration/default change.
+- [x] Validate direction on independent pan and tilt motions: the earlier
+  combined capture passed all three pan legs; uncovered-lens tilt-only `-03`
+  passed all three tilt legs and the user observed the first lens movement up.
+- [x] 2026-10-25: Add a hardware-independent, read-only microbenchmark for the
+  actual camera-axis conversion. Review `docs/PIPELINE.md` and
+  `docs/learning/IMU.md`: the live diagram is unchanged because the new tool
+  is offline and no live worker consumes the transform.
+- [ ] Run three transform-cost measurements on Pi before a live
+  integration/default change; review CPU time, wall time and rate projections.
 
 ## Plan of work
 
@@ -250,13 +257,23 @@ camera-axis mapping fully validated until then.
   first-two-seconds result; keep source-fit windows, 2°/s stillness gate,
   0.4° leg minimum and 20° direction limit unchanged. Require the selected
   window to end at least 0.1 s before the first servo command.
+- 2026-10-25: Repeat the tilt trial with the lens uncovered and the same
+  explicitly selected 1.0–2.5 s bias window. Treat its observed physical sign
+  and three passing legs as independent tilt evidence, alongside the earlier
+  independent pan evidence. Before live integration, time the current pure
+  `camera_components` function separately from I2C, camera and integration.
+  Projected rates guide a scheduling choice but cannot replace an integrated
+  measurement under live workload contention.
 
 ## Outcomes and retrospective
 
 The tilt transfer and provisional offline fit are complete. The first
 independent recording was partially supportive but inconclusive because its
-last tilt leg was weak. The second, tilt-only recording passes the numerical
-direction checks under the documented retrospective bias-window reanalysis;
-its physical direction observation and Pi transform-cost measurement remain.
-No live
-camera-frame pose or spatial-memory feature is claimed as implemented.
+last tilt leg was weak. The second, tilt-only recording passed numerically
+under the documented retrospective bias-window reanalysis, but its lens was
+covered. In the uncovered-lens `-03` repeat, the user observed first tilt up,
+and all three tilt legs passed the unchanged numerical gates with the
+preselected explicit still window. The earlier independent pan legs passed.
+The neutral-head axis signs are validated to this bounded protocol, but Pi
+transform-cost measurements and live integration remain. No live camera-frame
+pose or spatial-memory feature is claimed as implemented.
