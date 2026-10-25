@@ -74,7 +74,7 @@ class Phase:
 
 def build_schedule(
     axes: str = "both", *, commission: bool = False, wide_pan: bool = False,
-    quick_pan: bool = False,
+    quick_pan: bool = False, axis_validate_tilt: bool = False,
 ) -> tuple[list[ServoCommand], list[Phase], float]:
     """Build a center-bounded, sequential speed series with no hardware access.
 
@@ -84,6 +84,7 @@ def build_schedule(
             physical verification, before the full speed series.
         wide_pan (bool): Use ±20° for a pan-only commissioning sweep.
         quick_pan (bool): Command pan 0° → −40° → +40° at 20°/s, ending at +40°.
+        axis_validate_tilt (bool): Use one 5°/s, ±6° tilt sweep returning to zero.
 
     Returns:
         tuple[list[ServoCommand], list[Phase], float]: Timed commands, phase
@@ -95,8 +96,10 @@ def build_schedule(
         raise ValueError("--wide-pan requires --commission --axes pan")
     if quick_pan and (commission or wide_pan or axes != "pan"):
         raise ValueError("--quick-pan requires --axes pan without --commission or --wide-pan")
+    if axis_validate_tilt and (commission or wide_pan or quick_pan or axes != "tilt"):
+        raise ValueError("--axis-validate-tilt requires --axes tilt without other modes")
     selected = ("pan", "tilt") if axes == "both" else (axes,)
-    speeds = (20,) if quick_pan else (5,) if commission else SPEEDS
+    speeds = (20,) if quick_pan else (5,) if commission or axis_validate_tilt else SPEEDS
     commands: list[ServoCommand] = []
     phases: list[Phase] = []
     elapsed = INITIAL_STILL_S
@@ -105,10 +108,13 @@ def build_schedule(
     # Never command both axes within the same phase or exceed the selected bounds.
     for speed in speeds:
         for axis in selected:
-            amplitude = 40 if quick_pan else (20 if wide_pan else 2) if commission else AMPLITUDES[axis]
+            amplitude = (40 if quick_pan else (20 if wide_pan else 2) if commission
+                         else AMPLITUDES[axis])
             current = 0
             start = elapsed
-            name = f"{axis}-quick-{speed}dps" if quick_pan else f"{axis}-{speed}dps"
+            name = (f"{axis}-quick-{speed}dps" if quick_pan else
+                    f"tilt-axis-validation-{speed}dps" if axis_validate_tilt else
+                    f"{axis}-{speed}dps")
             targets = (-amplitude, amplitude) if quick_pan else (-amplitude, amplitude, 0)
             for target in targets:
                 while current != target:
@@ -349,7 +355,9 @@ def capture_command(args: argparse.Namespace, duration: float) -> list[str]:
         "--notes", "Guarded servo test; sequential pan/tilt, "
         + ("quick pan 0 to -40 to +40 degrees" if args.quick_pan else
            "wide pan commission ±20 degrees" if args.wide_pan else
-           "commission ±2 degrees" if args.commission else "series ±8/±6 degrees")
+           "commission ±2 degrees" if args.commission else
+           "axis validation tilt ±6 degrees" if getattr(args, "axis_validate_tilt", False)
+           else "series ±8/±6 degrees")
         + f"; scene={args.scene}; power={args.power}; cooling={args.cooling}",
     ]
     if getattr(args, "measure_resources", False):
@@ -547,6 +555,8 @@ def main(argv: Sequence[str] | None = None) -> int:
                         help="opt-in pan-only commissioning sweep at ±20°")
     parser.add_argument("--quick-pan", action="store_true",
                         help="opt-in pan-only 0° → −40° → +40° at 20 commanded °/s")
+    parser.add_argument("--axis-validate-tilt", action="store_true",
+                        help="one tilt-only 0° → −6° → +6° → 0° sweep at 5 commanded °/s")
     parser.add_argument("--execute", action="store_true", help="enable real Pi hardware")
     parser.add_argument("--confirm-centered", action="store_true")
     parser.add_argument("--confirm-cable-slack", action="store_true")
@@ -575,7 +585,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         parser.error("active IMU sleep must not exceed idle sleep")
     commands, phases, duration = build_schedule(
         args.axes, commission=args.commission, wide_pan=args.wide_pan,
-        quick_pan=args.quick_pan,
+        quick_pan=args.quick_pan, axis_validate_tilt=args.axis_validate_tilt,
     )
     print(f"Schedule: {len(commands)} 1° commands, {len(phases)} phases, {duration:.1f} s")
     print(f"IMU sleep: {args.imu_interval * 1000:g} ms after each read; measured rate also includes read time.")

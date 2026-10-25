@@ -162,6 +162,34 @@ class ServoQualityTests(unittest.TestCase):
         self.assertTrue(all(abs(command.angle_deg) <= 2 for command in commands))
         self.assertLess(duration, 10)
 
+    def test_axis_validation_is_one_bounded_tilt_return(self) -> None:
+        """A dedicated run supplies three larger tilt legs, no pan commands.
+
+        Args:
+            None.
+
+        Returns:
+            None: Assertions verify amplitude, path, speed and safe duration.
+        """
+        commands, phases, duration = build_schedule(
+            "tilt", axis_validate_tilt=True
+        )
+        self.assertEqual(len(phases), 1)
+        self.assertEqual(phases[0].name, "tilt-axis-validation-5dps")
+        self.assertEqual(len(commands), 24)
+        self.assertEqual([commands[index].angle_deg for index in (5, 17, 23)],
+                         [-6, 6, 0])
+        self.assertTrue(all(command.axis == "tilt" and
+                            abs(command.angle_deg) <= 6 for command in commands))
+        self.assertLess(duration, 11)
+        for axes, options in (("both", {}), ("pan", {}),
+                              ("tilt", {"commission": True})):
+            with self.subTest(axes=axes, options=options), \
+                    self.assertRaisesRegex(ValueError, "requires"):
+                build_schedule(axes, axis_validate_tilt=True, **options)
+        with contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(main(["--axes", "tilt", "--axis-validate-tilt"]), 0)
+
     def test_wide_pan_schedule_reaches_both_twenty_degree_bounds(self) -> None:
         """Opt-in pan commissioning follows center, left, right, center."""
         commands, phases, duration = build_schedule(

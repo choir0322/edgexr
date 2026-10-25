@@ -222,14 +222,17 @@ def fit_camera_axes(pan_legs: Sequence[Sequence[float]],
 
 
 def validate_recording(folder: Path, basis: Sequence[Sequence[float]], *,
-                       pan_first: str, tilt_first: str) -> dict[str, object]:
-    """Check a fixed candidate basis on a separate combined pan/tilt recording.
+                       pan_first: str, tilt_first: str,
+                       axes: Sequence[str] = ("pan", "tilt")) -> dict[str, object]:
+    """Check a fixed basis on separate combined or single-axis recordings.
 
     Args:
         folder (Path): Complete combined commissioning run, separate from fits.
         basis (Sequence[Sequence[float]]): Candidate camera axes in IMU XYZ.
         pan_first (str): Physical first pan direction for this mounting.
         tilt_first (str): Physical first tilt direction for this mounting.
+        axes (Sequence[str]): Which recorded sweeps to check; no axis is inferred
+            from a missing command log.
 
     Returns:
         dict[str, object]: Per-leg mapped components, magnitudes and status.
@@ -237,11 +240,15 @@ def validate_recording(folder: Path, basis: Sequence[Sequence[float]], *,
     """
     if pan_first not in ("right", "left") or tilt_first not in ("up", "down"):
         raise ValueError("Physical first-leg directions must be supplied")
-    results: dict[str, object] = {"recording": folder.name}
+    if not axes or len(set(axes)) != len(axes) or set(axes) - {"pan", "tilt"}:
+        raise ValueError("Validation axes must be a nonempty unique pan/tilt selection")
+    results: dict[str, object] = {"recording": folder.name, "axes_checked": list(axes)}
     statuses: list[str] = []
     for axis, component, first_sign in (
             ("pan", 1, 1 if pan_first == "right" else -1),
             ("tilt", 0, 1 if tilt_first == "up" else -1)):
+        if axis not in axes:
+            continue
         legs = movement_legs(folder, axis)
         mapped = [camera_components(leg, basis) for leg in legs]
         deviations = []
@@ -279,7 +286,8 @@ def validate_recording(folder: Path, basis: Sequence[Sequence[float]], *,
 
 def analyze_recordings(pan_folder: Path, tilt_folder: Path, *,
                        pan_first: str, tilt_first: str,
-                       validation_folder: Path | None = None) -> dict[str, object]:
+                       validation_folder: Path | None = None,
+                       tilt_validation_folder: Path | None = None) -> dict[str, object]:
     """Fit and report a mounting-specific camera basis from two complete runs.
 
     Args:
@@ -289,10 +297,14 @@ def analyze_recordings(pan_folder: Path, tilt_folder: Path, *,
         tilt_first (str): Observed first tilt direction, ``up`` or ``down``.
         validation_folder (Path | None): Optional separate combined pan/tilt
             capture whose movement legs were not used to fit the basis.
+        tilt_validation_folder (Path | None): Optional independent tilt-only
+            capture; the original pan/tilt fit remains unchanged.
 
     Returns:
         dict[str, object]: Compact offline fit with source names and limits.
     """
+    if validation_folder is not None and tilt_validation_folder is not None:
+        raise ValueError("Choose only one independent validation folder")
     pan_legs = movement_legs(pan_folder, "pan")
     tilt_legs = movement_legs(tilt_folder, "tilt")
     fit = fit_camera_axes(pan_legs, tilt_legs, pan_first=pan_first,
@@ -308,12 +320,14 @@ def analyze_recordings(pan_folder: Path, tilt_folder: Path, *,
                   "only when a separate capture is supplied. No measured shaft angle, "
                   "exposure synchronization, world heading, position or depth."),
     }
-    if validation_folder is not None:
-        if validation_folder.resolve() in (pan_folder.resolve(), tilt_folder.resolve()):
+    selected_validation = validation_folder or tilt_validation_folder
+    if selected_validation is not None:
+        if selected_validation.resolve() in (pan_folder.resolve(), tilt_folder.resolve()):
             raise ValueError("Validation capture must be separate from fit captures")
         result["independent_validation"] = validate_recording(
-            validation_folder, fit["camera_axes_in_imu_xyz"],
-            pan_first=pan_first, tilt_first=tilt_first)
+            selected_validation, fit["camera_axes_in_imu_xyz"],
+            pan_first=pan_first, tilt_first=tilt_first,
+            axes=("tilt",) if tilt_validation_folder is not None else ("pan", "tilt"))
     return result
 
 
@@ -331,18 +345,22 @@ def main() -> None:
     parser.add_argument("tilt_folder", type=Path)
     parser.add_argument("--pan-first", choices=("right", "left"), required=True)
     parser.add_argument("--tilt-first", choices=("up", "down"), required=True)
-    parser.add_argument("--validate-folder", type=Path,
-                        help="separate combined pan/tilt recording for direction checks")
+    validation_options = parser.add_mutually_exclusive_group()
+    validation_options.add_argument("--validate-folder", type=Path,
+                                    help="separate combined pan/tilt direction check")
+    validation_options.add_argument("--validate-tilt-folder", type=Path,
+                                    help="separate tilt-only direction check")
     args = parser.parse_args()
     try:
         report = analyze_recordings(args.pan_folder, args.tilt_folder,
                                     pan_first=args.pan_first,
                                     tilt_first=args.tilt_first,
-                                    validation_folder=args.validate_folder)
+                                    validation_folder=args.validate_folder,
+                                    tilt_validation_folder=args.validate_tilt_folder)
         print(json.dumps(report, indent=2, allow_nan=False))
     except (OSError, ValueError, KeyError, TypeError) as error:
         parser.exit(1, f"Camera-axis fit failed: {error}\n")
-    if args.validate_folder is not None:
+    if args.validate_folder is not None or args.validate_tilt_folder is not None:
         validation = report["independent_validation"]
         if validation["status"] != "pass":
             parser.exit(2, f"Independent validation: {validation['status']}\n")

@@ -105,3 +105,60 @@ difference between the two runs' raw stationary gyro offsets also reinforces
 why each run needs its own still bias. Accelerometer calibration remains
 untrusted; the transform does not use it. Neither servo commands nor host
 timestamps supply a camera/IMU exposure alignment or a measured motor angle.
+
+## Next independent tilt check
+
+The dedicated `--axis-validate-tilt` recorder mode commands one supervised
+`0° → −6° → +6° → 0°` tilt sweep at 5 commanded degrees/s, with one-degree
+steps. It does not command pan. The ±6° test amplitude is smaller than the
+user-confirmed ±25° safe tilt range and matches the recorder's existing tilt
+software limit. Its initial two-second-plus still period supports an independent
+per-run gyro bias. The recorded command times, not ideal schedule times, define
+the three integration windows. Servo commands are not measured shaft angles.
+
+After reviewing physical clearance and confirming the camera device on the Pi,
+run this from the repo root after the updated code is pulled. Close other
+camera users first; `--execute` is the boundary that actually moves the motor.
+
+```bash
+cd ~/projects/edgexr
+PYTHONPATH=src python3 -m recording.servo_motion_quality \
+  --axes tilt --axis-validate-tilt --imu-interval 0.01
+
+sudo env PYTHONPATH=src python3 -m recording.servo_motion_quality \
+  --axes tilt --axis-validate-tilt --execute \
+  --confirm-centered --confirm-cable-slack --confirm-commissioned \
+  --pan-channel 2 --tilt-channel 3 --device /dev/video0 \
+  --imu-policy fixed --imu-interval 0.01 \
+  --output recordings/orientation-tilt-validation-02 \
+  --scene "fixed base; neutral pan; supervised tilt-axis validation" \
+  --power "unknown" --cooling "passive metal heatsink"
+```
+
+The first command should point the lens up, the middle leg should reverse it,
+and the last leg should return it toward center. Stop with Ctrl+C if the head
+binds or a cable pulls; interruption does not automatically drive the servo
+through a possible obstruction. Do not reuse an existing output folder.
+Transfer `metadata.json`, `imu.csv` and `servo_commands.json` to a new Mac
+folder. The analysis below re-fits only the **original two source recordings**
+and checks the new tilt recording against that unchanged basis. It does not
+pretend the new tilt-only recording retested pan:
+
+```bash
+mkdir -p /Users/ryanchoi/Desktop/orientation-tilt-validation-02-data
+scp pi@ai-fusion.local:/home/pi/projects/edgexr/recordings/orientation-tilt-validation-02/{metadata.json,imu.csv,servo_commands.json} \
+  /Users/ryanchoi/Desktop/orientation-tilt-validation-02-data/
+
+cd /Users/ryanchoi/Desktop/edgexr
+PYTHONPATH=src python3 -m spatial.camera_axes \
+  /Users/ryanchoi/Desktop/orientation-pan-10ms-01-data \
+  /Users/ryanchoi/Desktop/orientation-tilt-10ms-01-data \
+  --pan-first right --tilt-first up \
+  --validate-tilt-folder /Users/ryanchoi/Desktop/orientation-tilt-validation-02-data
+```
+
+`independent_validation.axes_checked` must be `["tilt"]`. All three new tilt
+legs need at least 0.4° integrated IMU motion and no more than 20° deviation
+from their signed expected axis; otherwise the result stays inconclusive or
+fails. The earlier independent pan result remains separate evidence. Keep the
+basis offline until the new data and physical movement are reviewed.

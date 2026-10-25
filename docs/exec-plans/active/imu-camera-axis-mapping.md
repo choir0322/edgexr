@@ -56,6 +56,11 @@ orientation output is a rotation vector in initial sensor axes, not Euler XYZ.
   followed by up, then down; first-leg physical signs match the fit inputs.
 - [x] Record user-confirmed safe command bounds: pan ±40°, tilt ±25°; keep
   current smaller test schedule and software limit unchanged for now.
+- [x] Implement a single-phase ±6° tilt-only validation schedule and offline
+  tilt-only check against the unchanged pan/tilt fit; test without hardware.
+- [x] Review `docs/PIPELINE.md` and `docs/learning/IMU.md`: the live diagram
+  remains unchanged because this is a separate offline recording path; the
+  IMU learning guide points to the dedicated validation procedure.
 - [ ] Validate on independent pan/tilt motions before using the mapping live.
 - [ ] Measure transform cost on Pi before a live integration/default change.
 
@@ -192,10 +197,13 @@ weak leg into a direction failure or a pass. After the final command around
 7.75 s, the IMU was nearly still by roughly 7.9 s, so a longer integration
 window is not a justified fix. The user confirmed from the saved video that
 the first pan leg turned the lens right and the first tilt leg pointed it up.
-Keep the basis offline and the validation checkbox open. Next: design one
-supervised, bounded tilt return with enough
-actual motion to check direction; do not weaken the acceptance gate to make
-this run pass.
+Keep the basis offline and the validation checkbox open. The new dedicated
+`--axis-validate-tilt` schedule commands ±6° at 5 commanded degrees/s in one
+phase. `--validate-tilt-folder` checks just those three legs against the
+unchanged fit, leaving the earlier independent pan evidence separate. See
+[the camera-axis procedure](../../IMU_CAMERA_AXES.md#next-independent-tilt-check)
+for the exact Pi command and acceptance criteria. The physical run is pending;
+do not weaken the gate to make the earlier weak leg pass.
 
 ## Decision log
 
@@ -216,6 +224,12 @@ this run pass.
   ±40° and tilt through ±25°. Choose the smallest useful bounded follow-up
   tilt sweep; do not equate a safe endpoint with a required test amplitude or
   silently change the recorder's present ±6° tilt limit.
+- 2026-10-25: Use one ±6° tilt phase with existing 5°/s step spacing and fixed
+  10 ms post-read sleep. Do not rerun pan merely to satisfy the former combined
+  validator; retain the already-measured independent pan legs and label the
+  new result tilt-only. This changes the test protocol and requires separate
+  recording names and evidence, not a direct numerical comparison of tilt
+  magnitude against the old ±2° command trial.
 
 ## Outcomes and retrospective
 

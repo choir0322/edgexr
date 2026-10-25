@@ -15,6 +15,15 @@ cross product for camera-Z. `camera_components` projects an IMU angular vector
 onto those camera axes. Neither servo sign nor raw IMU board labels alone tell
 us which way the lens points.
 
+For the independent direction check, `servo_motion_quality.build_schedule`
+has a dedicated `--axis-validate-tilt` path: one 0° → −6° → +6° → 0° tilt
+sweep at 5 commanded degrees/s, not the usual multi-phase series.
+`camera_axes.validate_recording` maps each new tilt-leg integral into the
+original fitted camera frame. With `--validate-tilt-folder`, only tilt is
+checked and `axes_checked` says so; pan is not silently retested. A weak leg
+stays inconclusive. The [run procedure](../IMU_CAMERA_AXES.md#next-independent-tilt-check)
+keeps this offline until measured evidence supports live use.
+
 The new [offline relative-orientation experiment](../RELATIVE_ORIENTATION.md)
 reads saved IMU samples after a run. `spatial.relative_orientation.analyze`
 estimates a per-run gyro offset from an assumed-still window;

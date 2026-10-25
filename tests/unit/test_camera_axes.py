@@ -122,6 +122,20 @@ class CameraAxesTests(unittest.TestCase):
             self.assertEqual(reversed_result["tilt"]["leg_status"][0],
                              "direction_mismatch")
 
+            # Tilt-only evidence must not silently claim to have retested pan.
+            (folder / "servo_commands.json").write_text(json.dumps({
+                "issued_commands": [command for command in commands
+                                    if command["axis"] == "tilt"]
+            }))
+            tilt_only = validate_recording(folder, basis, pan_first="right",
+                                           tilt_first="up", axes=("tilt",))
+            self.assertEqual(tilt_only["status"], "pass")
+            self.assertEqual(tilt_only["axes_checked"], ["tilt"])
+            self.assertNotIn("pan", tilt_only)
+            with self.assertRaisesRegex(ValueError, "lacks a pan"):
+                validate_recording(folder, basis,
+                                   pan_first="right", tilt_first="up")
+
             # A weaker final return is shown explicitly instead of hiding all
             # earlier legs behind an exception or counting it as a pass.
             rows = (folder / "imu.csv").read_text().splitlines()
@@ -133,7 +147,8 @@ class CameraAxesTests(unittest.TestCase):
                 weakened.append(",".join((stamp, duration, gx, gy)))
             (folder / "imu.csv").write_text("\n".join(weakened) + "\n")
             weak_result = validate_recording(folder, basis,
-                                             pan_first="right", tilt_first="up")
+                                             pan_first="right", tilt_first="up",
+                                             axes=("tilt",))
             self.assertEqual(weak_result["status"], "inconclusive_weak")
             self.assertEqual(weak_result["tilt"]["leg_status"],
                              ["pass", "pass", "inconclusive_weak"])
