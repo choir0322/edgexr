@@ -24,9 +24,14 @@ checked on pan and uncovered-lens tilt. See [the run protocol](../../IMU_CAMERA_
 - [x] Add collector mode preflight and conversion-count telemetry.
 - [x] Review/update `docs/PIPELINE.md` and `docs/learning/IMU.md` for the new
   optional live rate branch, including units and freshness.
-- [ ] Run A and B on the Pi with the same scene, power, cooling and durations.
-- [ ] Compare complete summaries and temperature trends; record a cautious
-  scheduling decision in `benchmarks/results/`.
+- [x] 2026-10-25: Run A and B on the Pi with matching declared scene, power,
+  cooling, code commit, detector/model, tracking mode and durations; metadata
+  reports both complete. Negotiated camera mode and ambient temperature were
+  not independently checked.
+- [x] 2026-10-25: Compare summaries and temperature trends; record a cautious
+  [feasibility result](../../../benchmarks/results/camera-axis-live-ab-2026-10-25.md).
+- [ ] Optional: repeat with matched starting temperature/reversed order if a
+  tighter causal estimate of the small CPU difference becomes necessary.
 
 ## Plan of work
 
@@ -54,10 +59,13 @@ not imply use by image motion, detector or tracker.
 
 ## Surprises and discoveries
 
-Pending Pi A/B measurement. The conversion-mode branch computes the corrected
+The conversion-mode branch computes the corrected
 gyro at sample time; the control branch still computes it when a snapshot is
 requested. Therefore A/B measures the opt-in implementation path, not solely
-the three dot products.
+the three dot products. Both runs reported 297 ready/live polls without
+sampled throttling; B performed 5,638 conversions over five minutes. The B
+run's first measured-minute median was 70.60°C versus A's 63.78°C, so the
+sequential A/B order carried a large thermal-history difference.
 
 ## Decision log
 
@@ -65,7 +73,19 @@ the three dot products.
   not silently change the current `--imu` behavior or use gyro as camera pose.
 - 2026-10-25: Reuse the existing full-workload AP collector, rather than add a
   second camera opener or a new model. Keep its warm-up/measurement protocol.
+- 2026-10-25: Treat the A/B result as a feasibility check, not proof of zero
+  conversion cost. Preserve per-valid-sample conversion as an opt-in candidate;
+  do not add a decimation scheduler or make it default solely from this pair.
+  A thermally matched repeat is optional if exact incremental CPU attribution
+  becomes important.
 
 ## Outcomes and retrospective
 
-Implementation and hardware-free checks are ready. Pi evidence is pending.
+Implementation and hardware-free checks passed. Both Pi runs completed on
+commit `049d531` with equal requested settings except the conversion switch.
+Preview CPU medians were 187.48% (A) and 187.32% (B) of one core; motion and
+IMU rates, skips and readiness were practically similar. B's warmer start
+limits causal interpretation. The AP lesson is to separate isolated operator
+cost from integrated workload observations and to inspect thermal/order effects
+before crediting a tiny median difference to code. No camera pose or live
+spatial memory is claimed.
