@@ -99,16 +99,15 @@ confirmed that the lens turned **right first, then left**, followed by **up,
 then down**. Thus the independent recording's physical pan/tilt signs agree
 with the fit inputs; the weak final tilt leg remains inconclusive.
 
-A further controlled run with a sufficiently visible but hardware-safe tilt
-return is needed before applying this mapping in the live worker. The large
+The initial combined run alone was insufficient for live use. The large
 difference between the two runs' raw stationary gyro offsets also reinforces
 why each run needs its own still bias. Accelerometer calibration remains
 untrusted; the transform does not use it. Neither servo commands nor host
 timestamps supply a camera/IMU exposure alignment or a measured motor angle.
 
-## Next independent tilt check
+## Independent tilt-only check and bias-window reanalysis
 
-The dedicated `--axis-validate-tilt` recorder mode commands one supervised
+The dedicated `--axis-validate-tilt` recorder mode commanded one supervised
 `0° → −6° → +6° → 0°` tilt sweep at 5 commanded degrees/s, with one-degree
 steps. It does not command pan. The ±6° test amplitude is smaller than the
 user-confirmed ±25° safe tilt range and matches the recorder's existing tilt
@@ -156,6 +155,36 @@ PYTHONPATH=src python3 -m spatial.camera_axes \
   --pan-first right --tilt-first up \
   --validate-tilt-folder /Users/ryanchoi/Desktop/orientation-tilt-validation-02-data
 ```
+
+This default command **failed before checking the tilt legs**: the first
+two-second bias window contained a large early gyro transient. The completed
+recording has 907 IMU samples and 24 issued tilt commands. In the first 0.25 s
+after the cue, gyro Y reached about 57°/s; the cause is unknown. The first
+motor command was about 2.7 s after the cue. The user approved an explicit,
+retrospective reanalysis using the stable 1.0–2.5 s pre-command window:
+
+```bash
+PYTHONPATH=src python3 -m spatial.camera_axes \
+  /Users/ryanchoi/Desktop/orientation-pan-10ms-01-data \
+  /Users/ryanchoi/Desktop/orientation-tilt-10ms-01-data \
+  --pan-first right --tilt-first up \
+  --validate-tilt-folder /Users/ryanchoi/Desktop/orientation-tilt-validation-02-data \
+  --validation-bias-start 1.0 --validation-bias-seconds 1.5
+```
+
+The software records that window and rejects one that overlaps the first
+command (with a 0.1 s margin). It still requires at least five samples, no
+IMU gap over 0.2 s, and stationary standard deviation at most 2°/s on every
+gyro axis. It does not relax either movement-leg criterion. For this saved
+run, the revised window contains 124 samples; gyro XYZ standard deviations
+are (0.213, 0.182, 0.182)°/s. With the original fitted basis unchanged, the
+tilt legs have magnitudes **2.12°, 7.26°, 1.95°** and signed-axis deviations
+**5.00°, 2.36°, 6.05°**. All three pass the existing numerical criteria. The
+report labels `analysis_protocol` as `explicit_bias_window`; for this run, the
+window was selected retrospectively, not in the original plan. It checks only
+tilt, not pan, and
+the user's observation of this new run's physical first direction remains to
+be confirmed before declaring the camera-axis mapping validated.
 
 `independent_validation.axes_checked` must be `["tilt"]`. All three new tilt
 legs need at least 0.4° integrated IMU motion and no more than 20° deviation

@@ -86,12 +86,16 @@ def camera_components(vector: Sequence[float], basis: Sequence[Sequence[float]])
     return tuple(dot(vector, axis) for axis in basis)  # type: ignore[return-value]
 
 
-def movement_legs(folder: Path, axis: str) -> tuple[Vector, Vector, Vector]:
+def movement_legs(folder: Path, axis: str, *, bias_start_seconds: float = 0.0,
+                  bias_seconds: float = 2.0) -> tuple[Vector, Vector, Vector]:
     """Integrate bias-corrected gyro rates within three actual command legs.
 
     Args:
         folder (Path): Complete combined-capture directory with IMU and command logs.
         axis (str): Expected servo axis, ``pan`` or ``tilt``.
+        bias_start_seconds (float): Seconds after the cue before the still
+            offset window begins; zero retains the original protocol.
+        bias_seconds (float): Duration of that physically still window.
 
     Returns:
         tuple[Vector, Vector, Vector]: Negative, positive and return leg
@@ -100,7 +104,6 @@ def movement_legs(folder: Path, axis: str) -> tuple[Vector, Vector, Vector]:
     """
     if axis not in ("pan", "tilt"):
         raise ValueError("Expected a pan or tilt recording")
-    orientation = analyze(folder, bias_seconds=2.0)
     meta = json.loads((folder / "metadata.json").read_text())
     command_log = json.loads((folder / "servo_commands.json").read_text())
     commands = [command for command in command_log["issued_commands"]
@@ -108,6 +111,12 @@ def movement_legs(folder: Path, axis: str) -> tuple[Vector, Vector, Vector]:
     origin = int(meta["origin_monotonic_ns"])
     if not commands:
         raise ValueError(f"Recording lacks a {axis} command sweep")
+    first_command_after_cue = ((int(commands[0]["host_command_ns"]) - origin) / 1e9
+                               - float(meta["recording_cue_host_s"]))
+    if bias_start_seconds + bias_seconds > first_command_after_cue - 0.1:
+        raise ValueError("Bias window must end at least 0.1 s before first servo command")
+    orientation = analyze(folder, bias_seconds=bias_seconds,
+                          bias_start_seconds=bias_start_seconds)
 
     # Group commands by the sign of each one-degree step. The bounded existing
     # schedule has three legs: zero to negative, through positive, back to zero.
@@ -223,7 +232,9 @@ def fit_camera_axes(pan_legs: Sequence[Sequence[float]],
 
 def validate_recording(folder: Path, basis: Sequence[Sequence[float]], *,
                        pan_first: str, tilt_first: str,
-                       axes: Sequence[str] = ("pan", "tilt")) -> dict[str, object]:
+                       axes: Sequence[str] = ("pan", "tilt"),
+                       bias_start_seconds: float = 0.0,
+                       bias_seconds: float = 2.0) -> dict[str, object]:
     """Check a fixed basis on separate combined or single-axis recordings.
 
     Args:
@@ -233,6 +244,8 @@ def validate_recording(folder: Path, basis: Sequence[Sequence[float]], *,
         tilt_first (str): Physical first tilt direction for this mounting.
         axes (Sequence[str]): Which recorded sweeps to check; no axis is inferred
             from a missing command log.
+        bias_start_seconds (float): Explicit validation-only offset from cue.
+        bias_seconds (float): Duration of the validation still window.
 
     Returns:
         dict[str, object]: Per-leg mapped components, magnitudes and status.
@@ -249,7 +262,8 @@ def validate_recording(folder: Path, basis: Sequence[Sequence[float]], *,
             ("tilt", 0, 1 if tilt_first == "up" else -1)):
         if axis not in axes:
             continue
-        legs = movement_legs(folder, axis)
+        legs = movement_legs(folder, axis, bias_start_seconds=bias_start_seconds,
+                             bias_seconds=bias_seconds)
         mapped = [camera_components(leg, basis) for leg in legs]
         deviations = []
         magnitudes = []
@@ -281,13 +295,24 @@ def validate_recording(folder: Path, basis: Sequence[Sequence[float]], *,
                          else "pass")
     results["criteria"] = {"minimum_leg_magnitude_deg": 0.4,
                            "maximum_axis_deviation_deg": 20}
+    orientation = analyze(folder, bias_seconds=bias_seconds,
+                          bias_start_seconds=bias_start_seconds)
+    results["bias_window_after_cue_s"] = orientation["bias_window_after_cue_s"]
+    results["bias_samples"] = orientation["bias_samples"]
+    results["bias_dps"] = orientation["bias_dps"]
+    results["bias_std_dps"] = orientation["bias_std_dps"]
+    results["analysis_protocol"] = ("explicit_bias_window"
+                                    if bias_start_seconds != 0.0 or bias_seconds != 2.0
+                                    else "original_default_bias_window")
     return results
 
 
 def analyze_recordings(pan_folder: Path, tilt_folder: Path, *,
                        pan_first: str, tilt_first: str,
                        validation_folder: Path | None = None,
-                       tilt_validation_folder: Path | None = None) -> dict[str, object]:
+                       tilt_validation_folder: Path | None = None,
+                       validation_bias_start_seconds: float = 0.0,
+                       validation_bias_seconds: float = 2.0) -> dict[str, object]:
     """Fit and report a mounting-specific camera basis from two complete runs.
 
     Args:
@@ -299,12 +324,18 @@ def analyze_recordings(pan_folder: Path, tilt_folder: Path, *,
             capture whose movement legs were not used to fit the basis.
         tilt_validation_folder (Path | None): Optional independent tilt-only
             capture; the original pan/tilt fit remains unchanged.
+        validation_bias_start_seconds (float): Offset for validation only; fit
+            source runs retain their original first-two-seconds window.
+        validation_bias_seconds (float): Duration of validation's still window.
 
     Returns:
         dict[str, object]: Compact offline fit with source names and limits.
     """
     if validation_folder is not None and tilt_validation_folder is not None:
         raise ValueError("Choose only one independent validation folder")
+    if (validation_folder is None and tilt_validation_folder is None and
+            (validation_bias_start_seconds != 0.0 or validation_bias_seconds != 2.0)):
+        raise ValueError("Validation bias options require a validation folder")
     pan_legs = movement_legs(pan_folder, "pan")
     tilt_legs = movement_legs(tilt_folder, "tilt")
     fit = fit_camera_axes(pan_legs, tilt_legs, pan_first=pan_first,
@@ -327,7 +358,9 @@ def analyze_recordings(pan_folder: Path, tilt_folder: Path, *,
         result["independent_validation"] = validate_recording(
             selected_validation, fit["camera_axes_in_imu_xyz"],
             pan_first=pan_first, tilt_first=tilt_first,
-            axes=("tilt",) if tilt_validation_folder is not None else ("pan", "tilt"))
+            axes=("tilt",) if tilt_validation_folder is not None else ("pan", "tilt"),
+            bias_start_seconds=validation_bias_start_seconds,
+            bias_seconds=validation_bias_seconds)
     return result
 
 
@@ -350,13 +383,19 @@ def main() -> None:
                                     help="separate combined pan/tilt direction check")
     validation_options.add_argument("--validate-tilt-folder", type=Path,
                                     help="separate tilt-only direction check")
+    parser.add_argument("--validation-bias-start", type=float, default=0.0,
+                        help="seconds after cue before validation still window starts")
+    parser.add_argument("--validation-bias-seconds", type=float, default=2.0,
+                        help="validation still-window duration in seconds")
     args = parser.parse_args()
     try:
         report = analyze_recordings(args.pan_folder, args.tilt_folder,
                                     pan_first=args.pan_first,
                                     tilt_first=args.tilt_first,
                                     validation_folder=args.validate_folder,
-                                    tilt_validation_folder=args.validate_tilt_folder)
+                                    tilt_validation_folder=args.validate_tilt_folder,
+                                    validation_bias_start_seconds=args.validation_bias_start,
+                                    validation_bias_seconds=args.validation_bias_seconds)
         print(json.dumps(report, indent=2, allow_nan=False))
     except (OSError, ValueError, KeyError, TypeError) as error:
         parser.exit(1, f"Camera-axis fit failed: {error}\n")

@@ -90,3 +90,36 @@ class RelativeOrientationTests(unittest.TestCase):
             )
             with self.assertRaisesRegex(ValueError, "excessive"):
                 analyze(folder, bias_seconds=.3)
+
+    def test_explicit_later_bias_window_keeps_stillness_gate(self) -> None:
+        """A named pre-motion window may exclude a startup transient, not hide it.
+
+        Args:
+            None.
+
+        Returns:
+            None: The original default rejects the transient; a later quiet
+                window records its exact bounds and bias without changing gates.
+        """
+        with TemporaryDirectory() as directory:
+            folder = Path(directory)
+            stamps = [index * .05 for index in range(71)]
+            (folder / "metadata.json").write_text(json.dumps({
+                "status": "complete", "requested_seconds_after_first_frame": 3.5,
+                "recording_cue_host_s": 0.0, "imu_samples": len(stamps),
+                "requested_mode": "synthetic",
+            }))
+            (folder / "imu.csv").write_text(
+                "host_read_midpoint_s,gx_dps,gy_dps,gz_dps\n" +
+                "".join(f"{stamp},0,{50 if stamp < .2 else 3},0\n"
+                        for stamp in stamps)
+            )
+            with self.assertRaisesRegex(ValueError, "varies too much"):
+                analyze(folder)
+            report = analyze(folder, bias_seconds=1.5,
+                             bias_start_seconds=1.0)
+            self.assertEqual(report["bias_window_after_cue_s"], [1.0, 2.5])
+            self.assertEqual(report["bias_dps"], [0.0, 3.0, 0.0])
+            self.assertEqual(report["bias_std_dps"], [0.0, 0.0, 0.0])
+            with self.assertRaisesRegex(ValueError, "finite still window"):
+                analyze(folder, bias_seconds=1.5, bias_start_seconds=3.0)

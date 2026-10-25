@@ -132,6 +132,17 @@ class CameraAxesTests(unittest.TestCase):
             self.assertEqual(tilt_only["status"], "pass")
             self.assertEqual(tilt_only["axes_checked"], ["tilt"])
             self.assertNotIn("pan", tilt_only)
+            later_bias = validate_recording(folder, basis, pan_first="right",
+                                             tilt_first="up", axes=("tilt",),
+                                             bias_start_seconds=1.0, bias_seconds=1.5)
+            self.assertEqual(later_bias["status"], "pass")
+            self.assertEqual(later_bias["bias_window_after_cue_s"], [1.0, 2.5])
+            self.assertEqual(later_bias["analysis_protocol"],
+                             "explicit_bias_window")
+            with self.assertRaisesRegex(ValueError, "before first servo command"):
+                validate_recording(folder, basis, pan_first="right",
+                                   tilt_first="up", axes=("tilt",),
+                                   bias_start_seconds=4.5, bias_seconds=1.0)
             with self.assertRaisesRegex(ValueError, "lacks a pan"):
                 validate_recording(folder, basis,
                                    pan_first="right", tilt_first="up")

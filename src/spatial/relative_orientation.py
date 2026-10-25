@@ -121,15 +121,18 @@ def integrate_gyro(samples: Sequence[TimedGyro], bias_dps: Axes,
 
 
 def analyze(folder: Path, bias_seconds: float = 2.0,
-            max_gap_seconds: float = 0.2, max_still_std_dps: float = 2.0) -> Record:
+            max_gap_seconds: float = 0.2, max_still_std_dps: float = 2.0,
+            *, bias_start_seconds: float = 0.0) -> Record:
     """Load one saved capture, estimate a local still bias and integrate later gyro reads.
 
     Args:
         folder (Path): Completed combined-capture directory, read only.
-        bias_seconds (float): Initial physically still window after RECORDING cue.
+        bias_seconds (float): Duration of a physically still bias window.
         max_gap_seconds (float): Maximum trusted adjacent IMU midpoint interval.
         max_still_std_dps (float): Maximum allowed baseline standard deviation
             on any sensor gyro axis, in deg/s.
+        bias_start_seconds (float): Offset from the RECORDING cue to the bias
+            window's start; zero preserves the original analysis protocol.
 
     Returns:
         Record: Relative IMU rotation summary with explicit data and timing scope.
@@ -138,9 +141,11 @@ def analyze(folder: Path, bias_seconds: float = 2.0,
     duration = float(meta["requested_seconds_after_first_frame"])
     cue = float(meta["recording_cue_host_s"])
     if (meta["status"] != "complete" or not all(map(math.isfinite, (duration, cue,
-            bias_seconds, max_still_std_dps))) or not 0 < bias_seconds < duration or
+            bias_seconds, bias_start_seconds, max_still_std_dps))) or
+            bias_start_seconds < 0 or bias_seconds <= 0 or
+            bias_start_seconds + bias_seconds >= duration or
             max_still_std_dps <= 0):
-        raise ValueError("Need a complete run and a finite initial still window")
+        raise ValueError("Need a complete run and a finite still window within it")
     rows = numeric_csv(folder / "imu.csv")
     if len(rows) != meta["imu_samples"]:
         raise ValueError("IMU CSV count disagrees with metadata")
@@ -150,22 +155,25 @@ def analyze(folder: Path, bias_seconds: float = 2.0,
             any(b["host_read_midpoint_s"] - a["host_read_midpoint_s"] > max_gap_seconds
                 for a, b in zip(window, window[1:]))):
         raise ValueError("Invalid gap limit or excessive IMU interval anywhere in the run")
-    still = [row for row in window if row["host_read_midpoint_s"] < cue + bias_seconds]
+    bias_end = cue + bias_start_seconds + bias_seconds
+    still = [row for row in window if cue + bias_start_seconds <=
+             row["host_read_midpoint_s"] < bias_end]
     if len(still) < 5:
         raise ValueError("Need at least five physically still gyro samples")
     keys = ("gx_dps", "gy_dps", "gz_dps")
     std_dps = [statistics.pstdev(row[key] for row in still) for key in keys]
     if max(std_dps) > max_still_std_dps:
-        raise ValueError("Initial gyro window varies too much to use as still bias")
+        raise ValueError("Selected gyro window varies too much to use as still bias")
     bias = tuple(statistics.mean(row[key] for row in still) for key in keys)
-    motion = [row for row in window if row["host_read_midpoint_s"] >= cue + bias_seconds]
+    motion = [row for row in window if row["host_read_midpoint_s"] >= bias_end]
     samples = [(row["host_read_midpoint_s"],
                 tuple(row[key] for key in keys)) for row in motion]
     result = integrate_gyro(samples, bias, max_gap_seconds)
     return {
         "recording": folder.name,
         "requested_mode": meta["requested_mode"],
-        "bias_window_after_cue_s": [0, bias_seconds],
+        "bias_window_after_cue_s": [bias_start_seconds,
+                                     bias_start_seconds + bias_seconds],
         "bias_samples": len(still),
         "bias_dps": list(bias),
         "bias_std_dps": std_dps,
@@ -190,12 +198,14 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("folder", type=Path)
     parser.add_argument("--bias-seconds", type=float, default=2.0)
+    parser.add_argument("--bias-start-seconds", type=float, default=0.0)
     parser.add_argument("--max-gap-seconds", type=float, default=0.2)
     parser.add_argument("--max-still-std-dps", type=float, default=2.0)
     args = parser.parse_args()
     try:
         print(json.dumps(analyze(args.folder, args.bias_seconds,
-                                 args.max_gap_seconds, args.max_still_std_dps),
+                                 args.max_gap_seconds, args.max_still_std_dps,
+                                 bias_start_seconds=args.bias_start_seconds),
                          indent=2, allow_nan=False))
     except (OSError, ValueError, KeyError, TypeError) as error:
         parser.exit(1, f"Orientation analysis failed: {error}\n")

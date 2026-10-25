@@ -61,6 +61,12 @@ orientation output is a rotation vector in initial sensor axes, not Euler XYZ.
 - [x] Review `docs/PIPELINE.md` and `docs/learning/IMU.md`: the live diagram
   remains unchanged because this is a separate offline recording path; the
   IMU learning guide points to the dedicated validation procedure.
+- [x] Diagnose the saved ±6° tilt run's startup gyro transient; retain the
+  original failed analysis and explicitly reanalyze with a 1.0–2.5 s still
+  window ending before the first command. The unchanged fit passes all three
+  new tilt-leg numerical checks.
+- [x] Review `docs/PIPELINE.md` and `docs/learning/IMU.md` for the bias-window
+  option: offline analysis only; live data-flow diagram remains unchanged.
 - [ ] Validate on independent pan/tilt motions before using the mapping live.
 - [ ] Measure transform cost on Pi before a live integration/default change.
 
@@ -201,9 +207,18 @@ Keep the basis offline and the validation checkbox open. The new dedicated
 `--axis-validate-tilt` schedule commands ±6° at 5 commanded degrees/s in one
 phase. `--validate-tilt-folder` checks just those three legs against the
 unchanged fit, leaving the earlier independent pan evidence separate. See
-[the camera-axis procedure](../../IMU_CAMERA_AXES.md#next-independent-tilt-check)
-for the exact Pi command and acceptance criteria. The physical run is pending;
-do not weaken the gate to make the earlier weak leg pass.
+[the camera-axis procedure](../../IMU_CAMERA_AXES.md#independent-tilt-only-check-and-bias-window-reanalysis)
+for the exact Pi command and acceptance criteria. The new physical run is
+complete. Its original first-two-seconds bias window failed the existing
+stillness gate because of an early transient; its first tilt command arrived
+about 2.7 s after the cue. With the user's approved, explicitly reported
+1.0–2.5 s still window, the 124 samples have gyro XYZ standard deviations
+of 0.213, 0.182 and 0.182°/s. All three tilt legs pass the unchanged
+0.4°/20° numerical gates: magnitudes 2.12°, 7.26°, 1.95° and direction
+errors 5.00°, 2.36°, 6.05°. This is a retrospective protocol adjustment,
+not a result obtained with the original default window. The new run's first
+physical tilt direction still needs user confirmation; do not claim the
+camera-axis mapping fully validated until then.
 
 ## Decision log
 
@@ -230,11 +245,18 @@ do not weaken the gate to make the earlier weak leg pass.
   new result tilt-only. This changes the test protocol and requires separate
   recording names and evidence, not a direct numerical comparison of tilt
   magnitude against the old ±2° command trial.
+- 2026-10-25: The approved bias-window revision selects 1.0–2.5 s after the
+  recording cue for the saved ±6° run only. Preserve the original failed
+  first-two-seconds result; keep source-fit windows, 2°/s stillness gate,
+  0.4° leg minimum and 20° direction limit unchanged. Require the selected
+  window to end at least 0.1 s before the first servo command.
 
 ## Outcomes and retrospective
 
-The tilt transfer and provisional offline fit are complete. Synthetic unit
-tests and the two-run local CLI check pass. The first independent recording
-is partially supportive but inconclusive because its last tilt leg is weak.
-A strong independent check and Pi transform-cost measurement remain. No live
+The tilt transfer and provisional offline fit are complete. The first
+independent recording was partially supportive but inconclusive because its
+last tilt leg was weak. The second, tilt-only recording passes the numerical
+direction checks under the documented retrospective bias-window reanalysis;
+its physical direction observation and Pi transform-cost measurement remain.
+No live
 camera-frame pose or spatial-memory feature is claimed as implemented.

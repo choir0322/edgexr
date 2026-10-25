@@ -21,12 +21,19 @@ The first window **must physically be still**. The default allowed IMU interval
 is 0.2 seconds; the command returns an error rather than bridge a longer gap.
 It reads only `metadata.json` and `imu.csv` and writes only JSON to stdout.
 `camera.mkv` and `frames.csv` are not used to correct rotation in this step.
+The original bias window starts at the recording cue. An optional
+`--bias-start-seconds` moves its start without changing the stillness or gap
+limits; the output records both window endpoints. This is a protocol change
+for any saved run that uses it, so report the selected window and why it was
+chosen rather than silently replacing the default result. The separate
+[camera-axis validation](IMU_CAMERA_AXES.md#independent-tilt-only-check-and-bias-window-reanalysis)
+also requires its selected bias window to end before the first motor command.
 
 ## What the code does
 
 1. `analyze()` checks completed metadata, numeric IMU samples, timestamp order,
    and whether any gap exceeds the configured limit. It estimates each gyro
-   axis's offset from the initial physically still window. Large variation in
+   axis's offset from the selected physically still window. Large variation in
    that window is rejected, but low variation is not proof of stillness.
 2. `integrate_gyro()` starts at identity orientation after the bias window. For
    each adjacent pair of read-midpoint timestamps, it averages the two XYZ

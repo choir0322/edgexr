@@ -21,8 +21,10 @@ sweep at 5 commanded degrees/s, not the usual multi-phase series.
 `camera_axes.validate_recording` maps each new tilt-leg integral into the
 original fitted camera frame. With `--validate-tilt-folder`, only tilt is
 checked and `axes_checked` says so; pan is not silently retested. A weak leg
-stays inconclusive. The [run procedure](../IMU_CAMERA_AXES.md#next-independent-tilt-check)
-keeps this offline until measured evidence supports live use.
+stays inconclusive. The [run and retrospective bias-window procedure](../IMU_CAMERA_AXES.md#independent-tilt-only-check-and-bias-window-reanalysis)
+keeps this offline until measured evidence supports live use. The original
+first-two-seconds bias protocol remains the default; the new window is
+explicitly selected only for the validation recording and is reported.
 
 The new [offline relative-orientation experiment](../RELATIVE_ORIENTATION.md)
 reads saved IMU samples after a run. `spatial.relative_orientation.analyze`
