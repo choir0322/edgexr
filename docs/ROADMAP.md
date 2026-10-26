@@ -1,14 +1,27 @@
 # Roadmap
 
-## Priority clarification — 2026-10-24
+## Current development order — 2026-10-26
+
+1. Finish the bounded vision/spatial-awareness application: fixed-base relative
+   orientation, bounded scene memory, verified revisits and explicit unknown states.
+2. Measure and optimize the completed workload on the Pi; retain prior AP
+   measurements as historical evidence with their original workload conditions.
+3. Build the detailed learning guides and visual explanations from the records.
+
+Keep functional tests, experiment logs and source/pipeline documentation current
+during implementation. Performance work is brought forward only if it blocks
+usable functionality. Do not interrupt every small feature with an AP experiment
+or lesson. [Completion criteria and next implementation](decisions/2026-10-26-development-order.md).
+
+## Background objective — 2026-10-24, sequencing superseded above
 
 AP workload/systems engineering is the primary learning objective. Spatial
 awareness remains the current bounded application task, not a prerequisite to
 finish full mapping before learning AP engineering. Use the
 [AP handoff](exec-plans/active/EdgeXR_AP_Workload_Benchmark_Handoff.md) flexibly:
 retain verified hardware facts and existing Caffe/OpenCV MobileNet-SSD, IMU,
-tracking, capture and profiler work. No NPU is available. Review the AP question,
-bounded feature and measurements at each milestone; avoid indefinite identity,
+tracking, capture and profiler work. No NPU is available. Retain the records
+needed for the later AP phase at each milestone; avoid indefinite identity,
 mapping or learning-website expansion.
 
 ## Phase 0 — Know the equipment
@@ -69,10 +82,9 @@ or display overhead. Explain each tradeoff in a committed result summary.
 The earlier sustained, unchanged basic-tracking measurement in
 [`ap-baseline.md`](exec-plans/active/ap-baseline.md) remains a historical
 reference. It was collected **before** re-identification and is not a fair
-final-workload optimization baseline. AP measurement accompanies current work;
-full spatial mapping is not a gate for model/thread/runtime experiments. After
-the bounded orientation-input checkpoint, explicitly choose the next feature or
-controlled AP comparison. Establish a baseline for each exact workload before
+final-workload optimization baseline. Begin systematic AP comparisons after
+the bounded vision/spatial-memory application is complete; full 3D mapping
+is outside that completion target. Establish a baseline for each exact workload before
 tuning. Model/runtime candidates in the handoff require compatibility and license
 checks; preserve the working detector as one reference. No new tuning experiment
 has started as part of this direction update.
@@ -94,7 +106,8 @@ artifacts on the real Pi. Training/export may occur on a separate computer.
 - [ ] Evaluate fine-tuning for the camera's grayscale scenes and required classes.
 - [ ] Document the selected configuration and rejected alternatives reproducibly.
 
-## Phase 6 — Demonstrate and reflect
+## Phase 6 — Detailed learning material and reflection
 
 Record a reproducible demo procedure, compare against the first baseline, and
-write what the system can and cannot reliably claim.
+write what the system can and cannot reliably claim. Build detailed code tours,
+algorithm explanations and learning visualizations from the preserved records.

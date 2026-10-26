@@ -2,6 +2,13 @@
 
 ## Goal
 
+**2026-10-26 sequencing update:** complete the fixed-base vision and spatial
+memory application before systematic AP optimization, then develop detailed
+learning materials. Correctness checks and concise records continue throughout.
+The long-term AP learning objective remains; its dedicated phase is deferred.
+See [the development-order decision](decisions/2026-10-26-development-order.md)
+for the current functional completion criteria.
+
 Priority clarified 2026-10-24: learn Application Processor workload and systems
 engineering. Spatial perception supplies a meaningful workload for studying
 timing, buffering, concurrency, compute/memory cost and quality/performance

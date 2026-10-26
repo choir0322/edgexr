@@ -57,6 +57,14 @@ from the image-motion arrow. There is no visual correction or frame pairing.
 A gap over 200 ms, stale reading or error makes it unknown until a new run.
 This is implemented but not yet measured on the Pi; see the
 [active plan](../exec-plans/active/live-relative-camera-orientation.md).
+To see the quaternion react to physical motion without a second camera opener,
+run the normal live preview in one Pi terminal, then run
+`spatial.servo_orientation_demo` in another. That separate script sends
+one-degree commands to pan channel 2 and tilt channel 3, sequentially from
+0° to −20° to +20° to 0° on each axis. The IMU, not the servo command values,
+supplies the quaternion. If a commanded sweep does not match lens motion,
+do not treat the command angle as measured camera angle. This is an attended
+demonstration, not an AP benchmark or a visual/IMU fusion algorithm.
 
 The new [offline relative-orientation experiment](../RELATIVE_ORIENTATION.md)
 reads saved IMU samples after a run. `spatial.relative_orientation.analyze`

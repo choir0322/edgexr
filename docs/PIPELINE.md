@@ -26,6 +26,12 @@ read-midpoint interval, and composes a normalized quaternion. A gap over
 The browser shows a relative angle/vector separately from the image-shift
 arrow. It is not camera position, world heading, depth, image/IMU fusion or
 exposure-synchronized pose; Pi quality and AP cost remain unmeasured.
+For an attended physical check, a **separate**
+`spatial.servo_orientation_demo` process can command a single bounded pan
+then tilt sweep through the already-confirmed Fusion HAT channels 2 and 3.
+It never opens the camera or reads the IMU: movement reaches the live
+orientation branch only through the real head-mounted sensor. The preview
+still has no servo command endpoint or autonomous continuous motor loop.
 
 The offline servo recorder now accepts `--imu-interval` (default 0.05 s), passed
 to the combined recorder's post-read sleep. The explicit 0.01 s polling trial

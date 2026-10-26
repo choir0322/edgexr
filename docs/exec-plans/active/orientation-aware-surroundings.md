@@ -2,12 +2,11 @@
 
 ## Purpose / big picture
 
-2026-10-24 clarification: this is a bounded application workload in an AP
-engineering learning project, not the overarching goal. Use
-[the AP handoff](EdgeXR_AP_Workload_Benchmark_Handoff.md) as a flexible anchor.
-Do not delay all AP comparisons until full scene memory or mapping is complete.
-At each stage report the application benefit, timing/resource cost and next
-controlled experiment; keep existing hardware/software facts authoritative.
+2026-10-26 direction supersedes the earlier alternating feature/AP/lesson cycle:
+complete this bounded vision/spatial-memory application, then perform systematic
+AP optimization, then detailed teaching/visualizations. Keep correctness tests
+and concise records throughout. The AP handoff remains a flexible anchor for
+the later phase. See [the accepted decision](../../decisions/2026-10-26-development-order.md).
 
 Help the Pi understand where its camera is looking and remember the scene in
 those directions. Start with a fixed base and relative orientation. A successful
@@ -30,6 +29,13 @@ camera exposure synchronization. Existing raw accelerometer calibration issues
 remain unresolved; do not silently use acceleration as trusted tilt or position.
 
 ## Progress
+
+- [x] 2026-10-26: Record functionality → AP → learning order in AGENTS,
+  roadmap, project brief and the decision record. No runtime change in this update.
+- [x] 2026-10-26: User reports launching the implemented live quaternion
+  preview; quantitative live quality and AP results remain unreported.
+- [ ] Next: implement bounded visual scene memory and geometry-verified
+  revisit recognition on recorded Pi input, then integrate with live telemetry.
 
 - [x] 2026-10-24: Review AP handoff against existing capture, IMU, tracker,
   detector and profiler; preserve it as an anchor rather than a replacement plan.
@@ -105,7 +111,16 @@ remain unresolved; do not silently use acceleration as trusted tilt or position.
 
 ## Concrete steps
 
-### Research-backed execution sequence (proposed; review before implementation)
+### Research-backed technical sequence (historical outline, reordered 2026-10-26)
+
+The orientation foundation below is partly implemented. The next useful
+application increment is bounded visual scene memory and verified revisits.
+Build visual recognition on saved frames first, then attach valid orientation
+context and integrate the complete live path. Camera intrinsics and reliable
+timing remain prerequisites for calibrated visual angle/drift correction, not
+for a conservative image-region revisit detector. No new educational site or
+dedicated AP experiment gates this implementation. The accepted decision above
+defines current scope and completion behavior.
 
 **Step 1 — Calibration and data-validity checkpoint (immediate next work).**
 Audit capture timestamps, gyro sample intervals and camera calibration files.
@@ -197,16 +212,10 @@ ORB-SLAM3/OpenVINS/VINS/SVO evaluation rather than a home-built full SLAM system
 - Failure tests: blank wall, fast turn, near/far parallax, obscured camera and
   base translation. Require conservative rejection when evidence is insufficient.
 
-Only Step 1 is the immediate implementation milestone. Check in with the user
-with its findings before starting Step 2. All module names above are planned,
-not files already created. No new dependency/model or hardware action is approved
-implicitly by this plan.
-
-Next session: read the modules above and the IMU hardware notes; explain which
-measurements already exist and which need confirmation. Present the axis/timing
-protocol for review, including safe range, duration, units and result files.
-Do not download models, add dependencies, alter sensor settings or move motors
-as part of this documentation checkpoint.
+Proceed through authorized implementation and correctness validation without a
+separate lesson or AP comparison after each substep. Reuse existing dependencies
+and recordings. The visual-rotation and scene-memory module names above remain
+proposed; the existing live gyro estimator is `spatial.live_orientation`.
 
 ## Validation and acceptance
 
@@ -226,6 +235,11 @@ is spatial awareness. Those components remain useful but are not prerequisites
 for the next orientation milestone.
 
 ## Decision log
+
+- 2026-10-26: Complete functional spatial scene memory first, then AP work,
+  then detailed learning material. Keep records and tests throughout; next
+  implementation is geometry-verified scene revisits supported by valid gyro
+  context. Do not claim metric pose from uncalibrated image matches.
 
 - 2026-10-24: AP learning is primary; spatial awareness is its current bounded
   workload. Handoff model/runtime suggestions are not verified selections.
@@ -250,7 +264,8 @@ for the next orientation milestone.
 
 ## Outcomes and retrospective
 
-Planning checkpoint only. No new orientation estimator or spatial map exists
-yet. Runtime pipeline diagram reviewed; unchanged because this commit changes
-priority and documentation, not data flow. Implementation must revisit the
-diagram and IMU learning guide rather than depicting planned fusion as existing.
+Gyro-only live relative camera orientation is implemented and the user reports
+launching it on the Pi. Scene memory, calibrated visual correction and mapping
+remain unimplemented. This 2026-10-26 update changes work order only: pipeline
+diagram reviewed; unchanged because runtime data flow did not change. Later
+implementation must update the diagram and relevant guide accurately.

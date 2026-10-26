@@ -2,6 +2,14 @@
 
 ## Current priority
 
+**2026-10-26 development order:** finish the bounded vision/spatial-awareness
+application, then AP measurement and optimization, then detailed learning
+materials. Keep tests and technical records throughout. The next implementation
+milestone is visual scene memory and verified revisits, using the existing
+relative orientation as supporting context. See the
+[recorded decision and completion criteria](docs/decisions/2026-10-26-development-order.md).
+This order supersedes the earlier feature → AP experiment → lesson cycle.
+
 As clarified on 2026-10-24, the primary goal is **AP workload and systems
 engineering**, without an NPU. The
 [AP handoff](docs/exec-plans/active/EdgeXR_AP_Workload_Benchmark_Handoff.md)
@@ -15,7 +23,7 @@ This is planned work, not an existing 3D pose or mapping capability.
 See the [research review](docs/SPATIAL_AWARENESS_RESEARCH.md) for the papers,
 alternative approaches and why a relative visual compass comes before full SLAM.
 The camera-axis mapping has passed separate pan and uncovered-lens tilt
-direction checks. The next bounded step is the
+direction checks. The implemented orientation foundation is tracked in the
 [live relative-orientation plan](docs/exec-plans/active/live-relative-camera-orientation.md).
 An [offline IMU-relative orientation estimator](docs/RELATIVE_ORIENTATION.md)
 now reads combined-capture logs. The [offline camera-axis fit](docs/IMU_CAMERA_AXES.md)
@@ -31,7 +39,10 @@ PYTHONPATH=src python3 -m app.live_preview --device /dev/video0 --imu \
 
 The browser's relative angle/quaternion is gyro-only rotation from that still
 reference. No servo is commanded, no footage is saved, and no 3D position or
-room map is inferred. The first polling quality/resource cycle is complete.
+room map is inferred. To move pan and tilt automatically in a separate,
+attended one-shot test while the preview runs, follow the
+[live orientation servo test](docs/LIVE_ORIENTATION_SERVO_TEST.md). The first
+polling quality/resource cycle is complete.
 
 AP measurement: [fixed IMU polling resource comparison](docs/IMU_RESOURCE_BENCHMARK.md)
 measures the CPU cost of 50 ms versus 10 ms sleep on the same servo/camera workload.

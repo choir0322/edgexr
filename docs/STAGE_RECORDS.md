@@ -6,6 +6,11 @@ not a dashboard or a substitute for detailed results. `Measured` means the
 linked conditions were actually reported, not that a technique is accurate in
 every scene. `Implemented` without a Pi result is not a measured optimization.
 
+2026-10-26: [Development order changed](decisions/2026-10-26-development-order.md)
+to functionality first, then AP engineering, then detailed learning material.
+Keep this register current throughout; absent AP measurements may be labelled
+`deferred — AP phase`. Existing results retain their original workload scope.
+
 | Stage | Technique and code route | AP/quality evidence | Status and limit |
 |---|---|---|---|
 | USB camera capture | OV9281 MJPEG capture and decoded-frame timing; [camera code](../src/camera/capture_baseline.py), [hardware record](HARDWARE.md) | [benchmark protocol](BENCHMARKING.md); 720p MJPEG at 120 fps was demonstrated in V4L2 streaming, while decoded Python throughput was lower | Measured in distinct workloads; camera fps is not full-pipeline fps |
@@ -16,6 +21,7 @@ every scene. `Implemented` without a Pi result is not a measured optimization.
 | Camera-axis mapping | Fit neutral-head camera XYZ directions from pan/tilt sweeps; [axis code](../src/spatial/camera_axes.py), [basis](../configs/camera_axes_neutral.json) | [independent direction checks and isolated cost](IMU_CAMERA_AXES.md) | Measured/validated for the unchanged mounting; not camera position |
 | Live camera-axis rates | Optional projection of each valid gyro sample into camera axes; [live reader](../src/imu/live_reader.py), [A/B protocol](IMU_CAMERA_AXIS_AB.md) | [full-workload A/B result](../benchmarks/results/camera-axis-live-ab-2026-10-25.md): 5,638 projections in 300 s with no apparent rate regression; hotter B start limits CPU attribution | Implemented and measured as a feasibility check; rate is deg/s, not accumulated orientation |
 | Live relative camera orientation | Opt-in bounded gyro-only quaternion from camera-axis rates; [estimator](../src/spatial/live_orientation.py), [active plan](exec-plans/active/live-relative-camera-orientation.md) | Synthetic and historical saved-gyro replay match offline math; Pi live drift, return quality and AP cost **not yet measured** | Implemented, pending Pi validation; not world pose or image/IMU fusion |
+| Supervised live pan/tilt demonstration | Separate [one-shot servo controller](../src/spatial/servo_orientation_demo.py) commands ±20° sequentially while preview observes the physical head IMU | Hardware-free schedule tests pass; no Pi motion or AP measurement yet | Implemented, pending attended Pi trial; commanded degrees are not measured camera angles |
 
 ## Record format for each new stage
 

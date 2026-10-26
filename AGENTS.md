@@ -28,8 +28,18 @@ estimate where the camera looks and remember observed directions, beginning
 with a fixed base. Do not claim 3D position, depth or SLAM from image shift or
 gyro integration alone. Bound this milestone and tie it to AP learning.
 
-Before each new milestone and after its results, revisit the anchor briefly:
-state the AP question, bounded application outcome and measurement. Explain
+Development order changed on **2026-10-26** at the user's request:
+finish the bounded vision/spatial-awareness application first, then undertake
+systematic AP measurement/optimization, then detailed learning materials.
+Do not require a lesson, AP comparison, or separate user approval after every
+small technique. Continue through authorized implementation and correctness
+checks; address performance during the first phase only when it blocks usable
+functionality. Keep concise implementation, experiment and decision records
+throughout; mark deferred AP measurements explicitly. This supersedes earlier
+instructions to alternate feature, AP and teaching stages. See
+`docs/decisions/2026-10-26-development-order.md` for completion criteria.
+
+Before each new milestone, state the bounded application outcome. Explain
 whether work directly advances the goal, enables it, or is a less-relevant
 detour. Explicitly remind the user when a request would
 shift effort toward identity tuning, learning websites or cosmetic visualization.
@@ -48,7 +58,8 @@ protocol. Ask before any action that needs credentials, network access, a paid
 service, or a physical-hardware change.
 
 After a change, summarize the files changed, the test or observation used to
-check it, and one useful concept for the learner to understand next. If an
+check it, and the next implementation milestone. Save detailed lessons for
+the later learning phase unless explicitly requested. If an
 assumption is uncertain, label it and record the confirmation work in the
 relevant documentation.
 
