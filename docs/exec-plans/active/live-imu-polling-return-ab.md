@@ -33,6 +33,9 @@ provide an exposure-synchronized image/IMU join.
 - [x] Add hardware-free tests for configuration and checkpoint validation.
 - [x] Review/update `docs/PIPELINE.md` and `docs/learning/IMU.md` for shapes,
   units, scheduling, freshness, failure behavior and source links.
+- [x] 2026-10-28: First 50 ms run exposed a duplicate `after_pan` checkpoint
+  at the intermediate 0° crossing. Select the terminal pan command by its
+  schedule identity; add a regression test. Original `50a` is invalid for A/B.
 - [ ] Run two fresh-reference trials at each setting on the Pi; record actual
   IMU rates and quaternion-relative returns. Hardware results are pending.
 
@@ -75,6 +78,10 @@ repeated start-to-return results, not one metadata final angle.
 
 The preview already exposes display-size grayscale pixels on `/api/frame`;
 the image checkpoint needs no OpenCV, PNG encoder, or second V4L2 reader.
+The pan schedule crosses 0° twice. Checking only `axis=pan, angle=0` took a
+checkpoint and inserted a pause in the middle of the sweep. The correction
+changes the checkpoint trigger, not the live data route, so the pipeline
+diagram was reviewed and does not need a topology update.
 
 ## Decision log
 

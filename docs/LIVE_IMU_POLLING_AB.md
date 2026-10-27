@@ -7,12 +7,19 @@ unchanged, lighting and scene steady, and the same confirmed safe ±20° head
 clearance for every run. Do not run another camera owner. The 320×180 grayscale
 checkpoint images and telemetry are saved under ignored `recordings/`, not Git.
 
-Use four new output names in the order `50a`, `10a`, `10b`, `50b`. This repeats
+Use four new output names in the order `50a-r1`, `10a`, `10b`, `50b`. This repeats
 each setting and balances run-order effects. Restart the preview **before each
 run** so its first-second still bias and relative-orientation reference are
 fresh. Do not touch the head during that still second. The live preview must
 use its default Pi port 8765 because the attended servo logger queries its
 local HTTP routes there.
+
+The original `servo-orientation-ab-50a` is **not a comparable trial**. Its
+checkpoint list was `before_pan, after_pan, after_pan, after_tilt`: the first
+`after_pan` was mistakenly taken when the pan sweep crossed 0° between −20°
+and +20°. This also introduced an unintended 1.4 s mid-sweep pause. The
+schedule trigger has been corrected to select only the final pan command.
+Keep the original folder as a diagnostic record; do not delete or overwrite it.
 
 In Pi terminal 1, pull once, then start the first (50 ms) preview:
 
@@ -45,8 +52,8 @@ clearance. In Pi terminal 2, physically watch the rig and run:
 cd ~/projects/edgexr
 sudo env PYTHONPATH=src python3 -m spatial.servo_orientation_demo \
   --execute --confirm-centered --confirm-clearance \
-  --output recordings/servo-orientation-ab-50a
-cat recordings/servo-orientation-ab-50a/metadata.json
+  --output recordings/servo-orientation-ab-50a-r1
+cat recordings/servo-orientation-ab-50a-r1/metadata.json
 ```
 
 After a complete run, stop preview with `Ctrl+C` in Pi terminal 1. Restart it
@@ -67,10 +74,10 @@ unready final orientation marks the run partial/incomplete. Verify the
 metadata's `status`, `imu_poll_sleep_ms`, `image_checkpoints`, and
 `settled_final_sample` before comparing runs.
 
-To copy a run to the Mac, replace `50a` with each finished name:
+To copy a run to the Mac, replace `50a-r1` with each finished name:
 
 ```bash
-scp -r pi@ai-fusion.local:/home/pi/projects/edgexr/recordings/servo-orientation-ab-50a \
+scp -r pi@ai-fusion.local:/home/pi/projects/edgexr/recordings/servo-orientation-ab-50a-r1 \
   /Users/ryanchoi/Desktop/
 ```
 

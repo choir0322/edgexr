@@ -65,6 +65,23 @@ def build_steps() -> list[Step]:
     return steps
 
 
+def final_pan_step(steps: list[Step]) -> Step:
+    """Find the final pan return, not the intermediate 0° crossing.
+
+    Args:
+        steps (list[Step]): The scheduled pan-then-tilt motor commands.
+
+    Returns:
+        Step: The last pan command, which must return to 0°.
+    """
+    for step in reversed(steps):
+        if step.axis == "pan":
+            if step.angle_deg != 0:
+                raise ValueError("Pan schedule does not return to 0°")
+            return step
+    raise ValueError("Servo schedule has no pan commands")
+
+
 def run_steps(
     steps: list[Step], servos: dict[str, ServoPort], *,
     clock: Callable[[], float] = time.monotonic,
@@ -245,6 +262,7 @@ def main() -> int:
                         help="new recordings/ directory for servo commands and sampled non-image preview telemetry")
     args = parser.parse_args()
     steps = build_steps()
+    pan_return = final_pan_step(steps)
     print("Pan 0 → −20 → +20 → 0, then tilt 0 → −20 → +20 → 0; "
           f"{len(steps)} one-degree commands at ≤10 commanded °/s.", flush=True)
     if not args.execute:
@@ -303,7 +321,7 @@ def main() -> int:
             def after_step(step: Step, actual: float) -> None:
                 """Use the existing pan-to-tilt pause for a settled pan image."""
                 save_command(step.axis, step.angle_deg, actual)
-                if step.axis == "pan" and step.angle_deg == 0:
+                if step is pan_return:
                     time.sleep(1.4)
                     save_checkpoint("after_pan")
 

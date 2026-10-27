@@ -9,7 +9,7 @@ from unittest.mock import patch
 import json
 
 from spatial.servo_orientation_demo import (
-    FRAME_HEIGHT, FRAME_WIDTH, LIMIT_DEG, build_steps, has_settled_sample,
+    FRAME_HEIGHT, FRAME_WIDTH, LIMIT_DEG, build_steps, final_pan_step, has_settled_sample,
     record_telemetry, run_steps, save_image_checkpoint,
 )
 
@@ -35,6 +35,15 @@ class ServoOrientationDemoTests(unittest.TestCase):
             self.assertEqual([segment[i].angle_deg for i in (19, 59, 79)], [-20, 20, 0])
             self.assertLessEqual(max(abs(step.angle_deg) for step in segment), LIMIT_DEG)
         self.assertGreaterEqual(steps[80].due_s - steps[79].due_s, 2.1 - 1e-9)
+
+    def test_pan_checkpoint_only_follows_final_zero_command(self) -> None:
+        """Crossing 0° mid-sweep must not trigger the after-pan checkpoint."""
+        steps = build_steps()
+        pan_zeros = [step for step in steps if step.axis == "pan" and step.angle_deg == 0]
+        self.assertEqual(len(pan_zeros), 2)
+        self.assertIs(final_pan_step(steps), pan_zeros[-1])
+        self.assertIsNot(final_pan_step(steps), pan_zeros[0])
+        self.assertEqual(sum(step is final_pan_step(steps) for step in steps), 1)
 
     def test_fake_clock_sends_one_degree_steps_without_catchup_burst(self) -> None:
         """A delayed command cannot make the next step fire immediately."""
