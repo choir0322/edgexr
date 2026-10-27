@@ -13,6 +13,58 @@ during implementation. Performance work is brought forward only if it blocks
 usable functionality. Do not interrupt every small feature with an AP experiment
 or lesson. [Completion criteria and next implementation](decisions/2026-10-26-development-order.md).
 
+## Forward milestones — reviewed 2026-10-28
+
+Camera capture, image-motion analysis, CPU detection/tracking, live IMU,
+camera-axis conversion, gyro-only orientation, servo logging and initial AP
+profilers are implemented. The [four live polling trials](LIVE_IMU_POLLING_AB_RESULTS.md)
+now have user confirmation of visible return after both axes. Explicit 10 ms
+polling is the proposed reference for upcoming spatial work; residual drift
+still requires uncertainty handling. Scene memory remains unimplemented.
+
+1. **Remember views on recorded input — next implementation.** Store a bounded
+   set of representative scene frames and features. Use the existing plan's
+   OpenCV ORB features and geometric verification to demonstrate A → B → A:
+   recognize a previously observed region, distinguish a new one, and return
+   unknown for weak or ambiguous evidence. Evaluate on separate footage with
+   similar-looking regions and moving foregrounds.
+2. **Combine scene memory with live direction context.** Attach timestamped
+   relative orientation to stored views and use direction to rank candidates.
+   Visual evidence verifies a revisit; permit visual recovery when orientation
+   is uncertain. Add memory limits, eviction/reset and known/new/unknown states
+   to the live preview. Scene recognition alone does not provide a precise
+   quaternion correction. Use explicit 10 ms polling for the proposed reference
+   configuration; this roadmap changes no runtime defaults.
+3. **Finish the fixed-base spatial demo.** Validate repeated observe/turn/return
+   cycles, blank walls, repeated patterns, moving people, fast turns, occlusion
+   and sensor gaps. Record false/missed revisits, unknowns, recovery and memory
+   growth. Lens calibration and validated geometry/timing are required before
+   claiming calibrated visual angle correction; add that work before completion
+   only if needed for the functional requirements. Completion means a repeatable
+   directional scene-memory demo with bounded resources and documented limits.
+4. **Measure and optimize the completed AP workload.** Freeze representative
+   inputs/configurations and quality targets. Measure stage timing, total CPU,
+   memory, throughput, latency/age, skipped work, temperature and throttling.
+   Test polling/scheduling, image copies/resizing, CPU threads and detector
+   models/runtimes one change at a time. Evaluate quantization, deployable pruning
+   or fine-tuning when justified. Keep quality and resource results together;
+   historical benchmarks do not replace a baseline for the completed workload.
+5. **Build detailed learning and portfolio material.** Use the maintained
+   source, decisions and results for code tours, the website, AP comparison
+   charts and a reproducible demonstration, including rejected hypotheses.
+
+Room position, metric depth and a 3D map remain a separate potential extension.
+They require camera calibration, translation-aware visual odometry or SLAM,
+scale/pose validation and a Pi feasibility study; visual-inertial fusion also
+requires camera/IMU timing and extrinsic validation. Gyro integration alone
+does not supply position. Re-identification tuning and learning-site expansion
+remain supporting branches rather than prerequisites for scene memory.
+
+At each stage, retain the technique, source/config links, conditions, quality
+results and available AP metrics in [STAGE_RECORDS.md](STAGE_RECORDS.md).
+Label unmeasured AP cost as deferred. Keep raw imagery outside Git and commit
+and push completed coherent changes under the standing user direction.
+
 ## Background objective — 2026-10-24, sequencing superseded above
 
 AP workload/systems engineering is the primary learning objective. Spatial
@@ -56,8 +108,9 @@ unsupported motion rather than inventing a position. Follow the
 Translation, metric depth and full 3D mapping require a separate later scope.
 The [research review](SPATIAL_AWARENESS_RESEARCH.md) supports a calibrated visual
 compass, gyro assistance and bounded scene keyframes before a full SLAM stack.
-The immediate gate is sensor/camera calibration and timestamp validity, not
-another identity or visualization feature.
+The next implementation is bounded scene memory on recorded input. Maintain
+timestamp validity; camera calibration gates calibrated angular correction,
+rather than conservative visual scene recognition.
 
 ### Supporting branch — Object re-identification (paused 2026-10-23)
 

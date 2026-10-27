@@ -30,6 +30,10 @@ remain unresolved; do not silently use acceleration as trusted tilt or position.
 
 ## Progress
 
+- [x] 2026-10-28: Four live polling trials and user confirmation of visible
+  pan/tilt returns recorded in [the comparison](../../LIVE_IMU_POLLING_AB_RESULTS.md).
+  Explicit 10 ms polling is the proposed reference for scene-memory development;
+  systematic AP work remains deferred under the accepted development order.
 - [x] 2026-10-26: Record functionality → AP → learning order in AGENTS,
   roadmap, project brief and the decision record. No runtime change in this update.
 - [x] 2026-10-26: User reports launching the implemented live quaternion
@@ -265,7 +269,8 @@ for the next orientation milestone.
 ## Outcomes and retrospective
 
 Gyro-only live relative camera orientation is implemented and the user reports
-launching it on the Pi. Scene memory, calibrated visual correction and mapping
-remain unimplemented. This 2026-10-26 update changes work order only: pipeline
-diagram reviewed; unchanged because runtime data flow did not change. Later
+running it on the Pi, with four logged polling trials and qualitative visual
+return confirmation. Scene memory, calibrated visual correction and mapping
+remain unimplemented. The 2026-10-28 roadmap update changes no runtime flow:
+pipeline diagram reviewed; unchanged. Later
 implementation must update the diagram and relevant guide accurately.

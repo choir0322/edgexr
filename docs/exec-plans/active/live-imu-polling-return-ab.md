@@ -38,8 +38,10 @@ provide an exposure-synchronized image/IMU join.
   schedule identity; add a regression test. Original `50a` is invalid for A/B.
 - [x] 2026-10-28: Four corrected, complete Pi runs transferred and analyzed;
   [results](../../LIVE_IMU_POLLING_AB_RESULTS.md) record actual IMU rates,
-  checkpoint-relative quaternions and small-image checks. User physical-return
-  confirmation and AP cost measurement remain pending.
+  checkpoint-relative quaternions and small-image checks.
+- [x] 2026-10-28: User confirmed visible lens and Mac preview return after
+  both axes in all four valid runs. The diagnostic comparison is complete;
+  exact return angle and dedicated live AP cost remain unmeasured.
 
 ## Plan of work
 
@@ -87,6 +89,9 @@ diagram was reviewed and does not need a topology update.
 
 ## Decision log
 
+- 2026-10-28: Use explicit 10 ms polling as the proposed reference for
+  scene-memory development. The CLI default is unchanged in this documentation
+  update; dedicated AP comparisons follow functional completion.
 - 2026-10-28: Use 320×180 PGM checkpoints because they are sufficient for a
   coarse visual-return check and introduce no dependency. They are not a
   calibrated optical-angle measurement. Keep the 50 ms default and bound the
@@ -97,6 +102,7 @@ diagram was reviewed and does not need a topology update.
 Implementation is complete and hardware-free tests pass. The live pipeline
 diagram distinguishes the 50/10 ms post-read wait and the servo process's
 three ignored 320×180 PGM checkpoints. Two valid runs per setting show much
-smaller estimated return residual at 10 ms, but do not prove physical return,
-absolute accuracy, a unique sampling cause, or AP savings. The invalid first
+smaller estimated return residual at 10 ms. The user confirms qualitative
+physical return for all four runs; exact angular accuracy, a unique sampling
+cause and AP savings remain unestablished. The invalid first
 50 ms trial is retained outside Git rather than silently reused.

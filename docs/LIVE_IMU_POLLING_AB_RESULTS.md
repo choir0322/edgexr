@@ -11,8 +11,10 @@ orientation at every telemetry poll, zero logger/HTTP errors, and a final
 orientation poll about two seconds after the last tilt command. The three
 checkpoints followed the final pan or tilt command by about 1.4 or 2.0 s.
 The preview PID differs between runs, consistent with a fresh process for
-each trial. A user's visual-return confirmation for these four runs has not
-yet been recorded; do not treat commanded 0° as a measured shaft return.
+each trial. On 2026-10-28 the user confirmed that the lens and Mac preview
+visibly returned to their starting direction after both pan and tilt in all
+four valid runs. This is qualitative return evidence; the exact physical
+return angle was not measured.
 The rig is a Raspberry Pi 4 with the camera-head IMU and passive heatsink.
 The protocol requested the same fixed-base scene and lighting for every
 run, but the transferred files do not independently verify scene, cooling,
@@ -39,8 +41,9 @@ The quaternion helpers are in `src/spatial/relative_orientation.py`.
 | `50b` / 50 ms | 18.99 Hz | (−0.07°, +12.20°, +2.39°), **12.43°** | (−0.36°, −0.75°, +0.18°), **0.85°** | **11.75°** | 30.10 / 30.10 fps | +0 |
 
 The 10 ms runs have smaller estimated whole-run residuals in both repeats.
-They integrated roughly 2,600 IMU intervals during logging, versus roughly
-570–670 at 50 ms. The gyro offset estimates differed between restarted runs,
+The metadata's integrated-interval counters include time before servo logging
+and must not be interpreted as interval counts within the sweep alone.
+The gyro offset estimates differed between restarted runs,
 but the estimated rotation during the final approximately one-second still
 window was only 0.03°–0.17°; this does not explain the 5.65° or 11.75°
 whole-run residuals by post-stop drift alone. The 50 ms trials differed
@@ -67,8 +70,10 @@ not establish absolute orientation accuracy, quantify missed physical motion,
 prove sampling is the sole cause, or measure CPU/power/temperature cost.
 There are only two repeats per setting. The ~30 fps preview rates and 0–1
 skipped decoded frames show no obvious short-run camera slowdown, but are
-not a full AP benchmark. Keep 50 ms as the existing default until an explicit
-runtime-quality and resource decision is made. Next: obtain the user's
-physical/visual return observation for these runs, then decide whether the
-10 ms rate is warranted in the live spatial-awareness workload and measure
-its AP cost under matched conditions.
+not a full AP benchmark. The user's visual-return confirmation completes this
+diagnostic comparison. Use explicit 10 ms polling as the proposed reference
+configuration for the next spatial scene-memory work; the CLI default remains
+50 ms. Per the accepted development order, dedicated AP cost comparisons
+follow the functional spatial demo unless performance blocks its usability.
+The next functional milestone is bounded visual scene memory and verified
+revisits, with gyro direction as uncertain context.
