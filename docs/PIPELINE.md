@@ -38,7 +38,12 @@ orientation snapshots beside timestamped actual servo commands under ignored
 exposure synchronization. The [run guide](LIVE_ORIENTATION_SERVO_TEST.md)
 documents the log files and failure states. The process now keeps polling for
 two seconds after final commanded 0° and requires a ready sample at least one
-second afterward before marking its recording complete.
+second afterward before marking its recording complete. The
+[live polling A/B protocol](LIVE_IMU_POLLING_AB.md) optionally changes the
+IMU's post-read pause from 50 to 10 ms; actual read frequency remains measured.
+The servo logger now also fetches three fresh 320×180 grayscale frames from
+the existing loopback `/api/frame` route at still points and stores them as
+ignored PGM checkpoints, without opening another camera reader.
 
 The offline servo recorder now accepts `--imu-interval` (default 0.05 s), passed
 to the combined recorder's post-read sleep. The explicit 0.01 s polling trial
@@ -100,7 +105,7 @@ flowchart TD
     SPATIAL["Optional --reid-spatial<br/>Reliable image shift predicts last box region<br/>Small positive tie-break for strong appearances"]
     MODEL["Local deploy.prototxt + caffemodel<br/>Graph and pretrained parameters"]
     IMU["Camera-mounted IMU via I2C<br/>SunFounder SH3001 driver"]
-    POLL["poll_imu<br/>Read midpoint timestamp; then wait 50 ms"]
+    POLL["poll_imu<br/>Read midpoint timestamp; post-read wait<br/>50 ms default or opt-in 10 ms"]
     BIAS["LiveImu<br/>First-second stationary gyro offset<br/>Latest corrected XYZ rates in degrees/s"]
     BASIS["Optional --camera-axis-basis<br/>Validated neutral-head XYZ axes in IMU coordinates"]
     CAMRATE["camera_components per valid post-bias IMU sample<br/>Separate camera XYZ rates in degrees/s + conversion count"]
@@ -110,7 +115,9 @@ flowchart TD
     REIDVIDEO["Optional --trial-output<br/>MJPEG packet copy to camera.mkv<br/>Same camera input, no second opener"]
     REIDLOG["ReidTrialRecorder.record<br/>Exact selected gray frame as lossless PNG<br/>Boxes, IDs, reasons + host times as JSONL"]
     AP["Optional second SSH process: ap_baseline<br/>HTTP metrics + exact-PID /proc counters<br/>Thermal zone + raw throttle flag<br/>Ignored JSONL + summary"]
-    WEB["Loopback HTTP: /api/frame<br/>SSH tunnel to Mac browser"]
+    SERVO["Optional attended servo sweep<br/>Pan then tilt, ±20°; separate Pi process"]
+    CHECKPOINT["Servo run logs<br/>/api/telemetry JSONL + 3 fresh /api/frame<br/>320x180 grayscale PGM checkpoints"]
+    WEB["Loopback HTTP: /api/frame + /api/telemetry<br/>SSH tunnel to Mac browser"]
     UI["preview.html<br/>Image + exaggerated motion arrow<br/>Older boxes with provisional #IDs<br/>Gyro/timing cards; fetch/render then wait 200 ms"]
     CAMERA --> FF
     DEMO -. alternative .-> FF
@@ -139,6 +146,10 @@ flowchart TD
     STATE --> WEB --> UI
     STATE -. "metrics-only HTTP" .-> TRIAL
     STATE -. "metrics-only HTTP, PIDs" .-> AP
+    SERVO -. "physical head motion, not an HTTP control" .-> CAMERA
+    SERVO -. "physical head motion" .-> IMU
+    WEB -. "loopback observations during attended sweep" .-> CHECKPOINT
+    SERVO --> CHECKPOINT
 ```
 
 ## Text fallback and mode differences

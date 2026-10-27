@@ -7,6 +7,7 @@ camera, read the IMU, or expose servo controls over HTTP.
 from __future__ import annotations
 
 import argparse
+import base64
 from dataclasses import dataclass
 from datetime import datetime, timezone
 import json
@@ -23,6 +24,10 @@ LIMIT_DEG = 20
 STEP_SECONDS = 0.1  # 1 commanded degree per 100 ms: at most 10 commanded °/s.
 FINAL_SETTLE_SECONDS = 2.0
 TELEMETRY_URL = "http://127.0.0.1:8765/api/telemetry"
+FRAME_URL = "http://127.0.0.1:8765/api/frame"
+FRAME_WIDTH = 320
+FRAME_HEIGHT = 180
+CHECKPOINT_NAMES = ("before_pan", "after_pan", "after_tilt")
 
 
 class ServoPort(Protocol):
@@ -107,6 +112,52 @@ def preview_snapshot() -> dict:
     """Read the existing local telemetry route without camera/image bytes."""
     with urlopen(TELEMETRY_URL, timeout=1.0) as response:
         return json.load(response)
+
+
+def preview_frame() -> dict:
+    """Read the existing display-size frame route, without opening the camera."""
+    with urlopen(FRAME_URL, timeout=1.0) as response:
+        return json.load(response)
+
+
+def save_image_checkpoint(folder: Path, label: str) -> dict:
+    """Save one fresh 320×180 grayscale preview frame and its host timing.
+
+    Args:
+        folder (Path): New ignored run directory for image/checkpoint logs.
+        label (str): One of the three fixed still-point names.
+
+    Returns:
+        dict: JSON-ready image source, freshness and host-poll midpoint.
+    """
+    if label not in CHECKPOINT_NAMES:
+        raise ValueError("Unknown image checkpoint")
+    before = time.monotonic()
+    snapshot = preview_frame()
+    midpoint = (before + time.monotonic()) / 2
+    age = snapshot.get("result_age_ms")
+    if (snapshot.get("status") != "live" or snapshot.get("width") != FRAME_WIDTH or
+            snapshot.get("height") != FRAME_HEIGHT or not isinstance(age, (int, float)) or
+            not 0 <= age <= 300):
+        raise ValueError(f"{label}: camera frame is unavailable or too old")
+    encoded = snapshot.get("pixels_b64")
+    if not isinstance(encoded, str):
+        raise ValueError(f"{label}: missing grayscale pixels")
+    try:
+        pixels = base64.b64decode(encoded, validate=True)
+    except ValueError as error:
+        raise ValueError(f"{label}: invalid grayscale encoding") from error
+    if len(pixels) != FRAME_WIDTH * FRAME_HEIGHT:
+        raise ValueError(f"{label}: wrong grayscale byte count")
+    name = f"{label}.pgm"
+    (folder / name).write_bytes(f"P5\n{FRAME_WIDTH} {FRAME_HEIGHT}\n255\n".encode() + pixels)
+    return {
+        "label": label, "file": name, "host_poll_midpoint_s": midpoint,
+        "frame_sequence": snapshot.get("sequence"), "frame_age_ms": age,
+        "imu_poll_sleep_ms": snapshot.get("imu_poll_sleep_ms"),
+        "orientation_status": snapshot.get("imu", {}).get("relative_orientation", {}).get("status"),
+        "timing_scope": "host observation; image and IMU are not exposure-synchronized",
+    }
 
 
 def output_folder(selected: Path | None) -> Path:
@@ -211,6 +262,9 @@ def main() -> int:
             "relative_orientation", {}
         ).get("status") != "ready":
             raise ValueError("Start the quaternion preview and wait for camera/IMU ready")
+        imu_sleep_ms = first.get("imu_poll_sleep_ms")
+        if imu_sleep_ms not in (10, 50):
+            raise ValueError("Restart the updated preview with --imu-sleep-ms 10 or 50")
     except (OSError, ValueError, KeyError, TypeError) as error:
         parser.exit(1, f"Servo test preflight failed: {error}\n")
 
@@ -226,10 +280,11 @@ def main() -> int:
     exit_code = 1
     logger: threading.Thread | None = None
     final_command_s: float | None = None
+    checkpoints: list[str] = []
     folder.mkdir(parents=True)
     commands_path = folder / "servo_commands.jsonl"
     try:
-        with commands_path.open("w") as command_log:
+        with commands_path.open("w") as command_log, (folder / "checkpoints.jsonl").open("w") as checkpoint_log:
             def save_command(axis: str, angle: int, actual: float) -> None:
                 """Flush a motor command so even an interrupted run keeps its history."""
                 nonlocal final_command_s
@@ -237,6 +292,20 @@ def main() -> int:
                                               "axis": axis, "angle_deg": angle}) + "\n")
                 command_log.flush()
                 final_command_s = actual
+
+            def save_checkpoint(label: str) -> None:
+                """Persist a still-point image and its source/timing row."""
+                row = save_image_checkpoint(folder, label)
+                checkpoint_log.write(json.dumps(row, allow_nan=False) + "\n")
+                checkpoint_log.flush()
+                checkpoints.append(label)
+
+            def after_step(step: Step, actual: float) -> None:
+                """Use the existing pan-to-tilt pause for a settled pan image."""
+                save_command(step.axis, step.angle_deg, actual)
+                if step.axis == "pan" and step.angle_deg == 0:
+                    time.sleep(1.4)
+                    save_checkpoint("after_pan")
 
             logger = threading.Thread(target=record_telemetry,
                 args=(stop_log, folder / "telemetry.jsonl", counts), daemon=True)
@@ -254,10 +323,11 @@ def main() -> int:
                 save_command(axis, 0, time.monotonic())
             print("Centered both axes. Hold still for 2 seconds; then pan starts.", flush=True)
             time.sleep(2)
-            count = run_steps(steps, servos,
-                on_command=lambda step, actual: save_command(step.axis, step.angle_deg, actual))
+            save_checkpoint("before_pan")
+            count = run_steps(steps, servos, on_command=after_step)
             print("Final 0° command sent; logging two seconds of settled orientation.", flush=True)
             time.sleep(FINAL_SETTLE_SECONDS)
+            save_checkpoint("after_tilt")
             status = "complete"
             print(f"Completed {count} commands; pan and tilt returned to commanded 0°.", flush=True)
             exit_code = 0
@@ -277,9 +347,11 @@ def main() -> int:
         if logger is not None and logger.is_alive():
             counts["logger_error"] = "logger did not stop within two seconds"
         settled_sample = has_settled_sample(final_command_s, counts["last_ready_sample_s"])
-        if status == "complete" and (counts["logger_error"] or not settled_sample):
+        if status == "complete" and (counts["logger_error"] or not settled_sample or
+                                     tuple(checkpoints) != CHECKPOINT_NAMES):
             status = "telemetry_incomplete"
-            failure = counts["logger_error"] or "no live, ready orientation at least one second after final command"
+            failure = (counts["logger_error"] or
+                       "missing settled orientation or camera checkpoint")
             exit_code = 1
         (folder / "metadata.json").write_text(json.dumps({
             "status": status, "error": failure,
@@ -287,6 +359,10 @@ def main() -> int:
             "pan_channel": PAN_CHANNEL, "tilt_channel": TILT_CHANNEL,
             "commanded_limit_deg": LIMIT_DEG, "minimum_step_seconds": STEP_SECONDS,
             "telemetry_url": TELEMETRY_URL,
+            "image_url": FRAME_URL,
+            "imu_poll_sleep_ms": imu_sleep_ms,
+            "image_checkpoints": checkpoints,
+            "image_shape": f"{FRAME_WIDTH}x{FRAME_HEIGHT} grayscale PGM",
             "telemetry_samples": counts["samples"],
             "ready_orientation_samples": counts["ready_samples"],
             "telemetry_errors": counts["errors"], "logger_error": counts["logger_error"],

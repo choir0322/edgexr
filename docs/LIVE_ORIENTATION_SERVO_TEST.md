@@ -69,6 +69,13 @@ after final tilt 0° makes the run status `telemetry_incomplete` rather than
 silently claiming a complete recorded trial. The [first logged trial](LIVE_ORIENTATION_SERVO_RESULTS.md)
 showed why this final settle period matters.
 
+The newer logger also saves 320×180 grayscale view checkpoints before pan,
+after the settled pan return, and after the settled tilt return, with source
+times in `checkpoints.jsonl`. Use the separate
+[50 ms versus 10 ms comparison guide](LIVE_IMU_POLLING_AB.md) for fresh-reference
+repeated trials and unique output names. These `.pgm` images are private raw
+captures under ignored `recordings/`; do not commit them.
+
 After the run, inspect the summary on the Pi:
 
 ```bash

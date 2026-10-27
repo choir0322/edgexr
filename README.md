@@ -27,8 +27,11 @@ direction checks. The implemented orientation foundation is tracked in the
 [live relative-orientation plan](docs/exec-plans/active/live-relative-camera-orientation.md).
 An [offline IMU-relative orientation estimator](docs/RELATIVE_ORIENTATION.md)
 now reads combined-capture logs. The [offline camera-axis fit](docs/IMU_CAMERA_AXES.md)
-uses saved pan/tilt runs. A new opt-in live estimator is implemented but awaits
-Pi drift, return and AP-cost checks. It uses the unchanged camera-head mounting.
+uses saved pan/tilt runs. The opt-in live estimator has been exercised on the
+Pi, but [settled return trials](docs/LIVE_ORIENTATION_SERVO_RESULTS.md) show
+quaternion discrepancies despite visible scene return. It is not yet a
+validated camera-direction memory signal; AP-cost checks remain deferred.
+It uses the unchanged camera-head mounting.
 On the Pi, after updating the checkout and verifying the IMU/camera setup, keep
 the head still during startup and run:
 
@@ -42,7 +45,9 @@ reference. No servo is commanded, no footage is saved, and no 3D position or
 room map is inferred. To move pan and tilt automatically in a separate,
 attended one-shot test while the preview runs, follow the
 [live orientation servo test](docs/LIVE_ORIENTATION_SERVO_TEST.md). The first
-polling quality/resource cycle is complete.
+polling quality/resource cycle is complete. A separate
+[live 50 ms versus 10 ms return protocol](docs/LIVE_IMU_POLLING_AB.md) now
+records grayscale view checkpoints and actual IMU rate; Pi results are pending.
 
 AP measurement: [fixed IMU polling resource comparison](docs/IMU_RESOURCE_BENCHMARK.md)
 measures the CPU cost of 50 ms versus 10 ms sleep on the same servo/camera workload.

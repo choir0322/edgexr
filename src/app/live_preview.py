@@ -81,6 +81,7 @@ class State:
         imu_enabled: bool = False,
         camera_axis_basis: Sequence[Sequence[float]] | None = None,
         relative_orientation: bool = False,
+        imu_sleep_ms: int = 50,
         detection_enabled: bool = False,
         motion_aware_tracking: bool = False,
         reidentify: bool = False,
@@ -94,6 +95,7 @@ class State:
             camera_axis_basis (Sequence[Sequence[float]] | None): Optional
                 validated neutral-head camera basis for the AP comparison.
             relative_orientation (bool): Opt-in bounded gyro-only camera rotation.
+            imu_sleep_ms (int): Post-read IMU pause; 50 ms is the existing default.
             detection_enabled (bool): Whether full-frame detection storage is required.
             motion_aware_tracking (bool): Whether the detector may query recent
                 analyzed image shifts for provisional box prediction.
@@ -123,6 +125,7 @@ class State:
         self.error = None
         self.started = time.monotonic()
         self.ffmpeg_pid: int | None = None
+        self.imu_sleep_ms = imu_sleep_ms
 
         # Give IMU and detection their own status stores; either may fail independently.
         self.imu = LiveImu(imu_enabled, camera_axis_basis, relative_orientation)
@@ -285,6 +288,7 @@ class State:
                 result_age_ms=age * 1000 if age is not None else None,
                 capture_fps=rate([t for t in self.capture_times if now - t < 2]),
                 analysis_fps=rate([t for t in self.analysis_times if now - t < 2]),
+                imu_poll_sleep_ms=self.imu_sleep_ms if self.imu.enabled else None,
             )
             if startup_timeout and not self.error:
                 result[
@@ -688,6 +692,10 @@ def main() -> None:
         help="read SunFounder SH3001 gyro on a separate thread",
     )
     parser.add_argument(
+        "--imu-sleep-ms", type=int, choices=(10, 50), default=50,
+        help="pause after each IMU read: 50 ms default, 10 ms experimental; requires --imu",
+    )
+    parser.add_argument(
         "--camera-axis-basis", type=Path,
         help="opt-in per-IMU-sample camera-axis conversion using this validated JSON basis; requires --imu",
     )
@@ -742,6 +750,8 @@ def main() -> None:
         parser.error("--motion-aware-tracking requires --detect")
     if args.camera_axis_basis is not None and not args.imu:
         parser.error("--camera-axis-basis requires --imu")
+    if args.imu_sleep_ms != 50 and not args.imu:
+        parser.error("--imu-sleep-ms 10 requires --imu")
     if args.relative_orientation and (not args.imu or args.camera_axis_basis is None):
         parser.error("--relative-orientation requires --imu and --camera-axis-basis")
     if args.reidentify and not args.detect:
@@ -785,6 +795,7 @@ def main() -> None:
         imu_enabled=args.imu,
         camera_axis_basis=camera_axis_basis,
         relative_orientation=args.relative_orientation,
+        imu_sleep_ms=args.imu_sleep_ms,
         detection_enabled=args.detect,
         motion_aware_tracking=args.motion_aware_tracking,
         reidentify=args.reidentify,
@@ -847,7 +858,9 @@ def main() -> None:
                 if sensor is None:
                     raise ValueError("No accelerometer/gyroscope found")
                 imu_thread = threading.Thread(
-                    target=poll_imu, args=(state.imu, sensor, state.stop), daemon=True
+                    target=poll_imu,
+                    args=(state.imu, sensor, state.stop, args.imu_sleep_ms / 1000),
+                    daemon=True,
                 )
                 imu_thread.start()
                 threads.append(imu_thread)
@@ -888,6 +901,7 @@ def main() -> None:
                     flush=True,
                 )
         if args.imu:
+            print(f"IMU post-read sleep: {args.imu_sleep_ms} ms; actual read rate shown in telemetry.", flush=True)
             print(
                 "IMU: first second must be still; using per-run raw gyro offset. IMU errors appear in browser.",
                 flush=True,

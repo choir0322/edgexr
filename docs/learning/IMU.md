@@ -70,6 +70,16 @@ last 0° command to observe settled orientation. If a commanded sweep does not m
 do not treat the command angle as measured camera angle. This is an attended
 demonstration, not an AP benchmark or a visual/IMU fusion algorithm.
 
+The live preview's `--imu-sleep-ms` now selects a 50 ms default or experimental
+10 ms **pause after each raw read**; the observed rate also includes I2C read
+time and scheduling. `State.snapshot` exposes the selected pause as
+`imu_poll_sleep_ms`, while `LiveImu.snapshot` reports the achieved `rate_hz`.
+The attended servo logger checks that configuration and saves before-pan,
+settled-after-pan and settled-after-tilt 320×180 grayscale PGM views through
+`/api/frame`; source age and host poll times are logged separately. Neither
+those images nor the IMU values share a sensor-exposure timestamp. See the
+[controlled A/B guide](../LIVE_IMU_POLLING_AB.md).
+
 The new [offline relative-orientation experiment](../RELATIVE_ORIENTATION.md)
 reads saved IMU samples after a run. `spatial.relative_orientation.analyze`
 estimates a per-run gyro offset from an assumed-still window;

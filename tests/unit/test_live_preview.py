@@ -37,6 +37,12 @@ class PreviewTests(unittest.TestCase):
         self.assertEqual(result["imu"]["camera_gyro_dps"], [2.0, 5.0, 0.0])
         self.assertEqual(result["imu"]["camera_axis_conversions"], 2)
 
+    def test_imu_sleep_setting_is_reported_without_changing_default(self) -> None:
+        """A/B runs can identify their selected post-read pause in telemetry."""
+        self.assertEqual(State(imu_enabled=True).snapshot()["imu_poll_sleep_ms"], 50)
+        self.assertEqual(State(imu_enabled=True, imu_sleep_ms=10).snapshot()["imu_poll_sleep_ms"], 10)
+        self.assertIsNone(State().snapshot()["imu_poll_sleep_ms"])
+
     def test_pipe_reads_complete_partial_chunks(self) -> None:
         """Verify pipe reads complete partial chunks.
 

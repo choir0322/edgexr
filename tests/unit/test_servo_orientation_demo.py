@@ -1,6 +1,7 @@
 """No-hardware checks for the supervised live-orientation servo demonstration."""
 
 import unittest
+import base64
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from threading import Event
@@ -8,7 +9,8 @@ from unittest.mock import patch
 import json
 
 from spatial.servo_orientation_demo import (
-    LIMIT_DEG, build_steps, has_settled_sample, record_telemetry, run_steps,
+    FRAME_HEIGHT, FRAME_WIDTH, LIMIT_DEG, build_steps, has_settled_sample,
+    record_telemetry, run_steps, save_image_checkpoint,
 )
 
 
@@ -111,6 +113,37 @@ class ServoOrientationDemoTests(unittest.TestCase):
         self.assertFalse(has_settled_sample(336.369, 336.367))
         self.assertFalse(has_settled_sample(336.369, 337.0))
         self.assertTrue(has_settled_sample(336.369, 337.5))
+
+    def test_fresh_checkpoint_writes_display_size_grayscale_pgm(self) -> None:
+        """Saved view bytes and timing metadata come from the existing preview."""
+        pixels = bytes([73]) * (FRAME_WIDTH * FRAME_HEIGHT)
+        snapshot = {
+            "status": "live", "width": FRAME_WIDTH, "height": FRAME_HEIGHT,
+            "result_age_ms": 25.0, "sequence": 21, "imu_poll_sleep_ms": 10,
+            "imu": {"relative_orientation": {"status": "ready"}},
+            "pixels_b64": base64.b64encode(pixels).decode(),
+        }
+        with TemporaryDirectory() as directory:
+            with patch("spatial.servo_orientation_demo.preview_frame", return_value=snapshot):
+                row = save_image_checkpoint(Path(directory), "before_pan")
+            image = (Path(directory) / "before_pan.pgm").read_bytes()
+        self.assertEqual(image, b"P5\n320 180\n255\n" + pixels)
+        self.assertEqual(row["frame_sequence"], 21)
+        self.assertEqual(row["imu_poll_sleep_ms"], 10)
+
+    def test_stale_or_wrong_size_checkpoint_fails(self) -> None:
+        """A missing or old display image cannot be mistaken for a visual return."""
+        snapshot = {"status": "live", "width": FRAME_WIDTH, "height": FRAME_HEIGHT,
+                    "result_age_ms": 301, "pixels_b64": ""}
+        with TemporaryDirectory() as directory:
+            with patch("spatial.servo_orientation_demo.preview_frame", return_value=snapshot):
+                with self.assertRaisesRegex(ValueError, "too old"):
+                    save_image_checkpoint(Path(directory), "after_pan")
+            snapshot["result_age_ms"] = 10
+            with patch("spatial.servo_orientation_demo.preview_frame", return_value=snapshot):
+                with self.assertRaisesRegex(ValueError, "byte count"):
+                    save_image_checkpoint(Path(directory), "after_pan")
+            self.assertEqual(list(Path(directory).iterdir()), [])
 
 
 if __name__ == "__main__":
