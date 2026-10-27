@@ -65,6 +65,12 @@ camera estimate or synchronized video pose.
   after pan. Treat the ≈12° estimated pan-axis residual as disagreement with
   qualitative visual return, not as evidence of servo non-return. Repeat with
   settled final logging before diagnosing the cause.
+- [x] 2026-10-28: [Trial 03](../../LIVE_ORIENTATION_SERVO_RESULTS.md) captured
+  settled returns for both axes with 464 ready samples and no logger errors.
+  The user saw both visual returns, but quaternion start-to-end differences
+  remained 5.49° for pan and 7.26° for tilt. Orientation quality is not yet
+  accepted for directional scene memory; compare faster live IMU polling under
+  the same sweep before attributing the mismatch to any one cause.
 - [ ] Run a fixed-base Pi still and supervised return trial; record drift,
   gaps, residual, CPU, IMU rate, motion rate, skips and temperature.
 
