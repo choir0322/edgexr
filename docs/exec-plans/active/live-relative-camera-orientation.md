@@ -61,6 +61,10 @@ camera estimate or synchronized video pose.
   showed 428 ready snapshots and a persistent pan-axis return difference;
   telemetry ended just before the final tilt 0° command. Extend logger two
   seconds after the last command and require a post-command ready sample.
+- [x] 2026-10-28: User confirmed the lens and browser image visibly returned
+  after pan. Treat the ≈12° estimated pan-axis residual as disagreement with
+  qualitative visual return, not as evidence of servo non-return. Repeat with
+  settled final logging before diagnosing the cause.
 - [ ] Run a fixed-base Pi still and supervised return trial; record drift,
   gaps, residual, CPU, IMU rate, motion rate, skips and temperature.
 

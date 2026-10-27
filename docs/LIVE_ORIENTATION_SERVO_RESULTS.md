@@ -5,7 +5,9 @@ raw `servo_commands.jsonl`, `telemetry.jsonl` and `metadata.json` remain outside
 Git in `/Users/ryanchoi/Desktop/servo-orientation-01`; they contain a live
 scene's telemetry and are not an AP benchmark. The run used the separate
 supervised servo process and the live preview with camera-axis quaternion mode.
-The physical return of the lens has **not yet been confirmed** for this run.
+The user subsequently confirmed that both the lens and browser image visibly
+returned to their starting direction after the **pan** sweep. This is a
+qualitative observation, not a measured shaft or camera angle.
 
 | Observation | Value | Meaning / limit |
 |---|---:|---|
@@ -17,12 +19,15 @@ The physical return of the lens has **not yet been confirmed** for this run.
 | Last saved snapshot | Rotation vector ≈ (−8.32°, −11.93°, +0.56°), angle 14.56° | At 336.367 s, **1.5 ms before** the final tilt 0° command; it cannot establish settled final tilt orientation |
 
 The roughly 12° pan-axis difference between before and after the pan sweep is
-larger than the small change seen during the preceding still period. It could
-reflect physical non-return, head/mount motion, or accumulated integration
-error during motion; this telemetry alone cannot decide which. The tilt
-return is unmeasured because logging stopped at the last command. Do not label
-this trial a successful turn-and-return accuracy check. A visual confirmation
-from the user and a repeat with a post-command settle window are needed.
+larger than the small change seen during the preceding still period. Because
+the user saw the lens and scene return, the estimate disagrees with the
+observed pan return. The qualitative view cannot prove exact angular return
+or isolate the cause: gyro integration, sparse reads during movement, bias
+change, or relative motion of the IMU mount remain possible. It is **not**
+evidence that the servo itself failed. The tilt return is unmeasured because
+logging stopped at the last command. Do not label this trial a successful
+turn-and-return orientation-accuracy check; repeat with a post-command settle
+window and retain the visual return observation.
 
 The preview snapshots also reported median capture 30.09 fps, analysis
 30.09 fps, and skipped decoded frames increasing from 2 to 3 during the
