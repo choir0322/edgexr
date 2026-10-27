@@ -36,7 +36,9 @@ servo process polls `/api/telemetry` about every 50 ms and stores image-free
 orientation snapshots beside timestamped actual servo commands under ignored
 `recordings/`. This is host-observed telemetry, not every IMU sample or camera
 exposure synchronization. The [run guide](LIVE_ORIENTATION_SERVO_TEST.md)
-documents the log files and failure states.
+documents the log files and failure states. The process now keeps polling for
+two seconds after final commanded 0° and requires a ready sample at least one
+second afterward before marking its recording complete.
 
 The offline servo recorder now accepts `--imu-interval` (default 0.05 s), passed
 to the combined recorder's post-read sleep. The explicit 0.01 s polling trial

@@ -65,7 +65,8 @@ one-degree commands to pan channel 2 and tilt channel 3, sequentially from
 supplies the quaternion. The servo process saves each issued command with a
 Pi host timestamp and polls the preview's image-free telemetry about every
 50 ms; see [the run guide](../LIVE_ORIENTATION_SERVO_TEST.md). These snapshots
-are not every underlying IMU read. If a commanded sweep does not match lens motion,
+are not every underlying IMU read. Logging continues two seconds after the
+last 0° command to observe settled orientation. If a commanded sweep does not match lens motion,
 do not treat the command angle as measured camera angle. This is an attended
 demonstration, not an AP benchmark or a visual/IMU fusion algorithm.
 

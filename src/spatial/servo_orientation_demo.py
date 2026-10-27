@@ -21,6 +21,7 @@ PAN_CHANNEL = 2
 TILT_CHANNEL = 3
 LIMIT_DEG = 20
 STEP_SECONDS = 0.1  # 1 commanded degree per 100 ms: at most 10 commanded °/s.
+FINAL_SETTLE_SECONDS = 2.0
 TELEMETRY_URL = "http://127.0.0.1:8765/api/telemetry"
 
 
@@ -127,6 +128,21 @@ def output_folder(selected: Path | None) -> Path:
     return path
 
 
+def has_settled_sample(final_command_s: float | None,
+                       last_ready_sample_s: float | None) -> bool:
+    """Check that live orientation was captured at least one second after stop.
+
+    Args:
+        final_command_s (float | None): Host time of final issued servo command.
+        last_ready_sample_s (float | None): Host time of latest live/ready poll.
+
+    Returns:
+        bool: Whether the final position has a post-command observation.
+    """
+    return (final_command_s is not None and last_ready_sample_s is not None
+            and last_ready_sample_s >= final_command_s + 1.0)
+
+
 def record_telemetry(stop: threading.Event, path: Path, counts: dict) -> None:
     """Poll all non-image preview fields during motion and save timestamped JSONL.
 
@@ -145,12 +161,13 @@ def record_telemetry(stop: threading.Event, path: Path, counts: dict) -> None:
                     row = {"host_poll_midpoint_s": (before + time.monotonic()) / 2,
                            "telemetry": snapshot}
                     orientation = snapshot.get("imu", {}).get("relative_orientation", {})
-                    if orientation.get("status") == "ready":
+                    if snapshot.get("status") == "live" and orientation.get("status") == "ready":
                         counts["ready_samples"] += 1
                         angle = orientation.get("angle_deg")
                         if angle is not None and angle > counts["peak_angle_deg"]:
                             counts["peak_angle_deg"] = angle
                         counts["final_orientation"] = orientation
+                        counts["last_ready_sample_s"] = row["host_poll_midpoint_s"]
                     counts["samples"] += 1
                 except Exception as error:
                     row = {"host_poll_midpoint_s": (before + time.monotonic()) / 2,
@@ -201,21 +218,25 @@ def main() -> int:
     # driver and writing 0° only happens after explicit arming.
     stop_log = threading.Event()
     counts = {"samples": 0, "ready_samples": 0, "errors": 0,
-              "peak_angle_deg": 0.0, "final_orientation": None, "logger_error": None}
+              "peak_angle_deg": 0.0, "final_orientation": None,
+              "last_ready_sample_s": None, "logger_error": None}
     started = time.monotonic()
     status = "partial"
     failure = None
     exit_code = 1
     logger: threading.Thread | None = None
+    final_command_s: float | None = None
     folder.mkdir(parents=True)
     commands_path = folder / "servo_commands.jsonl"
     try:
         with commands_path.open("w") as command_log:
             def save_command(axis: str, angle: int, actual: float) -> None:
                 """Flush a motor command so even an interrupted run keeps its history."""
+                nonlocal final_command_s
                 command_log.write(json.dumps({"host_command_s": actual,
                                               "axis": axis, "angle_deg": angle}) + "\n")
                 command_log.flush()
+                final_command_s = actual
 
             logger = threading.Thread(target=record_telemetry,
                 args=(stop_log, folder / "telemetry.jsonl", counts), daemon=True)
@@ -235,8 +256,10 @@ def main() -> int:
             time.sleep(2)
             count = run_steps(steps, servos,
                 on_command=lambda step, actual: save_command(step.axis, step.angle_deg, actual))
+            print("Final 0° command sent; logging two seconds of settled orientation.", flush=True)
+            time.sleep(FINAL_SETTLE_SECONDS)
             status = "complete"
-            print(f"Completed {count} commands; pan and tilt returned to commanded 0°. ", flush=True)
+            print(f"Completed {count} commands; pan and tilt returned to commanded 0°.", flush=True)
             exit_code = 0
     except KeyboardInterrupt:
         failure = "interrupted"
@@ -253,9 +276,10 @@ def main() -> int:
             logger.join(timeout=2)
         if logger is not None and logger.is_alive():
             counts["logger_error"] = "logger did not stop within two seconds"
-        if status == "complete" and (counts["logger_error"] or not counts["ready_samples"]):
+        settled_sample = has_settled_sample(final_command_s, counts["last_ready_sample_s"])
+        if status == "complete" and (counts["logger_error"] or not settled_sample):
             status = "telemetry_incomplete"
-            failure = counts["logger_error"] or "no ready orientation snapshots captured"
+            failure = counts["logger_error"] or "no live, ready orientation at least one second after final command"
             exit_code = 1
         (folder / "metadata.json").write_text(json.dumps({
             "status": status, "error": failure,
@@ -268,6 +292,10 @@ def main() -> int:
             "telemetry_errors": counts["errors"], "logger_error": counts["logger_error"],
             "peak_sampled_angle_deg": counts["peak_angle_deg"],
             "final_sampled_orientation": counts["final_orientation"],
+            "final_command_monotonic_s": final_command_s,
+            "last_ready_sample_monotonic_s": counts["last_ready_sample_s"],
+            "settled_final_sample": settled_sample,
+            "final_settle_seconds": FINAL_SETTLE_SECONDS,
             "telemetry_poll_interval_seconds": 0.05,
             "timestamp_scope": "Pi host monotonic command times and HTTP poll midpoints; not camera exposure synchronization",
         }, indent=2) + "\n")

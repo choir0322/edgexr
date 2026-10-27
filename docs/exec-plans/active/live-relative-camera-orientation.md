@@ -57,6 +57,10 @@ camera estimate or synchronized video pose.
 - [ ] Repeat once on the Pi using the new recording path; inspect `metadata.json`
   and the telemetry around pan/tilt peaks and final commanded center. Do not
   equate a sampled peak with every underlying IMU read.
+- [x] 2026-10-28: [First logged trial](../../LIVE_ORIENTATION_SERVO_RESULTS.md)
+  showed 428 ready snapshots and a persistent pan-axis return difference;
+  telemetry ended just before the final tilt 0° command. Extend logger two
+  seconds after the last command and require a post-command ready sample.
 - [ ] Run a fixed-base Pi still and supervised return trial; record drift,
   gaps, residual, CPU, IMU rate, motion rate, skips and temperature.
 

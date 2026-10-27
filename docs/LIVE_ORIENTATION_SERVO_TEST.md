@@ -42,7 +42,8 @@ waits three seconds before importing/initializing the Fusion HAT servo driver,
 then centers both axes, waits two seconds, and commands pan
 `0 → −20 → +20 → 0`, then tilt `0 → −20 → +20 → 0`. Each 1° command is at least
 100 ms after the preceding command; the axes are not moved together. It ends
-after this single sweep. `Ctrl+C` stops future commands but may leave a servo
+after this single sweep and two seconds of final orientation logging. `Ctrl+C`
+stops future commands but may leave a servo
 holding its last angle; inspect the rig before intervening. Do not manually
 force a powered servo.
 
@@ -63,8 +64,10 @@ and `metadata.json` (sample count, sampled peak angle, last ready orientation,
 and errors). The files retain Pi host-monotonic times, so command and telemetry
 can be compared approximately. The snapshots are **not every underlying IMU
 read** and are not exposure-synchronized. An interrupted run keeps its partial
-logs. A telemetry failure makes the run status `telemetry_incomplete` rather
-than silently claiming a complete recorded trial.
+logs. A telemetry failure or absence of a ready sample at least one second
+after final tilt 0° makes the run status `telemetry_incomplete` rather than
+silently claiming a complete recorded trial. The [first logged trial](LIVE_ORIENTATION_SERVO_RESULTS.md)
+showed why this final settle period matters.
 
 After the run, inspect the summary on the Pi:
 

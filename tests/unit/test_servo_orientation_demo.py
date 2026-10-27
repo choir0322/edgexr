@@ -7,7 +7,9 @@ from threading import Event
 from unittest.mock import patch
 import json
 
-from spatial.servo_orientation_demo import LIMIT_DEG, build_steps, record_telemetry, run_steps
+from spatial.servo_orientation_demo import (
+    LIMIT_DEG, build_steps, has_settled_sample, record_telemetry, run_steps,
+)
 
 
 class FakeServo:
@@ -91,7 +93,8 @@ class ServoOrientationDemoTests(unittest.TestCase):
             return {"status": "live", "imu": {"relative_orientation": orientation}}
 
         counts = {"samples": 0, "ready_samples": 0, "errors": 0,
-                  "peak_angle_deg": 0.0, "final_orientation": None, "logger_error": None}
+                  "peak_angle_deg": 0.0, "final_orientation": None,
+                  "last_ready_sample_s": None, "logger_error": None}
         with TemporaryDirectory() as directory:
             path = Path(directory) / "telemetry.jsonl"
             with patch("spatial.servo_orientation_demo.preview_snapshot", one_snapshot):
@@ -100,7 +103,14 @@ class ServoOrientationDemoTests(unittest.TestCase):
         self.assertEqual(row["telemetry"]["imu"]["relative_orientation"], orientation)
         self.assertEqual(counts["ready_samples"], 1)
         self.assertEqual(counts["peak_angle_deg"], 12.5)
+        self.assertIsNotNone(counts["last_ready_sample_s"])
         self.assertIsNone(counts["logger_error"])
+
+    def test_final_observation_must_follow_last_command(self) -> None:
+        """A sample from just before commanded zero cannot validate return."""
+        self.assertFalse(has_settled_sample(336.369, 336.367))
+        self.assertFalse(has_settled_sample(336.369, 337.0))
+        self.assertTrue(has_settled_sample(336.369, 337.5))
 
 
 if __name__ == "__main__":
