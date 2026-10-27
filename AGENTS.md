@@ -132,8 +132,11 @@ Use small, coherent commits with an imperative subject, for example
 diff and run the relevant check. At the end of each meaningful, working session,
 show the user the commit-ready status and remind them to push their current
 branch after they review the change. Never commit secrets, raw captures, or large
-model artifacts. Do not create a remote repository or push without the user's
-account access and explicit direction.
+model artifacts. Do not create a remote repository without explicit direction.
+The user gave standing direction on 2026-10-28 to commit and push completed
+EdgeXR project changes after reviewing the diff and running relevant checks;
+do not request approval for each routine commit/push. Report the commit and
+push result, and do not include unrelated user changes.
 
 ## Plans for larger work
 

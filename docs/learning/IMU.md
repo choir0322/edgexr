@@ -62,7 +62,10 @@ run the normal live preview in one Pi terminal, then run
 `spatial.servo_orientation_demo` in another. That separate script sends
 one-degree commands to pan channel 2 and tilt channel 3, sequentially from
 0° to −20° to +20° to 0° on each axis. The IMU, not the servo command values,
-supplies the quaternion. If a commanded sweep does not match lens motion,
+supplies the quaternion. The servo process saves each issued command with a
+Pi host timestamp and polls the preview's image-free telemetry about every
+50 ms; see [the run guide](../LIVE_ORIENTATION_SERVO_TEST.md). These snapshots
+are not every underlying IMU read. If a commanded sweep does not match lens motion,
 do not treat the command angle as measured camera angle. This is an attended
 demonstration, not an AP benchmark or a visual/IMU fusion algorithm.
 

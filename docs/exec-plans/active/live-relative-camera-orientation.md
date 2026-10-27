@@ -49,6 +49,14 @@ camera estimate or synchronized video pose.
   preserve raw and camera-axis rates and avoid linking pose into tracking.
 - [x] Review/update `docs/PIPELINE.md` and `docs/learning/IMU.md` for the new
   live branch, including axes, units, timing, freshness, unknown/reset rules.
+- [x] 2026-10-27: First attended Pi pan/tilt trial completed 160 bounded
+  commands and the user saw the browser quaternion change. Exact peak/return
+  values were not recorded, so no quantitative orientation claim follows.
+- [x] Add image-free timestamped preview telemetry and actual-command logging
+  to future one-shot servo runs; hardware-free logger and schedule tests pass.
+- [ ] Repeat once on the Pi using the new recording path; inspect `metadata.json`
+  and the telemetry around pan/tilt peaks and final commanded center. Do not
+  equate a sampled peak with every underlying IMU read.
 - [ ] Run a fixed-base Pi still and supervised return trial; record drift,
   gaps, residual, CPU, IMU rate, motion rate, skips and temperature.
 

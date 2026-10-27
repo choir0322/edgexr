@@ -1,8 +1,13 @@
 """No-hardware checks for the supervised live-orientation servo demonstration."""
 
 import unittest
+from pathlib import Path
+from tempfile import TemporaryDirectory
+from threading import Event
+from unittest.mock import patch
+import json
 
-from spatial.servo_orientation_demo import LIMIT_DEG, build_steps, run_steps
+from spatial.servo_orientation_demo import LIMIT_DEG, build_steps, record_telemetry, run_steps
 
 
 class FakeServo:
@@ -60,6 +65,42 @@ class ServoOrientationDemoTests(unittest.TestCase):
                 run_steps([Step("pan", target, 0.1)], {"pan": servo},
                           clock=lambda: 0.0, pause=lambda _: None)
         self.assertEqual(servo.commands, [])
+
+    def test_issued_commands_include_host_times_for_logging(self) -> None:
+        """Command callbacks receive the actual time after each fake servo call."""
+        now = [0.0]
+        observed = []
+
+        def pause(seconds: float) -> None:
+            now[0] += seconds
+
+        run_steps(build_steps()[:2], {"pan": FakeServo()},
+                  clock=lambda: now[0], pause=pause,
+                  on_command=lambda step, at: observed.append((step.angle_deg, at)))
+        self.assertEqual([angle for angle, _ in observed], [-1, -2])
+        self.assertGreaterEqual(observed[1][1] - observed[0][1], 0.1 - 1e-9)
+
+    def test_logger_retains_full_orientation_sample(self) -> None:
+        """Polling saves the quaternion and derived angle, without image bytes."""
+        stop = Event()
+        orientation = {"status": "ready", "angle_deg": 12.5,
+                       "quaternion_wxyz": [0.9, 0.1, 0.2, 0.3]}
+
+        def one_snapshot() -> dict:
+            stop.set()
+            return {"status": "live", "imu": {"relative_orientation": orientation}}
+
+        counts = {"samples": 0, "ready_samples": 0, "errors": 0,
+                  "peak_angle_deg": 0.0, "final_orientation": None, "logger_error": None}
+        with TemporaryDirectory() as directory:
+            path = Path(directory) / "telemetry.jsonl"
+            with patch("spatial.servo_orientation_demo.preview_snapshot", one_snapshot):
+                record_telemetry(stop, path, counts)
+            row = json.loads(path.read_text().strip())
+        self.assertEqual(row["telemetry"]["imu"]["relative_orientation"], orientation)
+        self.assertEqual(counts["ready_samples"], 1)
+        self.assertEqual(counts["peak_angle_deg"], 12.5)
+        self.assertIsNone(counts["logger_error"])
 
 
 if __name__ == "__main__":

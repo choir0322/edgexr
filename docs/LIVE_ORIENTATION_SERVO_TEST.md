@@ -2,7 +2,8 @@
 
 This is an attended physical demonstration, not an AP benchmark. The motor
 controller is a separate process so the existing preview remains the sole
-owner of `/dev/video0`. It does not save a video or motor/IMU log.
+owner of `/dev/video0`. It does not save video. It now saves sampled preview
+telemetry and each issued motor command in an ignored `recordings/` folder.
 
 On the Pi, first make sure no other motor controller or camera capture is
 running. Keep the camera head still during the preview's first second:
@@ -15,14 +16,24 @@ PYTHONPATH=src python3 -m app.live_preview \
   --relative-orientation
 ```
 
-Open the usual SSH-forwarded browser on the Mac. Check that IMU and relative
-orientation both say ready, with a near-zero relative turn before moving.
+On the Mac, use a terminal for the SSH tunnel (leave it open):
+
+```bash
+ssh -N -o ExitOnForwardFailure=yes \
+  -L 127.0.0.1:8765:127.0.0.1:8765 pi@ai-fusion.local
+```
+
+Then open `http://127.0.0.1:8765` on the Mac. If local port 8765 is already
+in use, first check whether an existing tunnel/browser tab already works.
+Check that IMU and relative orientation both say ready, with a near-zero
+relative turn before moving.
 In a **second Pi terminal**, while physically watching the rig, run:
 
 ```bash
 cd ~/projects/edgexr
 sudo env PYTHONPATH=src python3 -m spatial.servo_orientation_demo \
-  --execute --confirm-centered --confirm-clearance
+  --execute --confirm-centered --confirm-clearance \
+  --output recordings/servo-orientation-01
 ```
 
 The confirmations mean you have checked that 0° is safe, both axes and cables
@@ -44,6 +55,31 @@ the peak and final relative-turn angles for pan and tilt, whether the lens
 visibly returned, any `unknown`/stale status, and any unexpected cable or
 servo behavior. A nonzero final angle can arise from gyro bias/drift and
 sparse sampling; commanded servo degrees are not measured shaft angle.
+
+The command requires the live quaternion preview to be ready before any motor
+command. It writes `servo_commands.jsonl` (including initial 0° commands),
+`telemetry.jsonl` (one full image-free preview snapshot about every 50 ms),
+and `metadata.json` (sample count, sampled peak angle, last ready orientation,
+and errors). The files retain Pi host-monotonic times, so command and telemetry
+can be compared approximately. The snapshots are **not every underlying IMU
+read** and are not exposure-synchronized. An interrupted run keeps its partial
+logs. A telemetry failure makes the run status `telemetry_incomplete` rather
+than silently claiming a complete recorded trial.
+
+After the run, inspect the summary on the Pi:
+
+```bash
+cat recordings/servo-orientation-01/metadata.json
+head -n 2 recordings/servo-orientation-01/telemetry.jsonl
+tail -n 2 recordings/servo-orientation-01/telemetry.jsonl
+```
+
+To transfer the small logs to the Mac (run on the Mac):
+
+```bash
+scp -r pi@ai-fusion.local:/home/pi/projects/edgexr/recordings/servo-orientation-01 \
+  /Users/ryanchoi/Desktop/
+```
 
 The initial demo adds a separate motor-control process and uses a changing
 scene. Do not compare its total CPU or temperature directly with a stationary

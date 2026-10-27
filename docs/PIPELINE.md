@@ -31,7 +31,12 @@ For an attended physical check, a **separate**
 then tilt sweep through the already-confirmed Fusion HAT channels 2 and 3.
 It never opens the camera or reads the IMU: movement reaches the live
 orientation branch only through the real head-mounted sensor. The preview
-still has no servo command endpoint or autonomous continuous motor loop.
+still has no servo command endpoint or autonomous continuous motor loop. The
+servo process polls `/api/telemetry` about every 50 ms and stores image-free
+orientation snapshots beside timestamped actual servo commands under ignored
+`recordings/`. This is host-observed telemetry, not every IMU sample or camera
+exposure synchronization. The [run guide](LIVE_ORIENTATION_SERVO_TEST.md)
+documents the log files and failure states.
 
 The offline servo recorder now accepts `--imu-interval` (default 0.05 s), passed
 to the combined recorder's post-read sleep. The explicit 0.01 s polling trial
