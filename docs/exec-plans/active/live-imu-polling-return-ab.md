@@ -36,8 +36,10 @@ provide an exposure-synchronized image/IMU join.
 - [x] 2026-10-28: First 50 ms run exposed a duplicate `after_pan` checkpoint
   at the intermediate 0° crossing. Select the terminal pan command by its
   schedule identity; add a regression test. Original `50a` is invalid for A/B.
-- [ ] Run two fresh-reference trials at each setting on the Pi; record actual
-  IMU rates and quaternion-relative returns. Hardware results are pending.
+- [x] 2026-10-28: Four corrected, complete Pi runs transferred and analyzed;
+  [results](../../LIVE_IMU_POLLING_AB_RESULTS.md) record actual IMU rates,
+  checkpoint-relative quaternions and small-image checks. User physical-return
+  confirmation and AP cost measurement remain pending.
 
 ## Plan of work
 
@@ -93,6 +95,8 @@ diagram was reviewed and does not need a topology update.
 ## Outcomes and retrospective
 
 Implementation is complete and hardware-free tests pass. The live pipeline
-diagram now distinguishes the 50/10 ms post-read wait and the servo process's
-three ignored 320×180 PGM checkpoints. Pi comparison results remain pending;
-there is no sampling-cause or AP-savings claim yet.
+diagram distinguishes the 50/10 ms post-read wait and the servo process's
+three ignored 320×180 PGM checkpoints. Two valid runs per setting show much
+smaller estimated return residual at 10 ms, but do not prove physical return,
+absolute accuracy, a unique sampling cause, or AP savings. The invalid first
+50 ms trial is retained outside Git rather than silently reused.
