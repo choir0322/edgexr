@@ -1,5 +1,9 @@
 # First live scene-memory trial — 2026-10-29
 
+Follow-up: [image-backed diagnosis](LIVE_SCENE_IMAGE_RESULTS.md) inspected the
+next trial. Its final 13 observations were known, so it does not reproduce or
+retroactively explain this earlier final unknown.
+
 Source: user-transferred `live-scene-01`, 139 valid JSONL rows spanning
 138.05 seconds, Pi revision `9ed8898` with dirty tree reported. Detection off,
 10 ms post-read IMU sleep, unchanged scene thresholds. Full derived evidence:

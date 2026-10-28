@@ -43,6 +43,13 @@ not calibrated pose or live image/IMU fusion.
 
 ## Record format for subsequent stages
 
+Image-backed follow-up: [diagnosis](LIVE_SCENE_IMAGE_RESULTS.md) and
+[machine-readable result](../benchmarks/results/live-scene-images-01-2026-10-29.json).
+All 180 linked images present; 56 post-enrollment unknowns primarily reflected
+limited overlap/support with the sole reference. Final 13 decisions were known.
+Final quaternion difference from enrollment was 9.63° despite similar views;
+exact pose unmeasured. Keep thresholds; expand explicit reference coverage next.
+
 ### Live visual scene memory — 2026-10-29
 
 [Separate-recording validation](../benchmarks/results/scene-revisit-heldout-2026-10-29.json)

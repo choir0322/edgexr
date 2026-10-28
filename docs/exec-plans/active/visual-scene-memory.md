@@ -108,6 +108,13 @@ an unrelated code cleanup.
 
 ## Outcomes and retrospective
 
+Image-backed Pi trial analyzed: 180 images/rows, all 56 post-enrollment unknown
+frames visually reviewed, 31 few-matches / 24 concentrated-support / one
+geometric rejection. Last 13 queries known; prior final unknown not reproduced.
+See docs/LIVE_SCENE_IMAGE_RESULTS.md. Next: multiple distinct explicit reference
+views, unchanged thresholds. Orientation accuracy unresolved. Pipeline and
+learning guide reviewed unchanged because this is evidence-only work.
+
 Image diagnostic extension: 176 tests passed, including pixel-exact saved PNG
 comparison with the canonical ORB input. A ten-second synthetic live run stopped
 automatically and saved ten JSONL rows linked to ten PNGs. Changed Python files
