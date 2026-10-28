@@ -1,0 +1,20 @@
+{
+  "stage": "Separate-recording scene-memory validation",
+  "source": "combined-motion-01/camera.mkv",
+  "sha256": "743d6c05b12f8d5c00da6ded299b7ebd9f1b3e4f68d53abe76589fb20257fd1e",
+  "source_commit": "42094fbe982c0de463df2cab4ec9e0c0108b2c93",
+  "dirty": false,
+  "host": "macOS-27.0.1-arm64-arm-64bit",
+  "python": "3.11.6",
+  "opencv": "4.11.0",
+  "reported_opencv_threads": 8,
+  "protocol": "Visually inspect frames at 2, 7, 13 seconds before replay; defaults unchanged from cf7d29d. One explicit reference A=2, queries 7 and 13.",
+  "results": [
+    {"seconds": 2.008, "state": "enrolled", "label": "A", "features": 600},
+    {"seconds": 7.029, "state": "unknown", "matches": 2},
+    {"seconds": 13.014, "state": "known", "label": "A", "matches": 45, "inliers": 33, "inlier_ratio": 0.7333333333333333, "reference_cells": 4, "query_cells": 5, "reference_coverage": 0.1603646756882962, "query_coverage": 0.1665147889216693}
+  ],
+  "AP_metrics": "Not measured; correctness-only Mac replay, not Pi live performance",
+  "limits": "Unused scene-memory recording, same room. Visually overlapping return, not measured exact angle. One positive and one negative query do not establish general accuracy.",
+  "decision": "Proceed to opt-in live integration without modifying recognition thresholds."
+}

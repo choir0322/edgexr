@@ -2,6 +2,25 @@
 
 ## Separate offline scene-memory branch — 2026-10-29
 
+The optional live route is now implemented separately as well:
+
+```mermaid
+flowchart LR
+    F["FFmpeg 720p gray when scene memory or detection enabled"] --> C["Capture: sequence + host receipt time"]
+    C --> M["320x180 motion worker: unchanged estimator"]
+    I["IMU quaternion history: at most 256 samples"] -->|preceding sample within 200 ms| C
+    C --> S["One latest full frame + orientation context"]
+    S --> W["Scene worker: target 1 Hz; resize 640x360; unchanged ORB/geometry rules"]
+    B["Browser explicit enrollment POST"] --> W
+    W --> R["Known / unknown / enrolled; reference and query orientation context"]
+    R --> T["State snapshot → browser + telemetry; stale after 2 s"]
+    R --> L["Optional non-image JSONL"]
+```
+
+This association uses host observation times, not exposure synchronization.
+No scene match corrects gyro drift or supplies camera position. Unknown frames
+do not automatically enroll. See [live protocol](LIVE_SCENE_MEMORY.md).
+
 The implemented `spatial.scene_revisit` tool reads a local video, processes
 explicit reference/query times chronologically, and writes a report with
 selected PNGs under ignored `recordings/`. It is not connected to the live

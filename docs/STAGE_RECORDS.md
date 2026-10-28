@@ -43,6 +43,16 @@ not calibrated pose or live image/IMU fusion.
 
 ## Record format for subsequent stages
 
+### Live visual scene memory — 2026-10-29
+
+[Separate-recording validation](../benchmarks/results/scene-revisit-heldout-2026-10-29.json)
+passed with unchanged thresholds. Implemented [live worker](../src/spatial/live_scene.py),
+explicit enrollment and bounded preceding-IMU context; [run guide](LIVE_SCENE_MEMORY.md),
+[source map](learning/SCENE_MEMORY.md). Known views are not room position.
+Hardware-free tests and synthetic browser checks validate wiring; Pi live
+acceptance and sustained AP CPU/rate/memory/thermal measurements remain pending.
+AP question: query cadence/reference count versus recognition quality and contention.
+
 Add one concise row above and link its detailed technique guide, source/config,
 ExecPlan and measured result. In the measured result, keep these fields easy to
 find so a later website can render them without guessing:

@@ -27,7 +27,18 @@ deferred until the application and AP phases are complete. Follow the
    The decision contains reasons and candidate counts, not a calibrated score.
 7. `run` stores decisions and selected PNGs in a new ignored output folder,
    retaining actual/requested video times, thresholds and runtime provenance.
-   No result is currently published to the browser or used by the live IMU.
+   This offline route remains independent of the live route below.
 
-The next implementation will attach valid relative-direction context and a
-bounded live observation policy. Those paths are not present in this version.
+## Live source route
+
+`State.publish_frame` in `app/live_preview.py` retains full gray bytes, frame
+sequence, host receipt time and `LiveImu.orientation_at` context in one latest
+slot. The IMU helper searches a bounded history for a preceding sample within
+200 ms; it never guesses exposure pose. `spatial.live_scene.scene_latest`
+owns `SceneMemory`, targets 1 Hz and invokes the same `process` rules as replay.
+`LiveScene.enroll` queues at most one browser request; `take_request` consumes
+it only on a newer frame. References retain their enrollment orientation.
+`LiveScene.snapshot` independently ages the result. `State.snapshot` includes
+it under `scene` for the browser and telemetry endpoint. Optional JSONL stores
+each result; no visual result changes IMU integration or corrects drift.
+See [live commands and limits](../LIVE_SCENE_MEMORY.md).

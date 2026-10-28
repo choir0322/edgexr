@@ -94,6 +94,7 @@ class LiveImu:
         self.latest = None
         self.error = None
         self.sample_times = deque(maxlen=40)
+        self.orientation_history = deque(maxlen=256)
         self.samples = 0
         self.started = time.monotonic()
 
@@ -141,6 +142,28 @@ class LiveImu:
                 self.camera_axis_conversions += 1
                 if self.orientation is not None:
                     self.orientation.add(timestamp, self.camera_axis_rate)
+                    self.orientation_history.append((timestamp, self.orientation.snapshot(timestamp)))
+
+    def orientation_at(self, timestamp: float) -> dict:
+        """Associate only a preceding recent host observation, never an exposure pose.
+
+        Args:
+            timestamp (float): Camera frame host receipt seconds.
+        Returns:
+            dict: Orientation with source time/lag, or explicit unavailable reason.
+        """
+        with self.lock:
+            if self.error:
+                return {"status": "unknown", "reason": "IMU error"}
+            for observed, orientation in reversed(self.orientation_history):
+                if observed <= timestamp:
+                    lag = timestamp - observed
+                    if lag > 0.2:
+                        break
+                    return {**orientation, "sample_monotonic_s": observed,
+                            "frame_lag_ms": lag * 1000,
+                            "sample_age_ms": lag * 1000}
+        return {"status": "unknown", "reason": "No preceding orientation within 200 ms"}
 
     def fail(self, message: str) -> None:
         """Retain an IMU-specific failure without stopping the camera pipeline.

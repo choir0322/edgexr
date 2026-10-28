@@ -27,7 +27,13 @@ The user approved the roadmap and implementation sequence on 2026-10-29.
 - [x] Review/update docs/PIPELINE.md and the scene-memory learning guide.
 - [x] Provide a repeatable Pi command and review the implementation for commit/push.
 - [x] Validate the replay on the Pi: enrolled A → unknown → known A.
-- [ ] Validate on held-out scenes before live integration.
+- [x] Validate on a separate recording without threshold changes: combined-motion-01,
+  A=2, queries 7/13, enrolled → unknown → known. Same room, not broad accuracy.
+- [x] Add opt-in latest-frame live recognition, explicit enrollment and timestamped
+  preceding-IMU orientation context; preserve unknown/stale/error behavior.
+- [x] Test concurrency boundaries, enrollment, freshness and missing orientation;
+  update pipeline/source guide and provide Pi commands.
+- [ ] User validates the live behavior on the Pi; full AP measurement deferred.
 
 ## Plan of work
 
@@ -76,6 +82,13 @@ an unrelated code cleanup.
 
 ## Decision log
 
+- 2026-10-29: Live integration uses a target 1 Hz latest-frame worker and explicit
+  browser enrollment, unchanged visual thresholds. Store preceding orientation
+  within 200 ms of host frame receipt, not exposure pose; never correct gyro
+  or reject visual matches based on drifting orientation. Optional non-image
+  JSONL records preserve decisions and timestamps. New full-resolution pipe
+  workload also applies without object detection; AP cost remains unmeasured.
+
 - 2026-10-29: Begin with explicit reference enrollment. A failed match means
   unknown, not proof of a new place. Continuous automatic enrollment and IMU
   candidate ranking follow a successful recorded-input check.
@@ -84,6 +97,16 @@ an unrelated code cleanup.
   reduce false recognition from a small moving foreground object.
 
 ## Outcomes and retrospective
+
+2026-10-29 live extension: separate-recording A → B → A passed without changes
+to MemoryConfig. Implemented target-1-Hz worker, explicit same-origin enrollment,
+preceding-IMU context, stale/error status and optional non-image JSONL. Added
+mailbox, temporal association, actual ORB logging, HTTP origin and output
+preservation tests. Full suite: 175 tests passed; changed Python files passed
+the function-contract audit. Synthetic FFmpeg browser smoke verified empty memory,
+button enrollment, later unknown results and telemetry updates without hardware.
+Current pipeline/source map updated. Pi live recognition/orientation acceptance
+is still pending; no actual motor, camera or IMU was operated on the Mac.
 
 The offline module and CLI are implemented. The full suite ran 170 tests with
 one skip, including actual OpenCV scene tests in the approved temporary Mac

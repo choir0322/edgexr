@@ -22,7 +22,9 @@ now have user confirmation of visible return after both axes. Explicit 10 ms
 polling is the proposed reference for upcoming spatial work; residual drift
 still requires uncertainty handling. As of 2026-10-29 the
 [offline scene-memory tool](SCENE_MEMORY.md) is implemented and exercised on
-one existing Pi recording. Live integration and held-out recognition remain pending.
+two existing Pi recordings without threshold changes. Opt-in
+[live integration](LIVE_SCENE_MEMORY.md) is implemented; Pi live acceptance and
+broader similar-looking/moving-foreground evaluation remain pending.
 
 1. **Remember views on recorded input — first implementation complete.** Store a bounded
    set of representative scene frames and features. Use the existing plan's
@@ -30,8 +32,9 @@ one existing Pi recording. Live integration and held-out recognition remain pend
    recognize a previously observed region, distinguish a new one, and return
    unknown for weak or ambiguous evidence. Evaluate on separate footage with
    similar-looking regions and moving foregrounds.
-2. **Combine scene memory with live direction context.** Attach timestamped
-   relative orientation to stored views and use direction to rank candidates.
+2. **Combine scene memory with live direction context — implemented, Pi check pending.**
+   Attach timestamped relative orientation to stored views. Direction-based
+   candidate ranking remains future work; current matching is visual only.
    Visual evidence verifies a revisit; permit visual recovery when orientation
    is uncertain. Add memory limits, eviction/reset and known/new/unknown states
    to the live preview. Scene recognition alone does not provide a precise

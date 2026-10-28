@@ -84,6 +84,12 @@ tracks live and held-out work still needed.
 
 ## Evidence and limits
 
+Live integration is now opt-in: see [LIVE_SCENE_MEMORY.md](LIVE_SCENE_MEMORY.md)
+for complete Pi/Mac commands and timestamp association limits. The separate
+`combined-motion-01` replay passed without threshold changes, with 33 inliers
+on return and two descriptor matches to the turned-away view. Same-room
+recorded evidence does not establish general live reliability.
+
 The Mac development replay of existing Pi footage recognized the return at
 13.014 s with 324 geometric inliers spread across six cells in both images.
 The turned-away frame at 7.029 s had only seven descriptor matches to A and

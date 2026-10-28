@@ -24,6 +24,7 @@ import numpy as np
 from recording.visual_motion import WIDTH, HEIGHT, image_shift
 from imu.live_reader import LiveImu, poll_imu
 from spatial.camera_axes import load_camera_basis
+from spatial.live_scene import LiveScene, scene_latest
 from vision.live_detector import (
     DetectionState,
     CpuDetector,
@@ -87,6 +88,7 @@ class State:
         reidentify: bool = False,
         reid_retry_seconds: float = 0.0,
         reid_spatial: bool = False,
+        scene_memory: bool = False,
     ) -> None:
         """Create bounded latest-value storage and synchronization for the live workers.
 
@@ -102,6 +104,7 @@ class State:
             reidentify (bool): Enable experimental session-local appearance memory.
             reid_retry_seconds (float): Optional provisional return window.
             reid_spatial (bool): Optional image-motion support for retired IDs.
+            scene_memory (bool): Opt-in explicit visual view memory.
 
         Returns:
             None: initializes shared state without starting workers.
@@ -134,6 +137,9 @@ class State:
             reid_retry_seconds, reid_spatial,
         )
         self.detection_frame = None
+        self.scene = LiveScene(scene_memory)
+        self.scene_frame = None
+        self.full_frames = detection_enabled or scene_memory
 
     def publish_frame(
         self, pixels: bytes, timestamp: float, detection_pixels: bytes | None = None
@@ -158,6 +164,9 @@ class State:
             self.latest = (self.received, timestamp, pixels)
             if detection_pixels is not None and self.detector.enabled:
                 self.detection_frame = (self.received, timestamp, detection_pixels)
+            if detection_pixels is not None and self.scene.enabled:
+                self.scene_frame = (self.received, timestamp, detection_pixels,
+                                    self.imu.orientation_at(timestamp))
             self.capture_times.append(timestamp)
             self.condition.notify_all()
 
@@ -302,6 +311,7 @@ class State:
             result.pop("captured", None)
             result["imu"] = self.imu.snapshot(now)
             result["detector"] = self.detector.snapshot(now, status == "live")
+            result["scene"] = self.scene.snapshot(now, status == "live")
             return result
 
 
@@ -383,8 +393,8 @@ def camera_command(
         device (str | None): Verified V4L2 path such as /dev/video0; demo mode does not
             read it.
         demo (bool): Use synthetic FFmpeg imagery instead of a physical camera.
-        detection (bool): Keep full source pixels for detection instead of downsizing in
-            FFmpeg.
+        detection (bool): Legacy argument name: keep full source pixels for either
+            detection or scene memory instead of downsizing in FFmpeg.
         video_path (Path | None): Optional new Matroska file for a packet-copy
             camera recording; never opens the camera a second time.
 
@@ -487,7 +497,7 @@ def start_workers(
             while not state.stop.is_set():
                 full_size = (
                     SOURCE_WIDTH * SOURCE_HEIGHT
-                    if state.detector.enabled
+                    if state.full_frames
                     else WIDTH * HEIGHT
                 )
                 pixels = read_frame(process.stdout, full_size)
@@ -496,10 +506,10 @@ def start_workers(
                         state.fail("FFmpeg stopped. " + " | ".join(diagnostics))
                     return
 
-                # Timestamp host receipt before resizing. With detection enabled, publish
+                # Timestamp host receipt before resizing. With a full-frame consumer, publish
                 # a small motion image and the original 720p bytes from this same frame.
                 received = time.monotonic()
-                if state.detector.enabled:
+                if state.full_frames:
                     gray = np.frombuffer(pixels, dtype=np.uint8).reshape(
                         SOURCE_HEIGHT, SOURCE_WIDTH
                     )
@@ -582,6 +592,39 @@ def make_handler(state: State) -> type[BaseHTTPRequestHandler]:
     page = Path(__file__).with_name("preview.html").read_bytes()
 
     class Handler(BaseHTTPRequestHandler):
+        def do_POST(self) -> None:
+            """Accept same-origin explicit enrollment, never mutate state on GET.
+
+            Args:
+                None; request headers and path come from the local browser.
+            Returns:
+                None: JSON acknowledgment or an HTTP error.
+            """
+            host = self.headers.get("Host", "")
+            if (host.split(":")[0] not in ("127.0.0.1", "localhost") or
+                    self.headers.get("Origin") != f"http://{host}" or
+                    self.headers.get("Sec-Fetch-Site") == "cross-site"):
+                self.send_error(403)
+                return
+            if self.path != "/api/scene/enroll":
+                self.send_error(404)
+                return
+            try:
+                label = state.scene.enroll(time.monotonic())
+            except ValueError as error:
+                self.send_error(409, str(error))
+                return
+            content = json.dumps({"pending_label": label}).encode()
+            self.send_response(202)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(content)))
+            self.send_header("Cache-Control", "no-store")
+            self.end_headers()
+            try:
+                self.wfile.write(content)
+            except (BrokenPipeError, ConnectionResetError):
+                pass
+
         def do_GET(self) -> None:
             """Serve an allowed preview route or reject unsupported/cross-site requests.
 
@@ -739,9 +782,19 @@ def main() -> None:
         type=Path,
         default=Path("models/mobilenet-ssd/mobilenet_iter_73000.caffemodel"),
     )
+    parser.add_argument("--scene-memory", action="store_true",
+                        help="explicit visual view memory at target 1 Hz; no gyro correction")
+    parser.add_argument("--scene-output", type=Path,
+                        help="new recordings/ directory for non-image scene decisions")
     args = parser.parse_args()
 
     # Validate basic startup requirements before allocating worker resources.
+    if args.scene_output is not None:
+        root = (Path.cwd() / "recordings").resolve()
+        args.scene_output = args.scene_output.resolve()
+        if (not args.scene_memory or args.scene_output == root or
+                not args.scene_output.is_relative_to(root) or args.scene_output.exists()):
+            parser.error("--scene-output requires --scene-memory and a new directory under recordings/")
     if not 1024 <= args.port <= 65535:
         parser.error("port must be between 1024 and 65535")
     if not shutil.which("ffmpeg"):
@@ -772,17 +825,17 @@ def main() -> None:
         if not trial_path.is_relative_to(recordings_root) or trial_path == recordings_root:
             parser.error("--trial-output must be a new directory under this repo's ignored recordings/")
 
-    # Load OpenCV only for detection. Two internal threads are a baseline setting,
+    # Load OpenCV for detection or scene memory. Two threads are a baseline setting,
     # not reserved CPU cores; disable OpenCL to keep this path on the CPU.
     cv = None
-    if args.detect:
+    if args.detect or args.scene_memory:
         try:
             import cv2 as cv
 
             cv.setNumThreads(2)
             cv.ocl.setUseOpenCL(False)
         except ImportError:
-            parser.exit(1, "--detect requires OpenCV; see docs/DETECTION_BASELINE.md\n")
+            parser.exit(1, "Detection/scene memory requires OpenCV; see docs/SCENE_MEMORY.md\n")
 
     # Create shared state and start the server plus core camera/motion workers.
     # Keep resource handles available for cleanup even if later setup fails.
@@ -801,6 +854,7 @@ def main() -> None:
         reidentify=args.reidentify,
         reid_retry_seconds=args.reid_retry_seconds,
         reid_spatial=args.reid_spatial,
+        scene_memory=args.scene_memory,
     )
     process = None
     server = None
@@ -820,10 +874,17 @@ def main() -> None:
             )
         process, threads = start_workers(
             state, camera_command(
-                args.device, args.demo, args.detect,
+                args.device, args.demo, args.detect or args.scene_memory,
                 recorder.output / "camera.mkv" if recorder else None,
             ), cv
         )
+
+        if args.scene_memory:
+            worker = threading.Thread(target=scene_latest,
+                                      args=(state, cv, args.scene_output), daemon=True)
+            worker.start()
+            threads.append(worker)
+            print("Scene memory: explicit browser enrollment, target 1 Hz, 12 references maximum; orientation is host-timed context only.", flush=True)
 
         # Construct the detector inside its worker so model loading does not block
         # camera capture; track the thread for orderly shutdown.

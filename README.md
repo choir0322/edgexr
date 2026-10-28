@@ -8,7 +8,9 @@ materials. Keep tests and technical records throughout. The next implementation
 milestone is live visual scene memory and verified revisits, using the existing
 relative orientation as supporting context. The first
 [offline scene-memory tool](docs/SCENE_MEMORY.md) now recognizes an A → B → A
-sequence in an existing Pi recording; live integration and held-out evaluation
+sequence in two existing Pi recordings without threshold changes. The opt-in
+[live scene worker](docs/LIVE_SCENE_MEMORY.md) now adds explicit enrollment and
+timestamped preceding-IMU context. Pi live acceptance and broader evaluation
 remain pending. See the
 [recorded decision and completion criteria](docs/decisions/2026-10-26-development-order.md).
 This order supersedes the earlier feature → AP experiment → lesson cycle.
