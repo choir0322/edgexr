@@ -26,7 +26,8 @@ The user approved the roadmap and implementation sequence on 2026-10-29.
 - [x] Exercise the tool on transferred Pi footage; label development results.
 - [x] Review/update docs/PIPELINE.md and the scene-memory learning guide.
 - [x] Provide a repeatable Pi command and review the implementation for commit/push.
-- [ ] Validate the replay on the Pi and on held-out scenes before live integration.
+- [x] Validate the replay on the Pi: enrolled A → unknown → known A.
+- [ ] Validate on held-out scenes before live integration.
 
 ## Plan of work
 
@@ -88,5 +89,10 @@ The offline module and CLI are implemented. The full suite ran 170 tests with
 one skip, including actual OpenCV scene tests in the approved temporary Mac
 environment. The live path is unchanged; the pipeline now depicts the separate
 offline branch. The [run guide](../../SCENE_MEMORY.md) includes the Pi replay
-command and output transfer. Pi runtime, held-out scenes and live integration
-remain pending. No camera, IMU or motor was operated during development.
+command and output transfer. Pi reproduction succeeded on the same clip:
+320/388 return matches were geometric inliers across six cells. Isolated
+event compute was 90.87/56.60/110.06 ms; full AP metrics remain deferred.
+The reported working tree was dirty, so preserve that provenance limitation.
+Held-out scenes and live integration remain pending. No camera, IMU or motor
+was operated during development. Diagram and learning guide reviewed;
+unchanged because this records evidence, not a pipeline change.

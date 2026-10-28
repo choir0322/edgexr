@@ -1,0 +1,38 @@
+{
+  "stage": "offline scene-memory Pi reproduction",
+  "status": "complete",
+  "evidence": "User-supplied scene-revisit-01/report.json",
+  "device": "Raspberry Pi 4",
+  "host": "Linux-6.12.47+rpt-rpi-v8-aarch64-with-glibc2.36",
+  "python": "3.11.2",
+  "opencv": "4.11.0",
+  "opencv_threads": 2,
+  "git_revision": "cf7d29d46c8c5c0abad90b0abbf5c92bb4e05beb",
+  "git_dirty": true,
+  "source": "combined-motion-02/camera.mkv",
+  "source_sha256": "8b30c4d237280fad73d1fa12505a9d3c653fb70515f29b1348fc9b3bb8a5fa36",
+  "workload": "One chronological offline replay, explicit A=2, queries 7 and 13 seconds; 389 decoded frames",
+  "image_shape": "640x360 grayscale",
+  "camera_mode": "Previously recorded input; no camera negotiation in this test",
+  "scene": "Previously inspected development A-to-B-to-A room-view clip",
+  "power": "not recorded",
+  "cooling": "not recorded for this replay",
+  "warmup": "no explicit warmup reported",
+  "total_elapsed_seconds": "not measured",
+  "settings": {
+    "max_views": 12, "max_features": 600, "min_features": 60,
+    "ratio": 0.75, "max_hamming": 64, "min_matches": 24,
+    "min_inliers": 20, "min_inlier_ratio": 0.55,
+    "min_coverage": 0.12, "min_cells": 4,
+    "reprojection_pixels": 3.0, "ambiguity_ratio": 0.85
+  },
+  "events": [
+    {"video_s": 2.008, "state": "enrolled", "label": "A", "features": 589, "compute_ms": 90.8668},
+    {"video_s": 7.029, "state": "unknown", "matches_to_A": 7, "compute_ms": 56.598878},
+    {"video_s": 13.014, "state": "known", "label": "A", "matches": 388, "inliers": 320, "inlier_ratio": 0.8247422680412371, "reference_cells": 6, "query_cells": 6, "reference_coverage": 0.2286455080335616, "query_coverage": 0.22993167737716236, "compute_ms": 110.057678}
+  ],
+  "ap_metrics_not_measured": ["CPU", "RSS", "temperature", "sustained throughput", "live contention"],
+  "timing_scope": "Single-event wall compute excluding decoding and image/report I/O; not a sustained AP benchmark",
+  "limits": "Same development clip as Mac, not held-out accuracy. Dirty working tree contents unspecified. Pi return inliers 320 versus Mac 324; decisions agree but exact numeric results differ. No IMU association, camera pose or depth.",
+  "decision": "Pi reproduction passed. Check a separate recording without threshold tuning before live integration."
+}

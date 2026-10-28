@@ -92,6 +92,16 @@ development clip**, not held-out recognition accuracy or measured Pi performance
 The [small machine-readable record](../benchmarks/results/scene-revisit-development-2026-10-29.json)
 contains the input hash and derived counts. No image/descriptor payload is in Git.
 
+The [Pi reproduction](../benchmarks/results/scene-revisit-pi-2026-10-29.json)
+used the identical source hash and returned the same three states. The return
+had 320/388 geometric inliers across six cells, compared with 324 on the Mac;
+the exact numeric results differ, but both pass the unchanged criteria.
+Event compute was 90.87 ms to enroll, 56.60 ms to reject B, and 110.06 ms to
+recognize A. These three observations exclude decoding and I/O, and establish
+neither sustained live rate nor CPU cost. The Pi reported a dirty working tree.
+Next, test a separate recording without tuning thresholds to this clip, then
+integrate a bounded live scene worker with timestamped orientation context.
+
 A second replay enrolled both A at 2 s and B at 7 s. A query at 7.529 s still
 overlapped B visually, but contained only 62 features and 11 usable matches to
 B as the viewpoint changed; it returned unknown. The final query again retrieved

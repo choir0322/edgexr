@@ -32,7 +32,11 @@ reference enrollment, geometric verification, ambiguity rejection and LRU
 eviction. [Run guide](SCENE_MEMORY.md), [source map](learning/SCENE_MEMORY.md),
 [development result](../benchmarks/results/scene-revisit-development-2026-10-29.json).
 Real OpenCV synthetic checks and one Pi-recorded A → B → A clip passed on the
-Mac. Pi runtime and held-out recognition remain pending. AP question: how do
+Mac. [Pi reproduction](../benchmarks/results/scene-revisit-pi-2026-10-29.json)
+also returned enrolled A → unknown → known A, with 320 geometric inliers on
+return. Three isolated event times were 90.87/56.60/110.06 ms, excluding decoding
+and I/O; these are not sustained performance measurements. The Pi reported a
+dirty working tree. Held-out recognition remains pending. AP question: how do
 feature count, reference capacity and query cadence affect quality, latency
 and memory? Dedicated cost measurements are deferred. This is scene recognition,
 not calibrated pose or live image/IMU fusion.
