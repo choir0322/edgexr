@@ -24,7 +24,20 @@ Keep this register current throughout; absent AP measurements may be labelled
 | Supervised live pan/tilt demonstration | Separate [one-shot servo controller](../src/spatial/servo_orientation_demo.py) commands ±20° sequentially; [run guide](LIVE_ORIENTATION_SERVO_TEST.md) | [Logged trials](LIVE_ORIENTATION_SERVO_RESULTS.md): trial 03 recorded 5.49° pan and 7.26° tilt start-to-settled-return estimated changes despite visible returns; all 464 snapshots ready. AP cost deferred | Measured as diagnostics, not validated orientation accuracy; commanded degrees are not measured camera angles and ~19 Hz reads may miss motion detail |
 | Live IMU return A/B | Opt-in 10 or default 50 ms post-read sleep with three small grayscale view checkpoints per attended servo run; [preview](../src/app/live_preview.py), [servo logger](../src/spatial/servo_orientation_demo.py), [protocol](LIVE_IMU_POLLING_AB.md) | [Four-run Pi comparison](LIVE_IMU_POLLING_AB_RESULTS.md): 10 ms whole-run gyro residuals 1.07°/1.25° versus 50 ms 5.65°/11.75°; AP cost **not measured** | Two repeats/setting; user confirms visible return after both axes in all four valid runs. Exact physical angle and absolute orientation remain unmeasured. Raw images/logs stay out of Git |
 
-## Record format for each new stage
+## Recorded visual scene memory — 2026-10-29
+
+Implemented: [bounded ORB feature memory](../src/spatial/scene_memory.py) and
+[chronological video replay](../src/spatial/scene_revisit.py), with explicit
+reference enrollment, geometric verification, ambiguity rejection and LRU
+eviction. [Run guide](SCENE_MEMORY.md), [source map](learning/SCENE_MEMORY.md),
+[development result](../benchmarks/results/scene-revisit-development-2026-10-29.json).
+Real OpenCV synthetic checks and one Pi-recorded A → B → A clip passed on the
+Mac. Pi runtime and held-out recognition remain pending. AP question: how do
+feature count, reference capacity and query cadence affect quality, latency
+and memory? Dedicated cost measurements are deferred. This is scene recognition,
+not calibrated pose or live image/IMU fusion.
+
+## Record format for subsequent stages
 
 Add one concise row above and link its detailed technique guide, source/config,
 ExecPlan and measured result. In the measured result, keep these fields easy to

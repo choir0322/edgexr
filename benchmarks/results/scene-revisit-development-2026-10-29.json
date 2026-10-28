@@ -1,0 +1,28 @@
+{
+  "date": "2026-10-29",
+  "stage": "offline visual scene memory",
+  "status": "development replay completed; Pi and held-out evaluation pending",
+  "source_recording": "combined-motion-02/camera.mkv",
+  "source_sha256": "8b30c4d237280fad73d1fa12505a9d3c653fb70515f29b1348fc9b3bb8a5fa36",
+  "execution_device": "Mac development computer; Pi-recorded input",
+  "source_base_commit": "4a988939c2e04a6145b1674f7bdbdc2e008b7069",
+  "source_dirty_during_run": true,
+  "opencv_version": "4.11.0",
+  "numpy_version": "1.26.4",
+  "analysis_shape": [640, 360],
+  "settings": {"max_views": 12, "max_features": 600, "min_features": 60, "ratio": 0.75, "max_hamming": 64, "min_matches": 24, "min_inliers": 20, "min_inlier_ratio": 0.55, "min_coverage": 0.12, "min_cells": 4, "reprojection_pixels": 3.0, "ambiguity_ratio": 0.85},
+  "events": [
+    {"requested_s": 2.0, "actual_s": 2.008, "state": "enrolled", "scene_id": 1, "label": "A", "features": 589},
+    {"requested_s": 7.0, "actual_s": 7.029, "state": "unknown", "reason": "few_matches", "matches_to_A": 7},
+    {"requested_s": 13.0, "actual_s": 13.014, "state": "known", "scene_id": 1, "label": "A", "matches": 388, "inliers": 324, "inlier_ratio": 0.8350515463917526, "reference_cells": 6, "query_cells": 6}
+  ],
+  "second_replay": {
+    "references": {"A": 2.008, "B": 7.029},
+    "query_7_529_s": {"state": "unknown", "features": 62, "matches_to_A": 2, "matches_to_B": 11},
+    "query_13_014_s": {"state": "known", "label": "A", "inliers": 324},
+    "observation": "7.529 s frame visually overlaps B but has too few stable matches after the viewpoint changes. Coverage limitation retained without threshold adjustment."
+  },
+  "visual_review": "Selected frames inspected: reference and return show the same desk/bookshelf view; middle query is turned away.",
+  "ap_cost": "deferred; no Pi CPU, memory, temperature, latency or power result",
+  "limits": "Single existing development clip; no held-out success rate, camera pose, IMU association or physical location claim. Raw images and full report remain outside Git."
+}

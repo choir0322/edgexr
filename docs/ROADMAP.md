@@ -20,9 +20,11 @@ camera-axis conversion, gyro-only orientation, servo logging and initial AP
 profilers are implemented. The [four live polling trials](LIVE_IMU_POLLING_AB_RESULTS.md)
 now have user confirmation of visible return after both axes. Explicit 10 ms
 polling is the proposed reference for upcoming spatial work; residual drift
-still requires uncertainty handling. Scene memory remains unimplemented.
+still requires uncertainty handling. As of 2026-10-29 the
+[offline scene-memory tool](SCENE_MEMORY.md) is implemented and exercised on
+one existing Pi recording. Live integration and held-out recognition remain pending.
 
-1. **Remember views on recorded input — next implementation.** Store a bounded
+1. **Remember views on recorded input — first implementation complete.** Store a bounded
    set of representative scene frames and features. Use the existing plan's
    OpenCV ORB features and geometric verification to demonstrate A → B → A:
    recognize a previously observed region, distinguish a new one, and return

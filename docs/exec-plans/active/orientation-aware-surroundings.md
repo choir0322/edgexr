@@ -38,8 +38,10 @@ remain unresolved; do not silently use acceleration as trusted tilt or position.
   roadmap, project brief and the decision record. No runtime change in this update.
 - [x] 2026-10-26: User reports launching the implemented live quaternion
   preview; quantitative live quality and AP results remain unreported.
-- [ ] Next: implement bounded visual scene memory and geometry-verified
-  revisit recognition on recorded Pi input, then integrate with live telemetry.
+- [x] 2026-10-29: Implement [offline scene memory](../../SCENE_MEMORY.md), with
+  real OpenCV tests and an inspected return in existing Pi footage.
+- [ ] Next: verify on Pi and held-out scenes, then integrate bounded scene
+  memory with live telemetry and valid relative direction context.
 
 - [x] 2026-10-24: Review AP handoff against existing capture, IMU, tracker,
   detector and profiler; preserve it as an anchor rather than a replacement plan.
@@ -270,7 +272,7 @@ for the next orientation milestone.
 
 Gyro-only live relative camera orientation is implemented and the user reports
 running it on the Pi, with four logged polling trials and qualitative visual
-return confirmation. Scene memory, calibrated visual correction and mapping
-remain unimplemented. The 2026-10-28 roadmap update changes no runtime flow:
-pipeline diagram reviewed; unchanged. Later
-implementation must update the diagram and relevant guide accurately.
+return confirmation. Offline visual scene memory was implemented on 2026-10-29;
+live scene memory, calibrated visual correction and mapping remain pending.
+The pipeline and concise source guide now describe the offline branch while
+preserving the current live data flow.

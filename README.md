@@ -5,8 +5,11 @@
 **2026-10-26 development order:** finish the bounded vision/spatial-awareness
 application, then AP measurement and optimization, then detailed learning
 materials. Keep tests and technical records throughout. The next implementation
-milestone is visual scene memory and verified revisits, using the existing
-relative orientation as supporting context. See the
+milestone is live visual scene memory and verified revisits, using the existing
+relative orientation as supporting context. The first
+[offline scene-memory tool](docs/SCENE_MEMORY.md) now recognizes an A → B → A
+sequence in an existing Pi recording; live integration and held-out evaluation
+remain pending. See the
 [recorded decision and completion criteria](docs/decisions/2026-10-26-development-order.md).
 This order supersedes the earlier feature → AP experiment → lesson cycle.
 
@@ -47,7 +50,9 @@ attended one-shot test while the preview runs, follow the
 [live orientation servo test](docs/LIVE_ORIENTATION_SERVO_TEST.md). The first
 polling quality/resource cycle is complete. A separate
 [live 50 ms versus 10 ms return protocol](docs/LIVE_IMU_POLLING_AB.md) now
-records grayscale view checkpoints and actual IMU rate; Pi results are pending.
+records grayscale view checkpoints and actual IMU rate; the
+[four-run results](docs/LIVE_IMU_POLLING_AB_RESULTS.md) support explicit 10 ms
+polling for the next spatial work, with qualitative return confirmation.
 
 AP measurement: [fixed IMU polling resource comparison](docs/IMU_RESOURCE_BENCHMARK.md)
 measures the CPU cost of 50 ms versus 10 ms sleep on the same servo/camera workload.

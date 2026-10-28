@@ -1,5 +1,30 @@
 # Current live pipeline
 
+## Separate offline scene-memory branch — 2026-10-29
+
+The implemented `spatial.scene_revisit` tool reads a local video, processes
+explicit reference/query times chronologically, and writes a report with
+selected PNGs under ignored `recordings/`. It is not connected to the live
+workers or IMU. See [the scene-memory guide](SCENE_MEMORY.md).
+
+```mermaid
+flowchart LR
+    V["Local recorded video + selected times"] --> D["Sequential OpenCV decode<br/>actual video timestamp + grayscale"]
+    D --> F["prepare_gray: 640×360<br/>ORB: up to 600 features"]
+    F --> Q{"Explicit reference or query?"}
+    Q -->|reference| M["SceneMemory: up to 12 views by default<br/>XY points + binary descriptors + timestamps<br/>LRU eviction; session scene IDs"]
+    Q -->|query| C["verify_view against stored references<br/>Hamming + mutual matches<br/>RANSAC + distributed support + footprint checks"]
+    M --> C
+    C --> R["Known view or unknown<br/>Ambiguous candidates abstain"]
+    R --> O["report.json + selected PNGs<br/>No live pose correction or browser update"]
+```
+
+Inputs are 16:9 uint8 grayscale after decoding. Query observations never enroll
+automatically. Stored features are bounded, while private selected images stay
+in the output directory. Non-increasing decoder times or incomplete decoding
+produce a partial report. Offline compute timings exclude decoding/image I/O
+and are not live Pi performance measurements. The existing live path follows.
+
 An offline gyro-only experiment now reads the existing combined-capture
 `imu.csv`: first still window → per-run raw gyro offset → timestamped 3D
 rotation composition → relative **IMU-frame** quaternion and rotation vector.
