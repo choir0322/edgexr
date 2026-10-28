@@ -49,8 +49,12 @@ not calibrated pose or live image/IMU fusion.
 passed with unchanged thresholds. Implemented [live worker](../src/spatial/live_scene.py),
 explicit enrollment and bounded preceding-IMU context; [run guide](LIVE_SCENE_MEMORY.md),
 [source map](learning/SCENE_MEMORY.md). Known views are not room position.
-Hardware-free tests and synthetic browser checks validate wiring; Pi live
-acceptance and sustained AP CPU/rate/memory/thermal measurements remain pending.
+Hardware-free tests and synthetic browser checks validate wiring.
+[First Pi live log](LIVE_SCENE_RESULTS.md) demonstrates 1.00 Hz scene updates,
+one enrolled view and later known decisions. Physical revisit correctness and
+orientation consistency remain unverified; large quaternion disagreement with
+the reference needs investigation. Sustained AP CPU/memory/thermal measurements
+remain pending; isolated live wall compute is recorded in the result JSON.
 AP question: query cadence/reference count versus recognition quality and contention.
 
 Add one concise row above and link its detailed technique guide, source/config,

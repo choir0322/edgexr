@@ -34,6 +34,11 @@ The user approved the roadmap and implementation sequence on 2026-10-29.
 - [x] Test concurrency boundaries, enrollment, freshness and missing orientation;
   update pipeline/source guide and provide Pi commands.
 - [ ] User validates the live behavior on the Pi; full AP measurement deferred.
+  First transferred live log analyzed: 139 observations, 1.00 Hz, View-1 known
+  after unknown periods. Physical movement confirmation remains pending, and
+  52.67°/73.85° quaternion differences at two known observations are unresolved.
+  See docs/LIVE_SCENE_RESULTS.md. No threshold change; diagram/source guide
+  reviewed unchanged because this stage records evidence only.
 
 ## Plan of work
 
