@@ -72,6 +72,40 @@ an incomplete final line. Memory itself resets on application restart.
 
 ## Scheduling and timing limits
 
+### Image-backed diagnostic run (opt-in)
+
+The earlier telemetry cannot reconstruct camera images. For the next trial use
+the same launch command above, replace the output with
+`recordings/live-scene-images-01`, and append:
+
+```bash
+--scene-save-images --scene-seconds 180
+```
+
+The preview stops automatically after approximately 180 seconds of serving
+time (plus startup/shutdown). Save one textured reference, turn away and return
+several times, holding each view for about five seconds. Finish at the reference
+direction and hold for ten seconds before Ctrl+C if finishing before the timer.
+Do not force a powered servo. This program does not command motors.
+
+Every processed scene frame, including unknown results and enrollment, gets a
+640×360 grayscale PNG. JSONL `image` identifies that frame; `reference_images`
+maps stored scene IDs to enrollment PNGs, so rejected candidates can be inspected
+against their actual references. Images are the canonical input to feature
+extraction. `image_write_ms` separately records resize/PNG write wall time;
+`compute_ms` still excludes file I/O. Added disk work can affect scheduling,
+so do not compare this recording's timing directly to non-image runs.
+Image diagnostics require a new output directory and a 10–600 s timer. Default
+logging remains image-free. Files show your surroundings: keep them in ignored
+recordings/ and transfer only to your own Mac, not Git. Transfer with:
+
+```bash
+scp -r pi@ai-fusion.local:/home/pi/projects/edgexr/recordings/live-scene-images-01 \
+  /Users/ryanchoi/Desktop/
+```
+
+### Ordinary live scheduling
+
 With scene memory or detection enabled, FFmpeg sends 1280×720 gray to Python.
 Capture makes 320×180 motion pixels and retains one latest full frame. The
 scene worker resizes its selected full frame to 640×360 and targets **1 Hz**;

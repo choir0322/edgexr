@@ -56,6 +56,11 @@ orientation consistency remain unverified; large quaternion disagreement with
 the reference needs investigation. Sustained AP CPU/memory/thermal measurements
 remain pending; isolated live wall compute is recorded in the result JSON.
 AP question: query cadence/reference count versus recognition quality and contention.
+Diagnostic extension: opt-in timed scene PNGs link each decision to the selected
+image and stored references. User reports visible returns in live-scene-01 and
+not ending away; final unknown is a suspected miss. Image-backed Pi evidence
+pending; no thresholds changed. Diagnostic I/O is extra workload, not an AP
+optimization or comparable baseline.
 
 Add one concise row above and link its detailed technique guide, source/config,
 ExecPlan and measured result. In the measured result, keep these fields easy to

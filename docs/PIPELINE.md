@@ -14,7 +14,7 @@ flowchart LR
     B["Browser explicit enrollment POST"] --> W
     W --> R["Known / unknown / enrolled; reference and query orientation context"]
     R --> T["State snapshot → browser + telemetry; stale after 2 s"]
-    R --> L["Optional non-image JSONL"]
+    R --> L["Optional JSONL; opt-in timed diagnostic PNGs + reference links"]
 ```
 
 This association uses host observation times, not exposure synchronization.

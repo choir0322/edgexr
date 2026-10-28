@@ -11,11 +11,44 @@ import numpy as np
 from app.live_preview import State, make_server
 from imu.live_reader import LiveImu
 from spatial.live_scene import LiveScene, scene_latest
+from spatial.scene_memory import prepare_gray
 from urllib.request import Request, urlopen
 from urllib.error import HTTPError
 
 
 class LiveSceneTests(unittest.TestCase):
+    def test_opt_in_image_matches_source(self) -> None:
+        """Recorded query and reference point to the selected canonical image.
+
+        Args: None.
+        Returns: None.
+        """
+        try:
+            import cv2 as cv
+        except ImportError:
+            self.skipTest("OpenCV required")
+        state = State(scene_memory=True)
+        now = time.monotonic()
+        state.scene.enroll(now - 0.1)
+        gray = np.random.default_rng(7).integers(0, 256, (720, 1280), dtype=np.uint8)
+        state.publish_frame(bytes(320 * 180), now, gray.tobytes())
+        with tempfile.TemporaryDirectory() as folder:
+            output = Path(folder) / "trial"
+            worker = threading.Thread(target=scene_latest, args=(state, cv, output, True))
+            worker.start()
+            deadline = time.monotonic() + 5
+            while state.scene.result is None and not state.scene.error and time.monotonic() < deadline:
+                time.sleep(0.01)
+            state.stop.set()
+            worker.join(5)
+            self.assertIsNone(state.scene.error)
+            row = json.loads((output / "updates.jsonl").read_text().splitlines()[0])
+            self.assertEqual(row["reference_images"]["1"], row["image"])
+            saved = cv.imread(str(output / row["image"]), cv.IMREAD_GRAYSCALE)
+            np.testing.assert_array_equal(saved, prepare_gray(cv, gray))
+            self.assertGreaterEqual(row["image_write_ms"], 0)
+            self.assertTrue(json.loads((output / "metadata.json").read_text())["save_images"])
+
     def test_existing_output_is_preserved(self) -> None:
         """A recording path collision fails scene startup without overwriting evidence.
 

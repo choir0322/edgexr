@@ -34,7 +34,13 @@ but this is sufficient reason not to call the attached orientation validated.
 Possible causes cannot be distinguished without visual/movement evidence.
 Scene matching currently does not use these angles to accept/reject a match.
 
-Next: confirm whether the camera visibly returned to the taught direction,
+User follow-up: the camera visibly returned to the taught direction several
+times, and the user reports not ending pointed away (exact sequence uncertain).
+Therefore the final unknown period is a suspected missed recognition, not an
+assumed intentional turn away. Exact physical poses remain unmeasured.
+
+Next: inspect paired images in a new trial. The previous trial's missing images
+cannot be recovered from telemetry. Confirm whether the camera visibly returned to the taught direction,
 and whether the final unknown period was an intentional turn away. If needed,
 retain paired small reference/query images in the next explicitly recorded
 trial to distinguish real view changes, matching errors and gyro disagreement.

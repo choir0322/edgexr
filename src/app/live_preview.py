@@ -786,9 +786,20 @@ def main() -> None:
                         help="explicit visual view memory at target 1 Hz; no gyro correction")
     parser.add_argument("--scene-output", type=Path,
                         help="new recordings/ directory for non-image scene decisions")
+    parser.add_argument("--scene-save-images", action="store_true",
+                        help="save selected scene PNGs; requires --scene-output and --scene-seconds")
+    parser.add_argument("--scene-seconds", type=float,
+                        help="stop preview after 10–600 seconds; requires --scene-output")
     args = parser.parse_args()
 
     # Validate basic startup requirements before allocating worker resources.
+    if args.scene_seconds is not None and (args.scene_output is None or
+            not math.isfinite(args.scene_seconds) or not 10 <= args.scene_seconds <= 600):
+        parser.error("--scene-seconds requires --scene-output and a duration from 10 to 600 seconds")
+    if args.scene_save_images and (args.scene_output is None or args.scene_seconds is None):
+        parser.error("--scene-save-images requires --scene-output and --scene-seconds")
+    if args.scene_seconds is not None and args.trial_output is not None:
+        parser.error("Run scene diagnostics separately from --trial-output re-ID trials")
     if args.scene_output is not None:
         root = (Path.cwd() / "recordings").resolve()
         args.scene_output = args.scene_output.resolve()
@@ -881,7 +892,7 @@ def main() -> None:
 
         if args.scene_memory:
             worker = threading.Thread(target=scene_latest,
-                                      args=(state, cv, args.scene_output), daemon=True)
+                                      args=(state, cv, args.scene_output, args.scene_save_images), daemon=True)
             worker.start()
             threads.append(worker)
             print("Scene memory: explicit browser enrollment, target 1 Hz, 12 references maximum; orientation is host-timed context only.", flush=True)
@@ -942,7 +953,9 @@ def main() -> None:
         print(
             "Analysis: 320x180 grayscale. " + (
                 f"Trial recording for {args.trial_seconds:g} seconds to {recorder.output}."
-                if recorder else "No footage saved. Ctrl+C stops."
+                if recorder else
+                f"Selected scene PNGs saved to {args.scene_output}. Ctrl+C stops."
+                if args.scene_save_images else "No footage saved. Ctrl+C stops."
             ), flush=True,
         )
         if args.detect:
@@ -975,7 +988,13 @@ def main() -> None:
         # Serve browser snapshots until interruption, then stop workers and close
         # the server even when startup or request handling raised an error.
         trial_deadline = time.monotonic() + args.trial_seconds if recorder else None
+        scene_deadline = time.monotonic() + args.scene_seconds if args.scene_seconds else None
+        if scene_deadline is not None:
+            print(f"Scene diagnostic timer: {args.scene_seconds:g} seconds; preview stops automatically. Images: {args.scene_save_images}.", flush=True)
         while not state.stop.is_set():
+            if scene_deadline is not None and time.monotonic() >= scene_deadline:
+                print("Scene diagnostic timer complete; stopping preview.", flush=True)
+                break
             if trial_deadline is not None and time.monotonic() >= trial_deadline:
                 trial_finished = True
                 print("Trial timer complete; stopping preview.", flush=True)

@@ -41,4 +41,6 @@ it only on a newer frame. References retain their enrollment orientation.
 `LiveScene.snapshot` independently ages the result. `State.snapshot` includes
 it under `scene` for the browser and telemetry endpoint. Optional JSONL stores
 each result; no visual result changes IMU integration or corrects drift.
+Opt-in timed `--scene-save-images` diagnostics save the selected canonical image
+and reference-image links with each row, enabling inspection of unknown decisions.
 See [live commands and limits](../LIVE_SCENE_MEMORY.md).

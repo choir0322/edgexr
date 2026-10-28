@@ -11,7 +11,7 @@ import time
 from typing import Any
 
 import numpy as np
-from spatial.scene_memory import SceneMemory
+from spatial.scene_memory import SceneMemory, prepare_gray
 
 
 class LiveScene:
@@ -83,20 +83,25 @@ class LiveScene:
                     "target_hz": 1, "result": result}
 
 
-def scene_latest(state: Any, cv: Any, output: Path | None = None) -> None:
+def scene_latest(state: Any, cv: Any, output: Path | None = None,
+                 save_images: bool = False) -> None:
     """Process at most one newest frame per second, never queue capture frames.
 
     Args:
         state (Any): App State, with condition, scene_frame and stop event.
         cv (Any): Existing CPU OpenCV module.
         output (Path | None): New ignored directory for non-image JSONL evidence.
+        save_images (bool): Explicit opt-in to save each selected 640x360 PNG.
     Returns:
         None: Failures are isolated to scene status; no motor or gyro correction.
     """
     log = None
     try:
+        if save_images and output is None:
+            raise ValueError("Scene images require a new output directory")
         memory = SceneMemory(cv=cv)
         contexts: dict[int, dict] = {}
+        reference_images: dict[int, str] = {}
         if output is not None:
             output.mkdir(parents=True, exist_ok=False)
             from vision.detect_image import git_info
@@ -108,7 +113,9 @@ def scene_latest(state: Any, cv: Any, output: Path | None = None) -> None:
                         "camera_axis_basis": state.imu.camera_axis_basis,
                         "detection_enabled": state.detector.enabled,
                         "input_shape": "1280x720 grayscale; host receipts, not exposure time",
-                        "scope": "Host receipt/preceding IMU context; no exposure sync, pose correction or images"}
+                        "save_images": save_images,
+                        "image_shape": "640x360 grayscale PNG" if save_images else None,
+                        "scope": "Host receipt/preceding IMU context; no exposure sync or pose correction. Images only when explicitly enabled."}
             (output / "metadata.json").write_text(json.dumps(metadata, indent=2) + "\n")
             log = (output / "updates.jsonl").open("x")
         seen = 0
@@ -136,6 +143,19 @@ def scene_latest(state: Any, cv: Any, output: Path | None = None) -> None:
                    "orientation_at_frame": orientation,
                    "reference_orientation": contexts.get(decision["scene_id"])}
             if log is not None:
+                # Save the exact canonical pixels used by ORB, not an unrelated
+                # later preview frame. File I/O is excluded from compute_ms.
+                if save_images:
+                    image_started = time.monotonic()
+                    image_name = f"frame-{sequence:08d}.png"
+                    if not cv.imwrite(str(output / image_name), prepare_gray(cv, gray)):
+                        raise OSError("Could not save scene diagnostic image")
+                    if decision["state"] == "enrolled":
+                        reference_images[decision["scene_id"]] = image_name
+                        reference_images.pop(decision.get("evicted_id"), None)
+                    row.update(image=image_name,
+                               reference_images=dict(reference_images),
+                               image_write_ms=(time.monotonic() - image_started) * 1000)
                 log.write(json.dumps(row, allow_nan=False) + "\n")
                 log.flush()
             with state.scene.lock:

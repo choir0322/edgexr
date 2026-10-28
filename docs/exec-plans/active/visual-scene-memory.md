@@ -87,6 +87,11 @@ an unrelated code cleanup.
 
 ## Decision log
 
+- 2026-10-29 diagnostic extension: user confirmed repeated visible returns and
+  not intentionally ending away. Preserve thresholds; opt-in canonical PNGs
+  for every analyzed query and enrollment, with reference filenames in JSONL.
+  Require a 10–600 s timer to bound this diagnostic capture. No motor commands.
+
 - 2026-10-29: Live integration uses a target 1 Hz latest-frame worker and explicit
   browser enrollment, unchanged visual thresholds. Store preceding orientation
   within 200 ms of host frame receipt, not exposure pose; never correct gyro
@@ -102,6 +107,11 @@ an unrelated code cleanup.
   reduce false recognition from a small moving foreground object.
 
 ## Outcomes and retrospective
+
+Image diagnostic extension: 176 tests passed, including pixel-exact saved PNG
+comparison with the canonical ORB input. A ten-second synthetic live run stopped
+automatically and saved ten JSONL rows linked to ten PNGs. Changed Python files
+passed contract checks. Pipeline/source guide updated; real Pi diagnostic pending.
 
 2026-10-29 live extension: separate-recording A → B → A passed without changes
 to MemoryConfig. Implemented target-1-Hz worker, explicit same-origin enrollment,
