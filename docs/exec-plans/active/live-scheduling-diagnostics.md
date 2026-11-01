@@ -1,0 +1,60 @@
+# Live scheduling and recording diagnostics
+
+## Purpose / big picture
+
+Distinguish sensor-read, polling wake-up, publication, scene compute and recording
+stalls before changing architecture. Direct AP relevance; fixes a functional
+reliability blocker rather than launching the deferred optimization campaign.
+
+## Context and orientation
+
+Three-view trial contained 2.22 s scene compute and 5.84 s image-write wall
+intervals, with stale IMU orientation. Correlation alone cannot identify the
+IMU interruption. Keep recognition and 10 ms polling settings unchanged.
+
+## Progress
+
+- [x] Add bounded IMU slow-event memory and cumulative maxima, no IMU disk writes.
+- [x] Add scene CPU/wall clocks and timestamped image/log intervals.
+- [x] 178 tests passed; changed source contract checks passed. Ten-second
+  synthetic run saved ten rows and verified the final log-write interval.
+- [x] Update pipeline and source guide.
+- [ ] Compare Pi stationary trials without/with image saving; inspect evidence.
+
+## Plan of work
+
+Instrument first. Run the same stationary textured view with one enrollment
+for 120 seconds in each mode. Keep browser polling, lighting, detector off,
+10 ms sleep and scene reference count consistent. Restart to reset orientation.
+If results differ, reverse run order before causal claims or scheduling changes.
+
+## Concrete steps
+
+See docs/LIVE_SCHEDULING_DIAGNOSTICS.md for complete commands. No motor commands.
+Use new output directories; transfer JSON evidence without uploading images to Git.
+
+## Validation and acceptance
+
+Unit-check separate read/publish/wake durations, bounded events and final logging.
+Existing behavior tests must pass. Pi evidence must retain unknown orientation
+instead of silently bridging gaps. CPU clocks have explicit scopes; clocks do
+not prove a specific kernel scheduling or SD-card fault.
+
+## Surprises and discoveries
+
+The prior PNG operation demonstrably blocked the scene worker, but whether it
+blocked the IMU is unresolved. Snapshot itself invalidates stale orientation;
+capture its first observation time/sample age rather than guessing.
+
+## Decision log
+
+- 2026-11-02: Preserve synchronous recording for this comparison. Introducing
+  a writer queue first would change the workload before diagnosing it.
+- 2026-11-02: Slow event thresholds are diagnostic only (read/publish/wake >20 ms
+  or midpoint gap >200 ms); they do not alter sample acceptance or integration.
+
+## Outcomes and retrospective
+
+Instrumentation implemented; Pi root cause and scheduling remedy pending.
+No physical hardware was accessed during local validation. Image saving,
+recognition thresholds, freshness limits and polling sleep policies are unchanged.

@@ -132,7 +132,9 @@ class LiveSceneTests(unittest.TestCase):
             self.assertEqual(row["decision"]["state"], "enrolled")
             self.assertEqual(row["frame_host_s"], now)
             self.assertEqual(row["orientation_at_frame"]["status"], "unknown")
-            self.assertEqual(set(p.name for p in output.iterdir()), {"metadata.json", "updates.jsonl"})
+            self.assertEqual(set(p.name for p in output.iterdir()), {"metadata.json", "updates.jsonl", "timing-final.json"})
+            self.assertIn("scene_thread_cpu_ms", row)
+            self.assertIn("imu_poll_timing", row)
 
     def test_enrollment_http_origin(self) -> None:
         """Mutation requires the exact local origin; GET cannot enroll.

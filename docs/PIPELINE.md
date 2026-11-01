@@ -18,6 +18,11 @@ flowchart LR
 ```
 
 This association uses host observation times, not exposure synchronization.
+Scene JSONL also contains bounded IMU polling diagnostics (read, publish,
+late wake and gaps), scene wall/thread/process CPU intervals, timestamped PNG
+writes and the preceding JSON-write interval. `timing-final.json` retains the
+last write interval and final poll counters. No diagnostics write files on
+the IMU thread; timing does not automatically change scheduling or thresholds.
 No scene match corrects gyro drift or supplies camera position. Unknown frames
 do not automatically enroll. See [live protocol](LIVE_SCENE_MEMORY.md).
 

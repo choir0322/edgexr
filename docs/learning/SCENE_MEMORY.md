@@ -43,4 +43,8 @@ it under `scene` for the browser and telemetry endpoint. Optional JSONL stores
 each result; no visual result changes IMU integration or corrects drift.
 Opt-in timed `--scene-save-images` diagnostics save the selected canonical image
 and reference-image links with each row, enabling inspection of unknown decisions.
+`poll_imu` brackets driver reads and publication; `LiveImu.record_poll_timing`
+keeps cumulative maxima and 64 slow events. `scene_latest` snapshots these
+without changing orientation validity, alongside its CPU/wall and image/log
+write intervals. See [timing protocol](../LIVE_SCHEDULING_DIAGNOSTICS.md).
 See [live commands and limits](../LIVE_SCENE_MEMORY.md).

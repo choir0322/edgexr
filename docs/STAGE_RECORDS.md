@@ -43,6 +43,14 @@ not calibrated pose or live image/IMU fusion.
 
 ## Record format for subsequent stages
 
+Scheduling diagnostics — 2026-11-02: bounded polling interval/read/publication/
+wake-delay evidence plus scene wall/thread/process CPU and recording intervals.
+[Protocol](LIVE_SCHEDULING_DIAGNOSTICS.md), [IMU source](../src/imu/live_reader.py),
+[scene source](../src/spatial/live_scene.py). Implemented, Pi measurement pending.
+Thresholds and scheduling unchanged. AP question: are observed stalls inside
+sensor reads, late wake-ups, scene computation or recording, and do they overlap?
+No causal attribution or performance improvement claimed yet.
+
 Three-view trial (2026-11-02): [findings](LIVE_SCENE_THREE_RESULTS.md),
 [metrics](../benchmarks/results/live-scene-three-01-2026-11-02.json).
 Center/left/right enrollment and revisits demonstrated. Upper-left retains

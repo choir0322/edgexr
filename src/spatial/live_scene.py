@@ -96,6 +96,7 @@ def scene_latest(state: Any, cv: Any, output: Path | None = None,
         None: Failures are isolated to scene status; no motor or gyro correction.
     """
     log = None
+    previous_log_timing = None
     try:
         if save_images and output is None:
             raise ValueError("Scene images require a new output directory")
@@ -114,6 +115,8 @@ def scene_latest(state: Any, cv: Any, output: Path | None = None,
                         "detection_enabled": state.detector.enabled,
                         "input_shape": "1280x720 grayscale; host receipts, not exposure time",
                         "save_images": save_images,
+                        "timing_schema": 1,
+                        "timing_scope": "Host wall intervals plus scene-thread/process CPU; CPU clocks do not measure other OpenCV threads individually. IMU keeps 64 slow events and cumulative maxima. No OS scheduler/storage attribution.",
                         "image_shape": "640x360 grayscale PNG" if save_images else None,
                         "scope": "Host receipt/preceding IMU context; no exposure sync or pose correction. Images only when explicitly enabled."}
             (output / "metadata.json").write_text(json.dumps(metadata, indent=2) + "\n")
@@ -130,6 +133,8 @@ def scene_latest(state: Any, cv: Any, output: Path | None = None,
             if time.monotonic() - captured > 0.5:
                 continue
             started = time.monotonic()
+            thread_started = time.thread_time()
+            process_started = time.process_time()
             label = state.scene.take_request(captured)
             gray = np.frombuffer(pixels, dtype=np.uint8).reshape(720, 1280)
             decision = memory.process(gray, captured, label)
@@ -139,6 +144,10 @@ def scene_latest(state: Any, cv: Any, output: Path | None = None,
             row = {"frame_sequence": sequence, "frame_host_s": captured,
                    "completed_host_s": time.monotonic(),
                    "compute_ms": (time.monotonic() - started) * 1000,
+                   "compute_started_host_s": started,
+                   "scene_thread_cpu_ms": (time.thread_time() - thread_started) * 1000,
+                   "process_cpu_during_compute_ms": (time.process_time() - process_started) * 1000,
+                   "previous_log_write": previous_log_timing,
                    "enrollment_requested": label, "decision": decision,
                    "orientation_at_frame": orientation,
                    "reference_orientation": contexts.get(decision["scene_id"])}
@@ -155,9 +164,17 @@ def scene_latest(state: Any, cv: Any, output: Path | None = None,
                         reference_images.pop(decision.get("evicted_id"), None)
                     row.update(image=image_name,
                                reference_images=dict(reference_images),
+                               image_write_started_host_s=image_started,
+                               image_write_finished_host_s=time.monotonic(),
                                image_write_ms=(time.monotonic() - image_started) * 1000)
+                row["imu_poll_timing"] = state.imu.timing_snapshot()
+                log_started = time.monotonic()
                 log.write(json.dumps(row, allow_nan=False) + "\n")
                 log.flush()
+                previous_log_timing = {"frame_sequence": sequence,
+                                       "started_host_s": log_started,
+                                       "finished_host_s": time.monotonic(),
+                                       "wall_ms": (time.monotonic() - log_started) * 1000}
             with state.scene.lock:
                 state.scene.result = row
             state.stop.wait(max(0, 1 - (time.monotonic() - started)))
@@ -167,3 +184,12 @@ def scene_latest(state: Any, cv: Any, output: Path | None = None,
     finally:
         if log is not None:
             log.close()
+            # Capture the final write interval, otherwise absent from the next row.
+            try:
+                (output / "timing-final.json").write_text(json.dumps({
+                    "last_log_write": previous_log_timing,
+                    "imu_poll_timing": state.imu.timing_snapshot(),
+                    "scene_error": state.scene.error}, indent=2) + "\n")
+            except OSError as error:
+                with state.scene.lock:
+                    state.scene.error = f"Final timing record failed: {error}"

@@ -95,6 +95,11 @@ class LiveImu:
         self.error = None
         self.sample_times = deque(maxlen=40)
         self.orientation_history = deque(maxlen=256)
+        self.poll_timings = deque(maxlen=64)
+        self.poll_timing_count = 0
+        self.poll_timing_max_ms: dict[str, float] = {}
+        self.poll_gap_count = 0
+        self.first_stale_observation = None
         self.samples = 0
         self.started = time.monotonic()
 
@@ -165,6 +170,51 @@ class LiveImu:
                             "sample_age_ms": lag * 1000}
         return {"status": "unknown", "reason": "No preceding orientation within 200 ms"}
 
+    def record_poll_timing(self, before: float, after: float, published: float,
+                           previous_midpoint: float | None,
+                           expected_wake: float | None) -> None:
+        """Retain bounded slow-poll evidence without disk I/O on the IMU worker.
+
+        Args:
+            before (float): Host time immediately before driver read.
+            after (float): Host time immediately after driver read.
+            published (float): Host time after sample publication/integration.
+            previous_midpoint (float | None): Previous read midpoint.
+            expected_wake (float | None): Prior wait-start plus requested sleep.
+        Returns:
+            None: Cumulative maxima/counts plus the last 64 slow events.
+        """
+        midpoint = (before + after) / 2
+        values = {"read_ms": (after - before) * 1000,
+                  "publish_ms": (published - after) * 1000,
+                  "wake_late_ms": max(0, before - expected_wake) * 1000 if expected_wake is not None else 0,
+                  "midpoint_gap_ms": (midpoint - previous_midpoint) * 1000 if previous_midpoint is not None else 0}
+        with self.lock:
+            self.poll_timing_count += 1
+            for name, value in values.items():
+                self.poll_timing_max_ms[name] = max(self.poll_timing_max_ms.get(name, 0), value)
+            if values["midpoint_gap_ms"] > 200:
+                self.poll_gap_count += 1
+            if (values["midpoint_gap_ms"] > 200 or values["read_ms"] > 20 or
+                    values["publish_ms"] > 20 or values["wake_late_ms"] > 20):
+                self.poll_timings.append({"poll": self.poll_timing_count,
+                                          "read_start_host_s": before,
+                                          "read_end_host_s": after,
+                                          "published_host_s": published, **values})
+
+    def timing_snapshot(self) -> dict:
+        """Copy bounded diagnostic data without changing orientation validity.
+
+        Args: None.
+        Returns:
+            dict: Poll counters, cumulative wall-time maxima and recent slow events.
+        """
+        with self.lock:
+            return {"polls": self.poll_timing_count, "gaps_over_200ms": self.poll_gap_count,
+                    "max_ms": dict(self.poll_timing_max_ms),
+                    "recent_slow_polls": list(self.poll_timings),
+                    "first_stale_observation": self.first_stale_observation}
+
     def fail(self, message: str) -> None:
         """Retain an IMU-specific failure without stopping the camera pipeline.
 
@@ -211,6 +261,10 @@ class LiveImu:
                 else "ready"
             )
             if self.orientation is not None and status in ("stale", "error"):
+                if self.first_stale_observation is None:
+                    self.first_stale_observation = {"observer_host_s": now,
+                        "latest_sample_host_s": self.latest[0] if self.latest else None,
+                        "age_ms": age, "status": status}
                 self.orientation.invalidate(f"IMU {status}; rotation continuity unknown")
 
             # Subtract the per-run bias only for ready readings. Return sensor-axis rates
@@ -265,6 +319,8 @@ def poll_imu(
     # Reject an invalid polling pause before entering the sensor loop.
     if interval <= 0 or not math.isfinite(interval):
         raise ValueError("Polling interval must be positive and finite")
+    previous_midpoint = None
+    expected_wake = None
     try:
         while not stop.is_set():
             # Bracket the raw read and timestamp its host midpoint, then pause after
@@ -273,6 +329,10 @@ def poll_imu(
             _accel, gyro, _temperature = sensor.read_raw()
             after = clock()
             imu.publish((before + after) / 2, gyro)
+            published = clock()
+            imu.record_poll_timing(before, after, published, previous_midpoint, expected_wake)
+            previous_midpoint = (before + after) / 2
+            expected_wake = clock() + interval
             stop.wait(interval)
 
     # Expose a sensor failure independently unless shutdown was already requested.
