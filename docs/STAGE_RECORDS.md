@@ -43,6 +43,13 @@ not calibrated pose or live image/IMU fusion.
 
 ## Record format for subsequent stages
 
+Three-view trial (2026-11-02): [findings](LIVE_SCENE_THREE_RESULTS.md),
+[metrics](../benchmarks/results/live-scene-three-01-2026-11-02.json).
+Center/left/right enrollment and revisits demonstrated. Upper-left retains
+overlapping visual matches; exact direction is not established. Orientation
+became unknown after a stale-reading event; image writes reached 5.84 s.
+Next priority is reliability of scheduling/diagnostics, without threshold tuning.
+
 Image-backed follow-up: [diagnosis](LIVE_SCENE_IMAGE_RESULTS.md) and
 [machine-readable result](../benchmarks/results/live-scene-images-01-2026-10-29.json).
 All 180 linked images present; 56 post-enrollment unknowns primarily reflected

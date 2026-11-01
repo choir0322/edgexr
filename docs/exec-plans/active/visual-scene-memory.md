@@ -108,6 +108,14 @@ an unrelated code cleanup.
 
 ## Outcomes and retrospective
 
+2026-11-02: three-view Pi trial inspected (208 images/rows). Successful visual
+revisits, but right-view coverage-boundary flicker and untaught tilted views
+with valid overlap remain. IMU continuity became unknown for 113 observations;
+scene compute and PNG wall stalls require investigation, not causal guessing.
+See docs/LIVE_SCENE_THREE_RESULTS.md. No runtime/threshold changes in this
+analysis; pipeline/source guide reviewed unchanged. Live orientation acceptance
+remains incomplete. Address the functional scheduling blocker next.
+
 Image-backed Pi trial analyzed: 180 images/rows, all 56 post-enrollment unknown
 frames visually reviewed, 31 few-matches / 24 concentrated-support / one
 geometric rejection. Last 13 queries known; prior final unknown not reproduced.
