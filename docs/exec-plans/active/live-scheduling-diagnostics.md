@@ -19,7 +19,9 @@ IMU interruption. Keep recognition and 10 ms polling settings unchanged.
 - [x] 178 tests passed; changed source contract checks passed. Ten-second
   synthetic run saved ten rows and verified the final log-write interval.
 - [x] Update pipeline and source guide.
-- [ ] Compare Pi stationary trials without/with image saving; inspect evidence.
+- [x] Compare Pi stationary trials: synchronous image/JSON writes block scene
+  progress, but neither run lost IMU continuity. See docs/LIVE_SCHEDULING_RESULTS.md.
+- [ ] Reverse run order to check repeatability before changing scheduling.
 
 ## Plan of work
 
@@ -54,6 +56,12 @@ capture its first observation time/sample age rather than guessing.
   or midpoint gap >200 ms); they do not alter sample acceptance or integration.
 
 ## Outcomes and retrospective
+
+First Pi A/B analyzed: 120 versus 108 scene updates; median compute approximately
+116/118 ms, PNG maximum 5.20 s, JSON maxima 1.51/2.23 s. Maximum IMU gaps
+31.96/34.92 ms, no stale event. Prior IMU failure not reproduced. Preserve
+causal distinction: synchronous scene blocking demonstrated, hardware/storage
+root cause unknown. Pipeline/learning guide reviewed unchanged: evidence only.
 
 Instrumentation implemented; Pi root cause and scheduling remedy pending.
 No physical hardware was accessed during local validation. Image saving,

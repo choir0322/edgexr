@@ -1,0 +1,41 @@
+{
+  "stage": "Stationary synchronous recording A/B",
+  "device": "Raspberry Pi 4",
+  "git": "e9a032b3097095495d78fe871b031f082d62eeab",
+  "dirty_both": true,
+  "python": "3.11.2",
+  "opencv": "4.11.0",
+  "opencv_threads": 2,
+  "imu_sleep_ms": 10,
+  "detector": false,
+  "input": "1280x720 gray, 640x360 scene processing; negotiated mode not recorded",
+  "protocol": "Stationary textured view, one reference near four seconds, requested 120 seconds each, A then B; no explicit benchmark warmup",
+  "power_cooling_temperature": "not recorded",
+  "A": {
+    "trial": "scheduling-no-images-01",
+    "updates_sha256": "6158cb6f87725aeaa3153271a275e5f139ad8aeeb5d65faf9d9a9a1d9737e6be",
+    "rows": 120, "span_s": 119.640352418, "scene_hz": 0.9946476886,
+    "known": 116, "post_enrollment_unknown": 0,
+    "compute_ms_median": 116.1464065, "compute_ms_p95": 126.035797,
+    "compute_ms_max": 150.727647, "scene_thread_cpu_ms_median": 105.811226,
+    "process_cpu_ms_during_compute_median": 189.4127565,
+    "json_write_ms_max": 1512.455205,
+    "imu_polls": 9263, "imu_gap_ms_max": 31.958718,
+    "imu_gaps_over_200ms": 0, "first_stale_observation": null
+  },
+  "B": {
+    "trial": "scheduling-images-01",
+    "updates_sha256": "d2b7cf5aee0d2568e5003e00a70b1898ce14f4282f9997e84430cb6a68ac6e01",
+    "rows": 108, "span_s": 118.673007711, "scene_hz": 0.9016372136,
+    "known": 103, "post_enrollment_unknown": 0,
+    "compute_ms_median": 118.1419985, "compute_ms_p95": 127.565027,
+    "compute_ms_max": 130.6587, "scene_thread_cpu_ms_median": 106.9612515,
+    "process_cpu_ms_during_compute_median": 190.5934195,
+    "image_write_ms_median": 14.3368375, "image_write_ms_p95": 22.959194,
+    "image_write_ms_max": 5201.546232, "json_write_ms_max": 2231.62,
+    "imu_polls": 9272, "imu_gap_ms_max": 34.9191845,
+    "imu_gaps_over_200ms": 0, "first_stale_observation": null
+  },
+  "decision": "Synchronous PNG and JSON operations demonstrably block scene progress; underlying stall mechanism and older IMU failure remain unproven. Reverse-order repetition before scheduling changes.",
+  "limits": "One stationary A/B pair. CPU clocks exclude disk phases here; process CPU includes unrelated app threads. No full CPU utilization, RSS, thermals, OS scheduler or storage attribution. No performance improvement implemented."
+}

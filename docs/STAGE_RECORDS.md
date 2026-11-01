@@ -43,6 +43,13 @@ not calibrated pose or live image/IMU fusion.
 
 ## Record format for subsequent stages
 
+Scheduling A/B measured — [findings](LIVE_SCHEDULING_RESULTS.md),
+[result JSON](../benchmarks/results/scheduling-ab-2026-11-02.json).
+Image/JSON stalls directly blocked the scene loop; B delivered 108 versus A's
+120 updates. No IMU gap exceeded 35 ms and no continuity loss occurred in either
+run. Prior IMU failure remains unresolved. No optimization or threshold change;
+reverse-order confirmation and bounded recording isolation are next candidates.
+
 Scheduling diagnostics — 2026-11-02: bounded polling interval/read/publication/
 wake-delay evidence plus scene wall/thread/process CPU and recording intervals.
 [Protocol](LIVE_SCHEDULING_DIAGNOSTICS.md), [IMU source](../src/imu/live_reader.py),
