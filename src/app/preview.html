@@ -116,6 +116,7 @@ code {
 <p id="imu-status">IMU is off. Restart Pi preview with <code>--imu</code> to show it.</p>
 <p id="orientation-status">Relative camera orientation is off.</p>
 <p id="scene-status">Scene memory is off.</p>
+<p id="scene-recording"></p>
 <button id="scene-enroll" type="button" disabled>Remember current view</button>
 <span id="scene-request" role="status"></span>
 <p id="detect-status">Detection is off. Add <code>--detect</code> to show boxes.</p>
@@ -227,6 +228,10 @@ function detectionLabel(box) {
 function render(data) {
   const scene = data.scene || {status: 'off'};
   const row = scene.result;
+  const recording = scene.recording;
+  put('scene-recording', recording ?
+    `Evidence recording: ${recording.status}; queue ${recording.queued}/${recording.capacity}; ` +
+    `${recording.written} saved, ${recording.dropped} recording drops. ${recording.error || ''}` : '');
   document.getElementById('scene-enroll').disabled =
     ['off', 'error', 'stale'].includes(scene.status) || !!scene.pending_label || data.status !== 'live';
   put('scene-status', scene.status === 'ready' ?
@@ -388,6 +393,7 @@ async function poll() {
     }
     put('imu-status', 'Disconnected — IMU readings are unavailable.');
     put('scene-status', 'Disconnected — scene recognition is unavailable.');
+    put('scene-recording', 'Recording status unavailable — check the Pi terminal and final record.');
     document.getElementById('scene-enroll').disabled = true;
     for (const id of ['detect-rate', 'detect-cost', 'detect-age']) {
       put(id, '—');

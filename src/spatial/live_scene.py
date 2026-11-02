@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import copy
-import json
 import platform
 from pathlib import Path
 import threading
@@ -11,7 +10,8 @@ import time
 from typing import Any
 
 import numpy as np
-from spatial.scene_memory import SceneMemory, prepare_gray
+from spatial.scene_memory import SceneMemory
+from spatial.scene_recorder import SceneRecorder
 
 
 class LiveScene:
@@ -31,6 +31,7 @@ class LiveScene:
         self.next_label = 1
         self.result: dict | None = None
         self.error: str | None = None
+        self.recorder: SceneRecorder | None = None
 
     def enroll(self, now: float) -> str:
         """Request one reference from the next fresh frame after this click.
@@ -80,6 +81,7 @@ class LiveScene:
                       "stale" if not camera_live or age > 2000 else "ready")
             return {"status": status, "error": self.error, "source_age_ms": age,
                     "pending_label": self.pending[0] if self.pending else None,
+                    "recording": self.recorder.snapshot() if self.recorder else None,
                     "target_hz": 1, "result": result}
 
 
@@ -91,12 +93,11 @@ def scene_latest(state: Any, cv: Any, output: Path | None = None,
         state (Any): App State, with condition, scene_frame and stop event.
         cv (Any): Existing CPU OpenCV module.
         output (Path | None): New ignored directory for non-image JSONL evidence.
-        save_images (bool): Explicit opt-in to save each selected 640x360 PNG.
+        save_images (bool): Opt-in canonical PNGs; bounded recording may drop queries.
     Returns:
         None: Failures are isolated to scene status; no motor or gyro correction.
     """
-    log = None
-    previous_log_timing = None
+    recorder = None
     try:
         if save_images and output is None:
             raise ValueError("Scene images require a new output directory")
@@ -115,12 +116,15 @@ def scene_latest(state: Any, cv: Any, output: Path | None = None,
                         "detection_enabled": state.detector.enabled,
                         "input_shape": "1280x720 grayscale; host receipts, not exposure time",
                         "save_images": save_images,
-                        "timing_schema": 1,
+                        "timing_schema": 2,
+                        "recording_policy": "FIFO background writer; four waiting plus one in-flight record; drop new queries when full; defer enrollment until admission available",
+                        "completion_rule": "Require timing-final.json recording status; missing final file means incomplete",
                         "timing_scope": "Host wall intervals plus scene-thread/process CPU; CPU clocks do not measure other OpenCV threads individually. IMU keeps 64 slow events and cumulative maxima. No OS scheduler/storage attribution.",
                         "image_shape": "640x360 grayscale PNG" if save_images else None,
                         "scope": "Host receipt/preceding IMU context; no exposure sync or pose correction. Images only when explicitly enabled."}
-            (output / "metadata.json").write_text(json.dumps(metadata, indent=2) + "\n")
-            log = (output / "updates.jsonl").open("x")
+            recorder = SceneRecorder(output, cv, metadata)
+            with state.scene.lock:
+                state.scene.recorder = recorder
         seen = 0
         while not state.stop.is_set():
             with state.condition:
@@ -135,7 +139,10 @@ def scene_latest(state: Any, cv: Any, output: Path | None = None,
             started = time.monotonic()
             thread_started = time.thread_time()
             process_started = time.process_time()
-            label = state.scene.take_request(captured)
+            # Leave explicit enrollment pending if its evidence cannot be admitted.
+            # Only this worker produces records: capacity cannot shrink meanwhile.
+            label = (state.scene.take_request(captured)
+                     if recorder is None or recorder.can_enroll() else None)
             gray = np.frombuffer(pixels, dtype=np.uint8).reshape(720, 1280)
             decision = memory.process(gray, captured, label)
             if decision["state"] == "enrolled":
@@ -147,34 +154,21 @@ def scene_latest(state: Any, cv: Any, output: Path | None = None,
                    "compute_started_host_s": started,
                    "scene_thread_cpu_ms": (time.thread_time() - thread_started) * 1000,
                    "process_cpu_during_compute_ms": (time.process_time() - process_started) * 1000,
-                   "previous_log_write": previous_log_timing,
                    "enrollment_requested": label, "decision": decision,
                    "orientation_at_frame": orientation,
                    "reference_orientation": contexts.get(decision["scene_id"])}
-            if log is not None:
-                # Save the exact canonical pixels used by ORB, not an unrelated
-                # later preview frame. File I/O is excluded from compute_ms.
+            if recorder is not None:
+                # Queue immutable source bytes, not a future camera frame. The
+                # writer owns resizing/encoding/disk I/O and its own row copy.
                 if save_images:
-                    image_started = time.monotonic()
                     image_name = f"frame-{sequence:08d}.png"
-                    if not cv.imwrite(str(output / image_name), prepare_gray(cv, gray)):
-                        raise OSError("Could not save scene diagnostic image")
                     if decision["state"] == "enrolled":
                         reference_images[decision["scene_id"]] = image_name
                         reference_images.pop(decision.get("evicted_id"), None)
                     row.update(image=image_name,
-                               reference_images=dict(reference_images),
-                               image_write_started_host_s=image_started,
-                               image_write_finished_host_s=time.monotonic(),
-                               image_write_ms=(time.monotonic() - image_started) * 1000)
+                               reference_images=dict(reference_images))
                 row["imu_poll_timing"] = state.imu.timing_snapshot()
-                log_started = time.monotonic()
-                log.write(json.dumps(row, allow_nan=False) + "\n")
-                log.flush()
-                previous_log_timing = {"frame_sequence": sequence,
-                                       "started_host_s": log_started,
-                                       "finished_host_s": time.monotonic(),
-                                       "wall_ms": (time.monotonic() - log_started) * 1000}
+                row["recording_accepted"] = recorder.submit(row, pixels if save_images else None)
             with state.scene.lock:
                 state.scene.result = row
             state.stop.wait(max(0, 1 - (time.monotonic() - started)))
@@ -182,14 +176,9 @@ def scene_latest(state: Any, cv: Any, output: Path | None = None,
         with state.scene.lock:
             state.scene.error = str(error)
     finally:
-        if log is not None:
-            log.close()
-            # Capture the final write interval, otherwise absent from the next row.
-            try:
-                (output / "timing-final.json").write_text(json.dumps({
-                    "last_log_write": previous_log_timing,
-                    "imu_poll_timing": state.imu.timing_snapshot(),
-                    "scene_error": state.scene.error}, indent=2) + "\n")
-            except OSError as error:
-                with state.scene.lock:
-                    state.scene.error = f"Final timing record failed: {error}"
+        if recorder is not None:
+            status = recorder.close({"imu_poll_timing": state.imu.timing_snapshot(),
+                                     "scene_error": state.scene.error})
+            print(f"Scene recording: {status['status']}; {status['written']} written, "
+                  f"{status['dropped']} dropped, {status['accepted_not_written']} pending/failed. "
+                  f"{status['error'] or ''}", flush=True)

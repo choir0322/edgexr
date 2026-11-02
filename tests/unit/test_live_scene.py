@@ -14,9 +14,90 @@ from spatial.live_scene import LiveScene, scene_latest
 from spatial.scene_memory import prepare_gray
 from urllib.request import Request, urlopen
 from urllib.error import HTTPError
+from unittest.mock import patch
+from functools import partial
+from spatial.scene_recorder import SceneRecorder
 
 
 class LiveSceneTests(unittest.TestCase):
+    def test_recognition_continues_during_image_write(self) -> None:
+        """Publish another real ORB result while the first PNG save is blocked.
+
+        Args: None.
+        Returns: None.
+        """
+        try:
+            import cv2 as cv
+        except ImportError:
+            self.skipTest("OpenCV required")
+        entered, release = threading.Event(), threading.Event()
+        original = cv.imwrite
+
+        def delayed(path: str, image: np.ndarray) -> bool:
+            """Simulate slow encoding/storage without blocking the producer.
+
+            Args:
+                path (str): Target PNG path.
+                image (np.ndarray): Canonical selected pixels.
+            Returns:
+                bool: Real OpenCV write result after release.
+            """
+            entered.set()
+            release.wait(5)
+            return original(path, image)
+
+        state = State(scene_memory=True)
+        now = time.monotonic()
+        state.scene.enroll(now - 0.1)
+        pixels = np.random.default_rng(17).integers(0, 256, (720, 1280), dtype=np.uint8).tobytes()
+        state.publish_frame(bytes(320 * 180), now, pixels)
+        with tempfile.TemporaryDirectory() as folder, patch.object(cv, "imwrite", delayed), \
+                patch("spatial.live_scene.SceneRecorder", partial(SceneRecorder, capacity=1)):
+            worker = threading.Thread(target=scene_latest,
+                                      args=(state, cv, Path(folder) / "trial", True))
+            worker.start()
+            try:
+                self.assertTrue(entered.wait(3))
+                deadline = time.monotonic() + 2.5
+                # Keep the latest source fresh until the target-1Hz worker selects it.
+                while time.monotonic() < deadline:
+                    state.publish_frame(bytes(320 * 180), time.monotonic(), pixels)
+                    if state.scene.result and state.scene.result["decision"]["state"] == "known":
+                        break
+                    time.sleep(0.02)
+                self.assertEqual(state.scene.result["decision"]["state"], "known")
+                self.assertEqual(state.scene.recorder.snapshot()["written"], 0)
+                self.assertIsNone(state.scene.error)
+                self.assertEqual(state.scene.recorder.snapshot()["queued"], 1)
+                label = state.scene.enroll(time.monotonic())
+                deadline = time.monotonic() + 1.5
+                while time.monotonic() < deadline:
+                    state.publish_frame(bytes(320 * 180), time.monotonic(), pixels)
+                    if state.scene.recorder.snapshot()["dropped"]:
+                        break
+                    time.sleep(0.02)
+                self.assertGreater(state.scene.recorder.snapshot()["dropped"], 0)
+                self.assertEqual(state.scene.snapshot(time.monotonic(), True)["pending_label"], label)
+                release.set()
+                deadline = time.monotonic() + 2
+                while time.monotonic() < deadline:
+                    state.publish_frame(bytes(320 * 180), time.monotonic(), pixels)
+                    if state.scene.result.get("enrollment_requested") == label:
+                        break
+                    time.sleep(0.02)
+                self.assertEqual(state.scene.result["decision"]["state"], "enrolled")
+                self.assertEqual(state.scene.result["decision"]["label"], label)
+            finally:
+                state.stop.set()
+                release.set()
+                worker.join(5)
+            rows = [json.loads(line) for line in (Path(folder) / "trial" / "updates.jsonl").read_text().splitlines()]
+            self.assertGreaterEqual(len(rows), 2)
+            self.assertEqual(rows[1]["reference_images"]["1"], rows[0]["image"])
+            last = rows[-1]
+            self.assertEqual(last["reference_images"]["2"], last["image"])
+            self.assertTrue((Path(folder) / "trial" / last["image"]).is_file())
+
     def test_opt_in_image_matches_source(self) -> None:
         """Recorded query and reference point to the selected canonical image.
 

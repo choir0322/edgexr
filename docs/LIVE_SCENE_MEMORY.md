@@ -1,5 +1,9 @@
 # Live scene memory with relative-orientation context
 
+Recording now uses a bounded background worker (timing schema 2). See
+[current recording validation commands](BOUNDED_SCENE_RECORDING.md) for the
+stationary Pi check, queue/drop counters and incomplete-recording rules.
+
 This opt-in stage recognizes explicitly remembered views, not object identities
 or a 3D position. Recognition thresholds are unchanged. A separate recording
 (`combined-motion-01`, reference 2 s, queries 7/13 s) returned enrolled A →

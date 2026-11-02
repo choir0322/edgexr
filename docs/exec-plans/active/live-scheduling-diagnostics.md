@@ -23,8 +23,16 @@ IMU interruption. Keep recognition and 10 ms polling settings unchanged.
   progress, but neither run lost IMU continuity. See docs/LIVE_SCHEDULING_RESULTS.md.
 - [x] 2026-11-03: Reverse-order B/A analyzed: PNG stall recurred (2.04 s),
   no IMU interruption; unequal enrollment timing documented in results.
-- [ ] Implement and validate bounded background recording in a follow-on step;
-  retain diagnostics for the unresolved older IMU interruption.
+- [x] Implement bounded background PNG/JSON recording with explicit counters,
+  enrollment admission, isolated errors and five-second shutdown drain.
+- [x] 2026-11-03: 183 tests passed with real OpenCV, including blocked image
+  write, bounded overflow and deferred enrollment/reference preservation.
+  Changed-file contract checks, browser script syntax and diff checks passed.
+- [x] Ten-second synthetic CLI recording auto-stopped and drained: ten rows,
+  ten PNGs, zero recording drops, no pending records. No physical hardware used.
+- [x] Update pipeline diagram and scene-memory source guide for schema 2.
+- [ ] Pi image-enabled verification: scene gaps, queue drops and IMU continuity.
+  Retain diagnostics for the unresolved older IMU interruption.
 
 ## Plan of work
 
@@ -33,10 +41,23 @@ for 120 seconds in each mode. Keep browser polling, lighting, detector off,
 10 ms sleep and scene reference count consistent. Restart to reset orientation.
 If results differ, reverse run order before causal claims or scheduling changes.
 
+Approved follow-on implementation (2026-11-03): one recorder thread owns PNG
+and JSON writes. Four waiting jobs plus one active operation bound memory.
+Drop new query evidence when full, count it, and keep recognition running.
+Leave enrollment requests pending until a slot is available. FIFO preserves
+reference-before-query evidence. Separate recording errors from scene health.
+Drain accepted work for up to five seconds on stop; missing final file or
+timeout is incomplete. No polling or recognition threshold changes. Test slow
+writes, overflow, reference ordering, immutable snapshots, errors and shutdown.
+Update pipeline and learning guide in the same commit. Repeat image-enabled
+120-second Pi trial as a new schema-2 workload, not a byte-identical baseline.
+
 ## Concrete steps
 
 See docs/LIVE_SCHEDULING_DIAGNOSTICS.md for complete commands. No motor commands.
 Use new output directories; transfer JSON evidence without uploading images to Git.
+For the new implementation, follow docs/BOUNDED_SCENE_RECORDING.md instead:
+one image-enabled stationary trial using a new `scheduling-background-01` folder.
 
 ## Validation and acceptance
 
@@ -57,6 +78,10 @@ capture its first observation time/sample age rather than guessing.
   a writer queue first would change the workload before diagnosing it.
 - 2026-11-02: Slow event thresholds are diagnostic only (read/publish/wake >20 ms
   or midpoint gap >200 ms); they do not alter sample acceptance or integration.
+- 2026-11-03: User approved the bounded recorder after both trial orders showed
+  synchronous recording stalls. Use four queued records as a small explicit
+  initial bound, not a measured optimal setting. A failed writer does not
+  invalidate valid scene recognition; its independent status reports evidence loss.
 
 ## Outcomes and retrospective
 
@@ -71,8 +96,15 @@ no stale events. Multi-second JSON stalls did not recur. PNG blockage is
 repeatable across order; severity varies. Enrollment at 18.98/4.99 s prevents
 treating compute medians as precisely matched workloads. No more identical
 stationary repetitions required before a bounded-recorder implementation.
-Diagram reviewed; unchanged because this update records evidence only.
+The reverse-order analysis itself left the diagram unchanged; the subsequent
+recorder implementation updates both diagram and source guide.
 
-Instrumentation implemented; underlying root cause and scheduling remedy pending.
-No physical hardware was accessed during local validation. Image saving,
-recognition thresholds, freshness limits and polling sleep policies are unchanged.
+Instrumentation and bounded recorder implemented; Pi verification pending.
+The source test proves the scene producer can publish another real ORB result
+while PNG writing is blocked. With the queue full, enrollment stays pending,
+then its image and reference links are saved after capacity returns. Error and
+timeout tests reject successful-recording claims; no-record shutdown is valid.
+Underlying storage/scheduler cause and earlier IMU interruption remain unknown.
+No physical hardware was accessed during local validation. PNG format,
+recognition thresholds, freshness limits and polling sleep remain unchanged;
+recording scheduling and schema changed explicitly. No Pi speedup claim yet.

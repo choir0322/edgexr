@@ -573,7 +573,8 @@ def stop_workers(
         process.kill()
         process.wait(timeout=3)
     for thread in threads:
-        thread.join(timeout=3)
+        # Scene shutdown allows up to five seconds for its bounded recorder drain.
+        thread.join(timeout=7 if thread.name == "scene-worker" else 3)
     process.stdout.close()
     process.stderr.close()
 
@@ -892,7 +893,8 @@ def main() -> None:
 
         if args.scene_memory:
             worker = threading.Thread(target=scene_latest,
-                                      args=(state, cv, args.scene_output, args.scene_save_images), daemon=True)
+                                      args=(state, cv, args.scene_output, args.scene_save_images),
+                                      name="scene-worker", daemon=True)
             worker.start()
             threads.append(worker)
             print("Scene memory: explicit browser enrollment, target 1 Hz, 12 references maximum; orientation is host-timed context only.", flush=True)

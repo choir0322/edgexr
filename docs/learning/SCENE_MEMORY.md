@@ -40,7 +40,7 @@ owns `SceneMemory`, targets 1 Hz and invokes the same `process` rules as replay.
 it only on a newer frame. References retain their enrollment orientation.
 `LiveScene.snapshot` independently ages the result. `State.snapshot` includes
 it under `scene` for the browser and telemetry endpoint. Optional JSONL stores
-each result; no visual result changes IMU integration or corrects drift.
+accepted recording jobs; no visual result changes IMU integration or corrects drift.
 Opt-in timed `--scene-save-images` diagnostics save the selected canonical image
 and reference-image links with each row, enabling inspection of unknown decisions.
 `poll_imu` brackets driver reads and publication; `LiveImu.record_poll_timing`
@@ -48,3 +48,27 @@ keeps cumulative maxima and 64 slow events. `scene_latest` snapshots these
 without changing orientation validity, alongside its CPU/wall and image/log
 write intervals. See [timing protocol](../LIVE_SCHEDULING_DIAGNOSTICS.md).
 See [live commands and limits](../LIVE_SCENE_MEMORY.md).
+
+### Bounded recorder (timing schema 2)
+
+`spatial.scene_recorder.SceneRecorder.submit` copies a result dictionary and
+retains immutable source bytes for opt-in images. It does not wait for a file
+write. `SceneRecorder._run` owns the file stream; `_write` resizes/encodes the
+selected source and flushes JSON in FIFO order. Four waiting jobs plus one active
+write bound retained image payloads; query recording can drop without dropping
+the live scene result. `can_enroll` is checked before `take_request`, so a full
+queue leaves an explicit enrollment pending rather than discarding its evidence.
+There is one producer, and the consumer only removes jobs. References therefore
+enter the queue before queries that link to them. This protects against queue
+overflow, not disk failure or process termination.
+
+`LiveScene.snapshot` includes independent `recording` health/counters. Writer
+errors stop further recording admission, not recognition. `close` requests a
+FIFO drain and waits up to five seconds; timeout marks incomplete evidence.
+Missing `timing-final.json` also means incomplete. The final file stores counts,
+the last write interval and final producer IMU counters. Recorded rows include
+queue wait and previous *recorded* JSON write, not necessarily the preceding
+scene observation after a drop. IMU snapshots are now taken before enqueue,
+not after PNG saving. Thread/process CPU fields still measure scene computation
+only, and do not isolate recorder cost. A separate thread cannot guarantee no
+CPU, GIL or storage contention; the Pi check remains required.

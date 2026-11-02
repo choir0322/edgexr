@@ -14,14 +14,25 @@ flowchart LR
     B["Browser explicit enrollment POST"] --> W
     W --> R["Known / unknown / enrolled; reference and query orientation context"]
     R --> T["State snapshot → browser + telemetry; stale after 2 s"]
-    R --> L["Optional JSONL; opt-in timed diagnostic PNGs + reference links"]
+    R --> Q["Nonblocking evidence FIFO: 4 waiting + 1 active; counted query drops"]
+    Q --> L["Recording worker: optional JSONL + opt-in PNGs; reference-before-query order"]
+    Q -->|full: leave enrollment pending| B
 ```
 
 This association uses host observation times, not exposure synchronization.
 Scene JSONL also contains bounded IMU polling diagnostics (read, publish,
 late wake and gaps), scene wall/thread/process CPU intervals, timestamped PNG
 writes and the preceding JSON-write interval. `timing-final.json` retains the
-last write interval and final poll counters. No diagnostics write files on
+last write interval, final poll counters and recording completion/drop counts.
+Timing schema 2 snapshots IMU counters on the scene producer before enqueue;
+image/log intervals and queue-wait time belong to the separate recorder.
+The producer retains immutable full-frame bytes only for accepted PNG jobs;
+four waiting plus one active payload is about 4.4 MiB, excluding the current
+camera frame, row objects and encoder scratch space. Enrollment waits for a free
+slot, while ordinary recognition continues and full-queue query evidence drops
+are counted. Writer errors are distinct from scene errors. Shutdown waits at most
+five seconds to drain; missing final evidence or timeout is incomplete, not success.
+No diagnostics write files on
 the IMU thread; timing does not automatically change scheduling or thresholds.
 No scene match corrects gyro drift or supplies camera position. Unknown frames
 do not automatically enroll. See [live protocol](LIVE_SCENE_MEMORY.md).
