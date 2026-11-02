@@ -2,7 +2,11 @@
 
 The scene worker now submits evidence to a bounded recorder instead of waiting
 for PNG/JSON writes. Recognition, camera settings and IMU sleep are unchanged.
-This is a functionality fix; no Pi performance improvement is claimed yet.
+Pi validation now demonstrates recognition continuing during a 1.335-second
+image write, with all 120 records/images saved and no IMU continuity failure.
+See [results and limits](LIVE_SCHEDULING_RESULTS.md). This is not a total CPU,
+power or universal latency improvement claim. The protocol below is retained
+for reproduction; another stationary repeat is not currently required.
 Local validation: 183 unit tests passed, including real ORB progress during a
 blocked image write and full-queue enrollment deferral. A ten-second synthetic
 CLI run saved ten rows/PNGs and shut down with zero drops or pending records.

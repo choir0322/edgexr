@@ -1,13 +1,17 @@
 # EdgeXR technique and AP evidence register
 
-2026-11-03 — **Implemented; Pi verification pending: bounded scene recorder.**
+2026-11-03 — **Measured on Pi: bounded scene recorder.**
 [SceneRecorder](../src/spatial/scene_recorder.py) owns PNG/JSON writes outside
 the scene worker, with four queued jobs, counted query drops and deferred
 enrollment admission. Separate error status and bounded shutdown preserve
 honest evidence completeness. AP question: does isolating slow writes prevent
 scene stalls without IMU regression? [Protocol](BOUNDED_SCENE_RECORDING.md),
 [source guide](learning/SCENE_MEMORY.md), [pipeline](PIPELINE.md), and
-[plan](exec-plans/active/live-scheduling-diagnostics.md). No measured Pi speedup.
+[completed plan](exec-plans/completed/live-scheduling-diagnostics.md).
+[Pi evidence](../benchmarks/results/scheduling-background-2026-11-03.json):
+120 rows/PNGs, zero drops, recognition completed during a 1.335 s image write;
+maximum source gap 1.035 s, no IMU continuity failure. Total CPU/memory/thermal
+benefit not measured; queue overflow remains locally tested, not Pi-stressed.
 
 2026-11-03 — **Measured: reverse-order recording diagnostics.** B then A
 reproduced a 2.04 s synchronous image-save stall, but no IMU interruption.

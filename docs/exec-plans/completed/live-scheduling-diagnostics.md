@@ -31,8 +31,10 @@ IMU interruption. Keep recognition and 10 ms polling settings unchanged.
 - [x] Ten-second synthetic CLI recording auto-stopped and drained: ten rows,
   ten PNGs, zero recording drops, no pending records. No physical hardware used.
 - [x] Update pipeline diagram and scene-memory source guide for schema 2.
-- [ ] Pi image-enabled verification: scene gaps, queue drops and IMU continuity.
-  Retain diagnostics for the unresolved older IMU interruption.
+- [x] 2026-11-03: Pi image-enabled verification passed: 120 saved observations,
+  no drops; scene recognition completed during a 1.335 s PNG write. Maximum
+  source gap 1.035 s, IMU gap 33.24 ms, no stale event. Retain diagnostics for
+  the unresolved older IMU interruption; it is not claimed solved.
 
 ## Plan of work
 
@@ -99,7 +101,7 @@ stationary repetitions required before a bounded-recorder implementation.
 The reverse-order analysis itself left the diagram unchanged; the subsequent
 recorder implementation updates both diagram and source guide.
 
-Instrumentation and bounded recorder implemented; Pi verification pending.
+Instrumentation and bounded recorder implemented and Pi-validated.
 The source test proves the scene producer can publish another real ORB result
 while PNG writing is blocked. With the queue full, enrollment stays pending,
 then its image and reference links are saved after capacity returns. Error and
@@ -107,4 +109,14 @@ timeout tests reject successful-recording claims; no-record shutdown is valid.
 Underlying storage/scheduler cause and earlier IMU interruption remain unknown.
 No physical hardware was accessed during local validation. PNG format,
 recognition thresholds, freshness limits and polling sleep remain unchanged;
-recording scheduling and schema changed explicitly. No Pi speedup claim yet.
+recording scheduling and schema changed explicitly.
+
+Pi validation demonstrates decoupling under an actual slow write, not merely
+a stall-free smoke test: next recognition starts and finishes inside the prior
+PNG write interval. All 120 rows/images drained successfully, with no recording
+drops. Queue high-water was one; large overflow remains locally tested rather
+than Pi-measured. Full resource optimization remains deferred. Results and
+limitations are in docs/LIVE_SCHEDULING_RESULTS.md and
+benchmarks/results/scheduling-background-2026-11-03.json. Milestone complete;
+underlying storage mechanism and the separate earlier IMU failure remain open.
+Pipeline/source guide reviewed unchanged for this evidence-only update.

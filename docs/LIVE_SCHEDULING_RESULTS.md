@@ -113,3 +113,42 @@ from holding up recognition.
 No full CPU-utilization, memory, thermal, power or storage-root-cause measurements
 were made. Scene equality cannot be independently checked for image-free A.
 See [reverse-order result record](../benchmarks/results/scheduling-ba-2026-11-03.json).
+
+## Background-recorder Pi validation — 2026-11-03
+
+`scheduling-background-01`, commit 932f54b (dirty reported), timing schema 2:
+same recorded ORB settings, detector off, 10 ms sleep, Python 3.11.2 and OpenCV
+4.11.0/two threads. Requested 120 seconds; 119.045 s processed source span.
+
+| Metric | Background recorder |
+|---|---:|
+| Observations / images present | 120 / 120 |
+| Scene rate / maximum source gap | 1.000 Hz / 1.035 s |
+| Scene compute median / p95 | 117.12 / 126.98 ms |
+| Image write median / maximum | 15.36 / 1335.42 ms |
+| Maximum JSON write / queue wait | 2.46 / 332.27 ms |
+| Recording drops / unfinished accepted records | 0 / 0 |
+| Queue high-water / capacity (excludes active write) | 1 / 4 |
+| Maximum IMU gap / gaps >200 ms | 33.24 ms / 0 |
+
+The key evidence is overlap, not just the improved update count. Frame 2860's
+image write ran from host time 2796.698327 to 2798.033747 s. During that interval,
+frame 2890's recognition started at 2797.581972 and completed at 2797.701881 s.
+Its evidence waited approximately 332 ms for the recorder, while recognition
+continued. The source-frame gap across those observations was approximately
+0.999 s. Previously synchronous image writes blocked subsequent recognition.
+
+Final recording status is complete. Every referenced image exists and reference
+images precede or accompany their first linked row. Enrollment occurred at
+14.999 s, later than instructed: the 15 unknown scene results are all empty-memory
+observations before enrollment. All 104 post-enrollment queries were known.
+Orientation had one startup-unknown context, followed by 119 ready contexts;
+no stale event or scene error. This is continuity evidence, not pose accuracy.
+
+Accept the bounded-recorder milestone and return to spatial application work.
+Do not require another stationary repeat merely to obtain a larger stall. Local
+tests cover overflow and errors; this Pi run did not fill the queue or reproduce
+the earlier 5.20 s write. Keep diagnostics for the unresolved older IMU failure.
+No total CPU, RSS, thermal, power, storage-root-cause or universal performance
+claim follows. Enrollment timing and dirty source limit cross-run comparisons.
+See [structured result](../benchmarks/results/scheduling-background-2026-11-03.json).
