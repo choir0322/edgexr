@@ -21,7 +21,10 @@ IMU interruption. Keep recognition and 10 ms polling settings unchanged.
 - [x] Update pipeline and source guide.
 - [x] Compare Pi stationary trials: synchronous image/JSON writes block scene
   progress, but neither run lost IMU continuity. See docs/LIVE_SCHEDULING_RESULTS.md.
-- [ ] Reverse run order to check repeatability before changing scheduling.
+- [x] 2026-11-03: Reverse-order B/A analyzed: PNG stall recurred (2.04 s),
+  no IMU interruption; unequal enrollment timing documented in results.
+- [ ] Implement and validate bounded background recording in a follow-on step;
+  retain diagnostics for the unresolved older IMU interruption.
 
 ## Plan of work
 
@@ -63,6 +66,13 @@ First Pi A/B analyzed: 120 versus 108 scene updates; median compute approximatel
 causal distinction: synchronous scene blocking demonstrated, hardware/storage
 root cause unknown. Pipeline/learning guide reviewed unchanged: evidence only.
 
-Instrumentation implemented; Pi root cause and scheduling remedy pending.
+Reverse-order B/A: 118/120 observations, longest IMU gaps 37.35/33.97 ms,
+no stale events. Multi-second JSON stalls did not recur. PNG blockage is
+repeatable across order; severity varies. Enrollment at 18.98/4.99 s prevents
+treating compute medians as precisely matched workloads. No more identical
+stationary repetitions required before a bounded-recorder implementation.
+Diagram reviewed; unchanged because this update records evidence only.
+
+Instrumentation implemented; underlying root cause and scheduling remedy pending.
 No physical hardware was accessed during local validation. Image saving,
 recognition thresholds, freshness limits and polling sleep policies are unchanged.

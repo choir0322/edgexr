@@ -70,3 +70,46 @@ analysis. No claim of solving the separate IMU problem or improving performance.
 Both runs are a single A→B pair, with dirty working trees and unrecorded
 power/cooling/thermal conditions. Raw logs/images stay outside Git. See the
 [small result record](../benchmarks/results/scheduling-ab-2026-11-02.json).
+
+## Reverse-order repeat — 2026-11-03
+
+User transferred `scheduling-images-02` (B first) and
+`scheduling-no-images-02` (A second). Both report commit a0f8cca, dirty=true,
+with unchanged recorded thresholds, basis, Python/OpenCV versions, detector-off
+setting and 10 ms sleep. Intervening committed changes were documentation only;
+unknown dirty changes prevent claiming byte-identical source. Requested duration
+was 120 seconds each. B includes all 118 referenced PNGs.
+
+| Metric | B first: JSON + PNG | A second: JSON only |
+|---|---:|---:|
+| Observations / source span | 118 / 118.24 s | 120 / 119.08 s |
+| Scene update rate | 0.989 Hz | 0.999 Hz |
+| Enrollment after first frame | 18.98 s | 4.99 s |
+| Post-enrollment known / unknown | 98 / 0 | 114 / 0 |
+| Scene compute median / p95 | 117.03 / 132.30 ms | 119.88 / 129.61 ms |
+| Image write median / maximum | 14.01 / 2042.09 ms | disabled |
+| JSON write median / maximum | 0.56 / 18.34 ms | 0.47 / 4.64 ms |
+| Maximum IMU midpoint gap | 37.35 ms | 33.97 ms |
+| IMU gaps >200 ms / stale observations | 0 / none | 0 / none |
+
+B's row 51 image operation took 2.042 s, followed by a 2.163 s source-frame
+gap. This is its only >1.5 s source gap; A has none. Earlier multi-second JSON
+stalls did not recur. Both have one startup-unknown orientation context and
+ready contexts afterward. All unknown scene decisions are empty-memory results
+before enrollment, not failed recognition. B's later enrollment means its
+whole-run compute distribution includes more empty-memory processing; its
+slightly lower median is not evidence of an image-saving speedup.
+
+Decision: image-saving blockage recurred in reverse order, but neither its
+earlier severity nor the old IMU interruption recurred. Enough evidence exists
+to proceed to a bounded background recorder for PNG and JSON instead of another
+identical stationary pair. This is proposed, not implemented. Keep thresholds
+and IMU policy unchanged; test queue capacity, explicit recording drops,
+reference evidence, slow writes and shutdown before repeating on the Pi.
+Retain IMU diagnostics because the older continuity failure remains unresolved.
+This directly supports usable spatial memory by keeping optional recording
+from holding up recognition.
+
+No full CPU-utilization, memory, thermal, power or storage-root-cause measurements
+were made. Scene equality cannot be independently checked for image-free A.
+See [reverse-order result record](../benchmarks/results/scheduling-ba-2026-11-03.json).

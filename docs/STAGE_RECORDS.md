@@ -1,5 +1,13 @@
 # EdgeXR technique and AP evidence register
 
+2026-11-03 — **Measured: reverse-order recording diagnostics.** B then A
+reproduced a 2.04 s synchronous image-save stall, but no IMU interruption.
+118/120 scene observations; all post-enrollment observations known. Enrollment
+timing differed (19/5 s). [Findings](LIVE_SCHEDULING_RESULTS.md) and
+[structured evidence](../benchmarks/results/scheduling-ba-2026-11-03.json).
+Next: bounded background recording; not yet implemented. No new AP optimization
+claim or threshold change. Existing pipeline/source guides remain unchanged.
+
 This index connects what the Pi learned to do with the cost and quality
 evidence collected for it. It is a stable source for a future project website,
 not a dashboard or a substitute for detailed results. `Measured` means the
