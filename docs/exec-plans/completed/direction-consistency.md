@@ -19,7 +19,8 @@ near-return image had 16.53° separation. Reuse servo demo and view-map math.
 - [x] 191 regression tests pass, including fake-servo/clock schedule checks;
   CLI with the still option checked without importing hardware or moving motors.
 - [x] Review/update pipeline and IMU source guide; diagram data flow unchanged.
-- [ ] One Pi run, inspect images, make the next-step decision.
+- [x] One Pi run and four-image review complete; qualified decision recorded in
+  [results](../../DIRECTION_CONSISTENCY_RESULTS.md). No repeat requested.
 
 ## Plan of work
 
@@ -56,4 +57,8 @@ settled checkpoints reduce but do not remove that limitation.
 191 hardware-independent tests passed; whitespace checks passed. No Pi or motor
 was accessed during implementation. Existing fake-clock/fake-servo tests cover
 the unchanged path; new tests cover still bounds and checkpoint differences.
-Pi evidence pending. Map stays experimental; no angular validation claimed.
+Pi evidence reviewed: 994 ready polls, zero telemetry errors. Still change 1.12°,
+pan return 0.15°, tilt change 1.10°, combined 1.04°. Still/pan images closely
+align; final tilt has ~9 px vertical displacement, so exact tilt return and
+angular accuracy remain unvalidated. Close the diagnostic rather than repeat
+indefinitely. Map stays experimental; earlier long-session discrepancy remains.

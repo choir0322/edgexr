@@ -1,5 +1,9 @@
 # One-run direction-consistency check
 
+Completed once on 2026-11-04: [result and limitations](DIRECTION_CONSISTENCY_RESULTS.md).
+No repeat requested. Short-run consistency is supported; exact tilt return and
+angular accuracy remain unvalidated.
+
 One 30-second stationary interval, one existing pan sweep and one existing tilt
 sweep: about 55–60 seconds, plus startup. No repeated trial series unless evidence
 is missing or the hardware did not execute the intended motion.

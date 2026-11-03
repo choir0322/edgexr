@@ -1,0 +1,32 @@
+{
+  "recording": "direction-consistency-01",
+  "protocol": "still_then_returns_v1",
+  "device": "Raspberry Pi 4 (user project hardware)",
+  "git_commit": "not recorded in capture metadata; protocol implemented in 3bc22e9",
+  "software_version": "not recorded in capture metadata",
+  "camera_mode": "requested 1280x720 MJPEG 30 fps per run instructions; negotiated mode not recorded",
+  "scene": "indoor cabinet/books; same scene at settled checkpoints",
+  "power": "not recorded",
+  "cooling": "not recorded",
+  "warmup": "startup gyro bias then 2 s post-centering settle; no AP benchmark warmup",
+  "elapsed_s": 55.285135559,
+  "stationary_s": 30.0079406985,
+  "imu_sleep_ms": 10,
+  "telemetry_samples": 994,
+  "ready_orientation_samples": 994,
+  "telemetry_errors": 0,
+  "commands_including_initial_centers": 162,
+  "pointing_changes_deg": {"still": 1.1200263491, "pan_return": 0.1459203223, "tilt_return": 1.1042030363, "combined_return": 1.0431098337},
+  "full_rotation_changes_deg": {"still": 1.5462464536, "pan_return": 0.2000030133, "tilt_return": 1.4053849822, "combined_return": 1.2753907788},
+  "offline_image_shift_320x180_px": {
+    "still": {"dx": -0.00133, "dy": -0.00868, "agreeing_patches": 9},
+    "pan_return": {"dx": -0.80556, "dy": -0.03207, "agreeing_patches": 9},
+    "tilt_return": {"dx": -0.02613, "dy": -8.96147, "agreeing_patches": 8},
+    "combined_return": {"dx": -0.50523, "dy": -9.03629, "agreeing_patches": 7}
+  },
+  "polled_medians": {"capture_fps": 30.0915531, "analysis_fps": 27.8760671, "analysis_ms": 33.720559, "imu_hz": 77.6442176},
+  "skipped_analysis_frames_increase": 132,
+  "cpu_memory_temperature_power": "not measured",
+  "decision": "Close bounded diagnostic without repeats; short-run still/pan consistency supported, exact tilt return and angular accuracy unvalidated. Proceed with experimental direction context, not precision bearings.",
+  "limits": "Image shifts are existing image_shift estimates, not measured angles. Telemetry medians include repeated polled estimates and all phases. Unknown actual software revision; no ground truth shaft angles, intrinsics, exposure synchronization or long-term validation. Prior 16.53 degree discrepancy remains unresolved."
+}
