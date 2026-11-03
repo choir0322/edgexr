@@ -11,11 +11,14 @@ import base64
 from dataclasses import dataclass
 from datetime import datetime, timezone
 import json
+import math
 from pathlib import Path
 import threading
 import time
 from typing import Callable, Protocol
 from urllib.request import urlopen
+
+from spatial.view_map import direction_to_view, orientation_context
 
 
 PAN_CHANNEL = 2
@@ -28,6 +31,56 @@ FRAME_URL = "http://127.0.0.1:8765/api/frame"
 FRAME_WIDTH = 320
 FRAME_HEIGHT = 180
 CHECKPOINT_NAMES = ("before_pan", "after_pan", "after_tilt")
+
+
+def checkpoint_names(still_seconds: float) -> tuple[str, ...]:
+    """Select evidence checkpoints without changing the default motor schedule.
+
+    Args:
+        still_seconds (float): Optional stationary interval, from zero to 60 s.
+    Returns:
+        tuple[str, ...]: Required checkpoints in capture order.
+    """
+    if not math.isfinite(still_seconds) or not 0 <= still_seconds <= 60:
+        raise ValueError("Still interval must be finite and between 0 and 60 seconds")
+    return (("before_still",) if still_seconds else ()) + CHECKPOINT_NAMES
+
+
+def checkpoint_summary(rows: list[dict]) -> dict:
+    """Compare independent checkpoint gyro estimates, never infer a visual pass.
+
+    Args:
+        rows (list[dict]): Saved checkpoint rows with HTTP timing and orientation.
+    Returns:
+        dict: Still/return differences or unknown; images require separate review.
+    """
+    indexed = {row["label"]: row for row in rows}
+    comparisons = []
+    for start, end in (("before_still", "before_pan"),
+                       ("before_pan", "after_pan"),
+                       ("after_pan", "after_tilt"),
+                       ("before_pan", "after_tilt")):
+        if start not in indexed or end not in indexed:
+            continue
+        contexts = []
+        for label in (start, end):
+            row = indexed[label]
+            context = dict(row.get("orientation", {}))
+            midpoint = row["host_poll_midpoint_s"]
+            age = context.get("sample_age_ms")
+            # The endpoint reports sample age, not its absolute timestamp. This
+            # midpoint-derived timestamp is approximate and only validates age;
+            # it is not a camera exposure/IMU association.
+            context["sample_monotonic_s"] = (
+                midpoint - age / 1000 if isinstance(age, (int, float)) else None)
+            contexts.append(orientation_context(context, midpoint))
+        difference = direction_to_view(contexts[1], contexts[0])
+        comparisons.append({"from": start, "to": end,
+            "elapsed_host_s": indexed[end]["host_poll_midpoint_s"] - indexed[start]["host_poll_midpoint_s"],
+            **difference})
+    return {"comparisons": comparisons,
+            "validation": "pending_image_review_not_an_accuracy_pass",
+            "scope": "Relative gyro changes at settled HTTP checkpoints; no exposure synchronization, measured shaft angles, bias correction or position. Inspect images before interpreting return error."}
 
 
 class ServoPort(Protocol):
@@ -142,12 +195,12 @@ def save_image_checkpoint(folder: Path, label: str) -> dict:
 
     Args:
         folder (Path): New ignored run directory for image/checkpoint logs.
-        label (str): One of the three fixed still-point names.
+        label (str): A fixed settled checkpoint, optionally including before_still.
 
     Returns:
         dict: JSON-ready image source, freshness and host-poll midpoint.
     """
-    if label not in CHECKPOINT_NAMES:
+    if label not in ("before_still",) + CHECKPOINT_NAMES:
         raise ValueError("Unknown image checkpoint")
     before = time.monotonic()
     snapshot = preview_frame()
@@ -173,6 +226,7 @@ def save_image_checkpoint(folder: Path, label: str) -> dict:
         "frame_sequence": snapshot.get("sequence"), "frame_age_ms": age,
         "imu_poll_sleep_ms": snapshot.get("imu_poll_sleep_ms"),
         "orientation_status": snapshot.get("imu", {}).get("relative_orientation", {}).get("status"),
+        "orientation": snapshot.get("imu", {}).get("relative_orientation", {}),
         "timing_scope": "host observation; image and IMU are not exposure-synchronized",
     }
 
@@ -260,7 +314,13 @@ def main() -> int:
     parser.add_argument("--confirm-clearance", action="store_true", help="both axes and cables are clear through ±20°")
     parser.add_argument("--output", type=Path,
                         help="new recordings/ directory for servo commands and sampled non-image preview telemetry")
+    parser.add_argument("--still-seconds", type=float, default=0,
+                        help="0..60 s stationary evidence before sweeps; use 30 for the one-run direction check")
     args = parser.parse_args()
+    try:
+        required_checkpoints = checkpoint_names(args.still_seconds)
+    except ValueError as error:
+        parser.error(str(error))
     steps = build_steps()
     pan_return = final_pan_step(steps)
     print("Pan 0 → −20 → +20 → 0, then tilt 0 → −20 → +20 → 0; "
@@ -299,6 +359,7 @@ def main() -> int:
     logger: threading.Thread | None = None
     final_command_s: float | None = None
     checkpoints: list[str] = []
+    checkpoint_rows: list[dict] = []
     folder.mkdir(parents=True)
     commands_path = folder / "servo_commands.jsonl"
     try:
@@ -317,6 +378,7 @@ def main() -> int:
                 checkpoint_log.write(json.dumps(row, allow_nan=False) + "\n")
                 checkpoint_log.flush()
                 checkpoints.append(label)
+                checkpoint_rows.append(row)
 
             def after_step(step: Step, actual: float) -> None:
                 """Use the existing pan-to-tilt pause for a settled pan image."""
@@ -339,9 +401,14 @@ def main() -> int:
             for axis in ("pan", "tilt"):
                 servos[axis].angle(0)
                 save_command(axis, 0, time.monotonic())
-            print("Centered both axes. Hold still for 2 seconds; then pan starts.", flush=True)
+            print("Centered both axes. Settling for 2 seconds.", flush=True)
             time.sleep(2)
+            if args.still_seconds:
+                save_checkpoint("before_still")
+                print(f"Stationary baseline: {args.still_seconds:g} seconds. Do not touch the rig; pan starts automatically afterward.", flush=True)
+                time.sleep(args.still_seconds)
             save_checkpoint("before_pan")
+            print("Starting pan, then tilt. Keep the base fixed.", flush=True)
             count = run_steps(steps, servos, on_command=after_step)
             print("Final 0° command sent; logging two seconds of settled orientation.", flush=True)
             time.sleep(FINAL_SETTLE_SECONDS)
@@ -366,7 +433,7 @@ def main() -> int:
             counts["logger_error"] = "logger did not stop within two seconds"
         settled_sample = has_settled_sample(final_command_s, counts["last_ready_sample_s"])
         if status == "complete" and (counts["logger_error"] or not settled_sample or
-                                     tuple(checkpoints) != CHECKPOINT_NAMES):
+                                     tuple(checkpoints) != required_checkpoints):
             status = "telemetry_incomplete"
             failure = (counts["logger_error"] or
                        "missing settled orientation or camera checkpoint")
@@ -380,6 +447,8 @@ def main() -> int:
             "image_url": FRAME_URL,
             "imu_poll_sleep_ms": imu_sleep_ms,
             "image_checkpoints": checkpoints,
+            "protocol": "still_then_returns_v1" if args.still_seconds else "servo_returns",
+            "still_seconds": args.still_seconds,
             "image_shape": f"{FRAME_WIDTH}x{FRAME_HEIGHT} grayscale PGM",
             "telemetry_samples": counts["samples"],
             "ready_orientation_samples": counts["ready_samples"],
@@ -393,6 +462,10 @@ def main() -> int:
             "telemetry_poll_interval_seconds": 0.05,
             "timestamp_scope": "Pi host monotonic command times and HTTP poll midpoints; not camera exposure synchronization",
         }, indent=2) + "\n")
+        summary = checkpoint_summary(checkpoint_rows)
+        summary["run_status"] = status
+        (folder / "direction_summary.json").write_text(json.dumps(summary, indent=2, allow_nan=False) + "\n")
+        print(json.dumps(summary, indent=2, allow_nan=False), flush=True)
     return exit_code
 
 

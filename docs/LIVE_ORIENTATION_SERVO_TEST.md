@@ -1,5 +1,10 @@
 # One-shot live quaternion pan/tilt test
 
+For the newer one-run stationary-plus-return validation, use
+[DIRECTION_CONSISTENCY.md](DIRECTION_CONSISTENCY.md). `--still-seconds 30` adds
+one before-still checkpoint; default motion/range remains unchanged. All new
+runs save full checkpoint orientation and `direction_summary.json` for review.
+
 This is an attended physical demonstration, not an AP benchmark. The motor
 controller is a separate process so the existing preview remains the sole
 owner of `/dev/video0`. It does not save video. It now saves sampled preview

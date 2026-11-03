@@ -1,5 +1,12 @@
 # Study 3: IMU reading, timestamp and gyro display
 
+For the bounded direction check, `servo_orientation_demo.checkpoint_summary`
+compares settled HTTP orientation snapshots with `direction_to_view`, after
+validating freshness and reference epoch. Optional `--still-seconds 30` separates
+stationary drift from sweep-return changes. Saved checkpoint images must be
+reviewed independently; same HTTP response is not exposure synchronization.
+See [one-run protocol](../DIRECTION_CONSISTENCY.md). No live estimator correction.
+
 For the measured polling tradeoff and definitions of CPU seconds/return
 residual, read [IMU_POLLING_FINDINGS.md](../IMU_POLLING_FINDINGS.md). The
 [offline camera-axis fit](../IMU_CAMERA_AXES.md) reuses saved pan/tilt recordings;

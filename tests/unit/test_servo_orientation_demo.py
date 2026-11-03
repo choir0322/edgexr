@@ -139,6 +139,7 @@ class ServoOrientationDemoTests(unittest.TestCase):
         self.assertEqual(image, b"P5\n320 180\n255\n" + pixels)
         self.assertEqual(row["frame_sequence"], 21)
         self.assertEqual(row["imu_poll_sleep_ms"], 10)
+        self.assertEqual(row["orientation"], snapshot["imu"]["relative_orientation"])
 
     def test_stale_or_wrong_size_checkpoint_fails(self) -> None:
         """A missing or old display image cannot be mistaken for a visual return."""

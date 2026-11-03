@@ -1,5 +1,15 @@
 # EdgeXR technique and AP evidence register
 
+2026-11-04 — **Implemented; Pi evidence pending: bounded direction consistency.**
+User confirmed scene/map functional behavior (recognition, multiple references,
+direction signs, separation display, query counts and links), not angular accuracy.
+[Servo diagnostic](../src/spatial/servo_orientation_demo.py) adds an optional
+stationary baseline and local checkpoint quaternion comparisons before one pan/
+tilt return. [Protocol](DIRECTION_CONSISTENCY.md),
+[plan](exec-plans/active/direction-consistency.md), [guide](learning/IMU.md).
+No estimator correction or model change. AP question remains quality versus
+sampling/workload; total CPU/energy/thermal cost not measured in this short check.
+
 2026-11-04 — **Pi bookkeeping verified; angular accuracy unvalidated: lightweight view map.**
 [ViewMap](../src/spatial/view_map.py) links explicit references, saved relative
 orientation and observed label changes; no distance/position or gyro correction.

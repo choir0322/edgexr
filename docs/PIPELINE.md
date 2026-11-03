@@ -1,5 +1,11 @@
 # Current live pipeline
 
+Direction-consistency diagnostic: the separate attended `servo_orientation_demo`
+process can add `--still-seconds 30` before its unchanged sweeps. It saves four
+HTTP image/orientation checkpoints and `direction_summary.json` with local
+quaternion differences. This does not feed corrections into the live pipeline.
+Diagram reviewed; live data flow unchanged. See [protocol](DIRECTION_CONSISTENCY.md).
+
 ## Separate offline scene-memory branch — 2026-10-29
 
 The optional live route is now implemented separately as well:
