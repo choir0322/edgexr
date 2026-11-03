@@ -273,6 +273,9 @@ for the next orientation milestone.
 Gyro-only live relative camera orientation is implemented and the user reports
 running it on the Pi, with four logged polling trials and qualitative visual
 return confirmation. Offline visual scene memory was implemented on 2026-10-29;
-live scene memory, calibrated visual correction and mapping remain pending.
-The pipeline and concise source guide now describe the offline branch while
-preserving the current live data flow.
+live scene memory and a bounded recording worker have since been implemented
+and Pi-checked. As of 2026-11-04 the lightweight session-local view map is
+implemented and locally tested; its Pi three-view validation is pending in
+`docs/exec-plans/active/lightweight-view-map.md`. Calibrated visual correction
+and physical-position mapping remain unimplemented. The pipeline and source
+guide distinguish the current view map from those deferred capabilities.

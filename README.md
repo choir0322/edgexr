@@ -4,14 +4,17 @@
 
 **2026-10-26 development order:** finish the bounded vision/spatial-awareness
 application, then AP measurement and optimization, then detailed learning
-materials. Keep tests and technical records throughout. The next implementation
-milestone is live visual scene memory and verified revisits, using the existing
-relative orientation as supporting context. The first
+materials. Keep tests and technical records throughout. The current milestone
+is the [lightweight view map](docs/VIEW_MAP.md): remembered views, estimated
+relative viewing directions and observed label transitions, not position/depth.
+Implementation and local tests are complete; Pi three-view validation is next.
+The first
 [offline scene-memory tool](docs/SCENE_MEMORY.md) now recognizes an A → B → A
 sequence in two existing Pi recordings without threshold changes. The opt-in
 [live scene worker](docs/LIVE_SCENE_MEMORY.md) now adds explicit enrollment and
-timestamped preceding-IMU context. Pi live acceptance and broader evaluation
-remain pending. See the
+timestamped preceding-IMU context. Three-view scene recognition and bounded
+background recording have Pi evidence; broader evaluation remains bounded by
+the documented limitations. See the
 [recorded decision and completion criteria](docs/decisions/2026-10-26-development-order.md).
 This order supersedes the earlier feature → AP experiment → lesson cycle.
 

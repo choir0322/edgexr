@@ -117,6 +117,10 @@ code {
 <p id="orientation-status">Relative camera orientation is off.</p>
 <p id="scene-status">Scene memory is off.</p>
 <p id="scene-recording"></p>
+<details open>
+<summary>Session view map — directions, not positions</summary>
+<pre id="view-map" style="white-space:pre-wrap">No view map yet.</pre>
+</details>
 <button id="scene-enroll" type="button" disabled>Remember current view</button>
 <span id="scene-request" role="status"></span>
 <p id="detect-status">Detection is off. Add <code>--detect</code> to show boxes.</p>
@@ -229,6 +233,32 @@ function render(data) {
   const scene = data.scene || {status: 'off'};
   const row = scene.result;
   const recording = scene.recording;
+  // Map bearings are gyro context, never a navigation command or visual gate.
+  const viewMap = row && row.view_map;
+  if (viewMap && scene.status === 'ready') {
+    const current = viewMap.nodes.find(node => node.scene_id === viewMap.current_scene_id);
+    const lines = [`Visually recognized: ${current ? current.label : 'unknown'}. ` +
+      `Frame orientation: ${viewMap.orientation_status}.`];
+    for (const node of viewMap.nodes) {
+      const direction = node.direction_from_current;
+      lines.push(direction.status === 'ready' ?
+        `${node.label}: saved lens direction — right ${direction.yaw_right_deg === null ? 'undefined' : direction.yaw_right_deg.toFixed(1) + '°'}, ` +
+        `up ${direction.elevation_up_deg.toFixed(1)}°; separation ${direction.pointing_separation_deg.toFixed(1)}°; ` +
+        `${node.recognized_queries} recognized queries.` :
+        `${node.label}: angular context unknown (${direction.reason}); ${node.recognized_queries} recognized queries.`);
+    }
+    lines.push(`Observed directed links: ${viewMap.edges.length}. Label changes are not physical paths.`);
+    for (const edge of [...viewMap.edges].sort((a, b) => b.last_observed_host_s - a.last_observed_host_s).slice(0, 6)) {
+      const from = viewMap.nodes.find(node => node.scene_id === edge.from_scene_id);
+      const to = viewMap.nodes.find(node => node.scene_id === edge.to_scene_id);
+      lines.push(`${from.label} → ${to.label}: ${edge.count} observed changes; ` +
+        `latest had ${edge.intervening_unknown_observations} unknown observations between.`);
+    }
+    lines.push('Positive right/up; negative left/down. Gyro estimates drift. Fixed base; no distance, room coordinates or drift correction.');
+    put('view-map', lines.join('\n'));
+  } else {
+    put('view-map', `View map not live (${scene.status}); stored context is not current recognition.`);
+  }
   put('scene-recording', recording ?
     `Evidence recording: ${recording.status}; queue ${recording.queued}/${recording.capacity}; ` +
     `${recording.written} saved, ${recording.dropped} recording drops. ${recording.error || ''}` : '');
@@ -394,6 +424,7 @@ async function poll() {
     put('imu-status', 'Disconnected — IMU readings are unavailable.');
     put('scene-status', 'Disconnected — scene recognition is unavailable.');
     put('scene-recording', 'Recording status unavailable — check the Pi terminal and final record.');
+    put('view-map', 'Disconnected — no current view-map observation.');
     document.getElementById('scene-enroll').disabled = true;
     for (const id of ['detect-rate', 'detect-cost', 'detect-age']) {
       put(id, '—');

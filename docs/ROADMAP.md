@@ -113,7 +113,10 @@ unsupported motion rather than inventing a position. Follow the
 Translation, metric depth and full 3D mapping require a separate later scope.
 The [research review](SPATIAL_AWARENESS_RESEARCH.md) supports a calibrated visual
 compass, gyro assistance and bounded scene keyframes before a full SLAM stack.
-The next implementation is bounded scene memory on recorded input. Maintain
+Recorded/live scene memory and bounded background recording are implemented.
+The current step is the [session-local view map](VIEW_MAP.md): explicit view
+nodes, gyro viewing-direction context and observed transitions. Pi verification
+is pending. This is not a moving-base position map. Maintain
 timestamp validity; camera calibration gates calibrated angular correction,
 rather than conservative visual scene recognition.
 

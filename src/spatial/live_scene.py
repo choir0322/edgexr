@@ -12,6 +12,7 @@ from typing import Any
 import numpy as np
 from spatial.scene_memory import SceneMemory
 from spatial.scene_recorder import SceneRecorder
+from spatial.view_map import ViewMap
 
 
 class LiveScene:
@@ -102,6 +103,7 @@ def scene_latest(state: Any, cv: Any, output: Path | None = None,
         if save_images and output is None:
             raise ValueError("Scene images require a new output directory")
         memory = SceneMemory(cv=cv)
+        view_map = ViewMap(memory.config.max_views)
         contexts: dict[int, dict] = {}
         reference_images: dict[int, str] = {}
         if output is not None:
@@ -117,6 +119,7 @@ def scene_latest(state: Any, cv: Any, output: Path | None = None,
                         "input_shape": "1280x720 grayscale; host receipts, not exposure time",
                         "save_images": save_images,
                         "timing_schema": 2,
+                        "view_map_schema": 1,
                         "recording_policy": "FIFO background writer; four waiting plus one in-flight record; drop new queries when full; defer enrollment until admission available",
                         "completion_rule": "Require timing-final.json recording status; missing final file means incomplete",
                         "timing_scope": "Host wall intervals plus scene-thread/process CPU; CPU clocks do not measure other OpenCV threads individually. IMU keeps 64 slow events and cumulative maxima. No OS scheduler/storage attribution.",
@@ -157,6 +160,9 @@ def scene_latest(state: Any, cv: Any, output: Path | None = None,
                    "enrollment_requested": label, "decision": decision,
                    "orientation_at_frame": orientation,
                    "reference_orientation": contexts.get(decision["scene_id"])}
+            map_started = time.monotonic()
+            row["view_map"] = view_map.update(decision, orientation, captured)
+            row["view_map_update_ms"] = (time.monotonic() - map_started) * 1000
             if recorder is not None:
                 # Queue immutable source bytes, not a future camera frame. The
                 # writer owns resizing/encoding/disk I/O and its own row copy.

@@ -31,6 +31,19 @@ deferred until the application and AP phases are complete. Follow the
 
 ## Live source route
 
+`spatial.view_map.ViewMap.update` now consumes each scene decision and its
+associated orientation. It never changes the visual decision. Enrollment saves
+the orientation once; later queries update observation counts, not the saved
+orientation. It mirrors LRU eviction and records directed changes between known
+labels, with intervening unknown counts. `orientation_context` validates finite
+near-unit quaternions, preceding samples within 200 ms and the reference epoch.
+`direction_to_view` computes `inverse(q_current) * q_enrolled`, then rotates the
+saved forward `(0,0,1)` ray into current camera axes. It derives right/up angles
+from that ray; absolute scalar quaternion component gives the shortest full
+rotation difference, including roll. q and -q represent the same rotation.
+There is no positional component. Map snapshots are copied into live/recorded
+rows, independently of recording queue ownership. See [scope/protocol](../VIEW_MAP.md).
+
 `State.publish_frame` in `app/live_preview.py` retains full gray bytes, frame
 sequence, host receipt time and `LiveImu.orientation_at` context in one latest
 slot. The IMU helper searches a bounded history for a preceding sample within

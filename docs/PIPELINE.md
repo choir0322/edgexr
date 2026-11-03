@@ -12,7 +12,8 @@ flowchart LR
     C --> S["One latest full frame + orientation context"]
     S --> W["Scene worker: target 1 Hz; resize 640x360; unchanged ORB/geometry rules"]
     B["Browser explicit enrollment POST"] --> W
-    W --> R["Known / unknown / enrolled; reference and query orientation context"]
+    W --> V["ViewMap: ≤12 enrollment nodes; ≤132 observed label-change edges; gyro direction context"]
+    V --> R["Known / unknown / enrolled unchanged; map snapshot + update time"]
     R --> T["State snapshot → browser + telemetry; stale after 2 s"]
     R --> Q["Nonblocking evidence FIFO: 4 waiting + 1 active; counted query drops"]
     Q --> L["Recording worker: optional JSONL + opt-in PNGs; reference-before-query order"]
@@ -20,6 +21,11 @@ flowchart LR
 ```
 
 This association uses host observation times, not exposure synchronization.
+`ViewMap.update` attaches saved viewing rays in current camera axes only when
+valid gyro contexts share a reference epoch. Unknown recognition remains unknown;
+unknown orientation disables angular context, not visual recognition. Edges are
+observation changes, not physical routes. Nodes/edges follow scene LRU eviction;
+no map survives restart except diagnostic snapshots. See [view map](VIEW_MAP.md).
 Scene JSONL also contains bounded IMU polling diagnostics (read, publish,
 late wake and gaps), scene wall/thread/process CPU intervals, timestamped PNG
 writes and the preceding JSON-write interval. `timing-final.json` retains the
