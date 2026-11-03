@@ -1,13 +1,18 @@
 # EdgeXR technique and AP evidence register
 
-2026-11-03 — **Implemented, Pi validation pending: lightweight view map.**
+2026-11-04 — **Pi bookkeeping verified; angular accuracy unvalidated: lightweight view map.**
 [ViewMap](../src/spatial/view_map.py) links explicit references, saved relative
 orientation and observed label changes; no distance/position or gyro correction.
 Bounded to scene memory capacity, with unknown angular context kept explicit.
 AP question: cost of node/edge updates and angular comparisons at scene cadence;
 `view_map_update_ms` records update wall time, not overall CPU. [Plan](exec-plans/active/lightweight-view-map.md),
 [protocol](VIEW_MAP.md), [source guide](learning/SCENE_MEMORY.md). Local replay
-uses prior decisions, not new accuracy evidence; live measurements pending.
+uses prior decisions, not new accuracy evidence. [Live review](VIEW_MAP_RESULTS.md)
+and [small result](../benchmarks/results/view-map-2026-11-04.json): 180 snapshots,
+three nodes/five links, zero drops, median map-update wall time 0.4733 ms.
+Final center imagery is close but gyro pointing separation is 16.53°; do not
+claim angle accuracy. Total CPU/memory/temperature not measured. Preview now
+places the non-collapsible map before the image/metrics; ready/stale browser checked.
 
 2026-11-03 — **Measured on Pi: bounded scene recorder.**
 [SceneRecorder](../src/spatial/scene_recorder.py) owns PNG/JSON writes outside

@@ -26,6 +26,10 @@ axes into the run's initial reference axes. IMU integration drifts.
   the recorder cleanly. No physical sensors or motors accessed.
 - [x] Update pipeline/source guide, stage records and runnable Pi instructions.
 - [ ] Pi three-view verification; keep unknown orientation distinct from recognition.
+- [x] 2026-11-04: inspect live-view-map-01 enrollment/return PNGs and logged map;
+  expose map above preview/metrics, verify ready/stale browser rendering.
+- [ ] Validate angular accuracy separately; final center image is close to its
+  reference but gyro-derived pointing separation is 16.53 degrees.
 
 ## Plan of work
 
@@ -66,6 +70,16 @@ must remain independent diagnostics, never corrections or rejection thresholds.
   document that recognition flicker can create edges. Require the same IMU epoch.
 
 ## Outcomes and retrospective
+
+Follow-up: [live evidence and visibility review](../../VIEW_MAP_RESULTS.md).
+The Pi recorded 180 map snapshots, three nodes and five directed links without
+recording drops. This establishes live bookkeeping, not angular accuracy.
+Browser fixture using recorded telemetry confirms the map is visible at the top
+and stale results are not presented as current. The original page's map followed
+14 cards and several paragraphs; an old running server can also retain old HTML.
+The exact user's browser failure was not reproduced on the Pi. No recognition,
+orientation, scheduling or recording thresholds were changed. Pipeline diagram
+reviewed; unchanged data flow, only display placement and validation wording updated.
 
 Implementation and local verification complete; Pi three-view verification pending.
 Replay of 208 existing three-view observations yields three nodes, five directed

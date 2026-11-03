@@ -1,5 +1,12 @@
 # Scene memory: current source map
 
+Display review (2026-11-04): `preview.html` renders the scene/map/enrollment panel
+before the camera and metric cards. `render` uses the unchanged map snapshot;
+stale/disconnected scene state hides current bearings. `make_handler` loads HTML
+at startup, so restart the Pi preview after pulling UI updates. Data-flow diagram
+reviewed; no inference, orientation or recorder change. See
+[image/orientation evidence](../VIEW_MAP_RESULTS.md) before interpreting angles.
+
 This concise map records the new offline path; a detailed learning page is
 deferred until the application and AP phases are complete. Follow the
 [run guide](../SCENE_MEMORY.md) for commands and numeric rules.

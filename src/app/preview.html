@@ -82,11 +82,32 @@ small {
 code {
   color: #cfdee8;
 }
+/* Keep scene memory discoverable before the image and the metric dashboard. */
+nav a { color: #68d6bb; }
+#session-view-map {
+  margin: 16px 0;
+  padding: 16px;
+  border: 1px solid #68d6bb;
+  border-radius: 12px;
+  background: #1b2b38;
+}
+#session-view-map h2 { margin: 0; font-size: 20px; }
+#view-map { white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.5; }
 </style>
 <main>
 <h1>EdgeXR · Camera motion</h1>
 <p>Live image movement at 320 × 180, with optional IMU readings and object detection.</p>
+<nav><a href="#session-view-map">Session View Map</a> · <a href="#image">Camera preview</a></nav>
 <div id="status" role="status" aria-live="polite">Connecting…</div>
+<section id="session-view-map" aria-labelledby="view-map-title">
+<h2 id="view-map-title">Session View Map</h2>
+<small>Preview UI: view-map-2 · Estimated viewing directions, not positions. Gyro drift is not corrected.</small>
+<p id="scene-status">Scene memory is off.</p>
+<pre id="view-map">Waiting for scene telemetry. Start the Pi preview with --scene-memory.</pre>
+<button id="scene-enroll" type="button" disabled>Remember current view</button>
+<span id="scene-request" role="status"></span>
+<p id="scene-recording"></p>
+</section>
 <!-- The 320×180 image and 640×360 overlays share one visual rectangle.
      Boxes refer to older source frames; the arrow is image shift, not a track. -->
 <div class="view">
@@ -115,14 +136,6 @@ code {
 <p id="motion">Waiting for a frame…</p>
 <p id="imu-status">IMU is off. Restart Pi preview with <code>--imu</code> to show it.</p>
 <p id="orientation-status">Relative camera orientation is off.</p>
-<p id="scene-status">Scene memory is off.</p>
-<p id="scene-recording"></p>
-<details open>
-<summary>Session view map — directions, not positions</summary>
-<pre id="view-map" style="white-space:pre-wrap">No view map yet.</pre>
-</details>
-<button id="scene-enroll" type="button" disabled>Remember current view</button>
-<span id="scene-request" role="status"></span>
 <p id="detect-status">Detection is off. Add <code>--detect</code> to show boxes.</p>
 <small>Amber boxes describe an older frame and may lag during motion; they are hidden after 1.5 seconds.
 Box age starts at frame receipt on Pi and excludes SSH/browser delay. A <code>#ID</code> is provisional and local to this run. With motion-aware tracking, recent image shift can predict box positions for ID matching; displayed boxes still describe their original detector frame.</small>

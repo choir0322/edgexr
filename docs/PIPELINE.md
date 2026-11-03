@@ -26,6 +26,9 @@ valid gyro contexts share a reference epoch. Unknown recognition remains unknown
 unknown orientation disables angular context, not visual recognition. Edges are
 observation changes, not physical routes. Nodes/edges follow scene LRU eviction;
 no map survives restart except diagnostic snapshots. See [view map](VIEW_MAP.md).
+The browser groups scene status, map and enrollment in a non-collapsible panel
+above the camera/metrics. Angular accuracy remains unvalidated; recognition
+means overlapping visual support, not identical direction ([evidence](VIEW_MAP_RESULTS.md)).
 Scene JSONL also contains bounded IMU polling diagnostics (read, publish,
 late wake and gaps), scene wall/thread/process CPU intervals, timestamped PNG
 writes and the preceding JSON-write interval. `timing-final.json` retains the

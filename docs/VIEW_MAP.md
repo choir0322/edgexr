@@ -38,6 +38,14 @@ metric distance, geographic heading, automatic pan/tilt or pose correction.
 
 ## Pi verification: three distinct views
 
+The map is now a bordered **Session View Map** panel near the top, above the
+camera and metrics. Look for **Preview UI: view-map-2**, or click the top map link.
+After pulling, stop the running preview with Ctrl+C and restart it: its HTML is
+loaded once at startup. Reload the Mac page afterward. If the marker is absent,
+you are not viewing the new page. The panel stays visible when off/stale, but
+does not show old bearings as current. [Image/orientation review](VIEW_MAP_RESULTS.md)
+keeps angular accuracy explicitly unvalidated.
+
 Stop the earlier preview. Keep the base fixed and use the same safe manual
 view-changing method used for the prior three-view trial; do not force powered
 servo gears. No motor-control command is included here.
@@ -103,7 +111,8 @@ invalid references, unknown visual gaps, immutable snapshots and LRU pruning.
 Offline replay of `live-scene-three-01` yields three nodes, five distinct links
 and nine label changes; 94 ready/114 unknown orientation contexts. The final
 bearings correctly stay unknown. This reuses recorded decisions, not new image
-inference or ground-truth validation. Pi live verification and map cost pending.
+inference or ground-truth validation. Subsequent live bookkeeping and map cost
+are recorded in [the review](VIEW_MAP_RESULTS.md); angular accuracy remains open.
 
 2026-11-04 local validation: all 187 unit tests passed. A synthetic ten-second
 CLI run saved ten map snapshots with complete recorder shutdown. Changed-file
