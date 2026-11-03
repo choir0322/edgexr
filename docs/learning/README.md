@@ -2,6 +2,11 @@
 
 These guides explain the currently inspected implementation, not an idealized
 replacement. Start with the interactive [whole-program flow explorer](program-flow-explorer.html).
+Updated through 2026-11-04: expand **Scene memory + map** or **Read IMU** to follow
+ORB, geometric verification, camera-axis conversion, quaternion integration,
+timestamp association, view directions and bounded evidence recording. Read
+[spatial progress and systems opportunities](SPATIAL_PROGRESS_AND_SYSTEMS.md)
+for the chronological changes, source links, measured results and next milestone.
 It begins with the camera and IMU inputs, then lets you open the motion,
 detection/tracking, timing and browser-delivery branches without showing every
 detail at once. Its execution walkthrough demonstrates why the browser can show
@@ -11,8 +16,8 @@ an image, boxes and an IMU sample from different source times. Use the
 1. [Image motion](IMAGE_MOTION.md): camera bytes -> image arrays -> displacement -> arrow.
 2. [Object detection](OBJECT_DETECTION.md): newest image -> model -> scored boxes -> overlay.
 3. [IMU](IMU.md): driver reading -> timestamp -> offset -> angular-rate display.
-4. [Offline scene memory](SCENE_MEMORY.md): saved video -> ORB features ->
-   verified reference-view match or unknown; no live integration yet.
+4. [Scene memory](SCENE_MEMORY.md): recorded/live images -> ORB -> verified
+   reference-view match or unknown -> session view map and optional queued evidence.
 
 After the baseline paths, read [motion-aware ID matching](MOTION_AWARE_TRACKING.md)
 for the optional bridge from image-shift history to the detector's box tracker.

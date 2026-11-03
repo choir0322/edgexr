@@ -114,9 +114,13 @@ Translation, metric depth and full 3D mapping require a separate later scope.
 The [research review](SPATIAL_AWARENESS_RESEARCH.md) supports a calibrated visual
 compass, gyro assistance and bounded scene keyframes before a full SLAM stack.
 Recorded/live scene memory and bounded background recording are implemented.
-The current step is the [session-local view map](VIEW_MAP.md): explicit view
-nodes, gyro viewing-direction context and observed transitions. Pi verification
-is pending. This is not a moving-base position map. Maintain
+The [session-local view map](VIEW_MAP.md) now has live bookkeeping and user
+functional confirmation: explicit nodes, gyro direction context and transitions.
+The [bounded direction check](DIRECTION_CONSISTENCY_RESULTS.md) is closed with
+qualified short-run consistency; precise angular accuracy and long-session drift
+remain unresolved. Next package the bounded application's reproducible handoff
+and feature profile, then establish its AP baseline without adding new spatial
+scope by default. This is not a moving-base position map. Maintain
 timestamp validity; camera calibration gates calibrated angular correction,
 rather than conservative visual scene recognition.
 

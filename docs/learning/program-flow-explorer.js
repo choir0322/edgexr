@@ -66,11 +66,11 @@
    */
   function measureNode(id, depth) {
     const n = map[id], expanded = path[depth] === id && n.children.length > 0;
-    if (!expanded) return {width:132, height:77, children:[]};
+    if (!expanded) return {width:132, height:96, children:[]};
     const children = n.children.map(child => ({id:child, ...measureNode(child, depth + 1)}));
     return {
       width: Math.max(260, 32 + children.reduce((sum, child) => sum + child.width, 0) + Math.max(0, children.length - 1) * 34),
-      height: 84 + Math.max(...children.map(child => child.height), 77),
+      height: 84 + Math.max(...children.map(child => child.height), 96),
       children,
     };
   }
@@ -117,7 +117,7 @@
    */
   function rootLayout() {
     const sizes=Object.fromEntries(map.root.children.map(id=>[id,measureNode(id,1)]));
-    const laneIds=['motion','detection','imu'], sideIds=['transport','support'];
+    const laneIds=['motion','detection','imu','scene'], sideIds=['transport','support'];
     const gapX=70,gapY=24,padX=28,padY=58;
     const laneWidth=Math.max(...laneIds.map(id=>sizes[id].width));
     const laneHeight=laneIds.reduce((sum,id)=>sum+sizes[id].height,0)+gapY*(laneIds.length-1);
@@ -158,7 +158,11 @@
     $('edges').append(svg('rect',{x:13,y:25,width:piRight-13,height:height-38,rx:12,class:'zone'}));
     for(const [x,label] of [[28,'RASPBERRY PI / CAMERA + SENSOR INPUTS'],[positions.browser.x,'MACBOOK']]){const text=svg('text',{x,y:19,class:'zone-label'});text.textContent=label;$('edges').append(text);}
     edge(positions.capture,positions.motion,'small');edge(positions.capture,positions.detection,'full');
-    for(const id of ['motion','detection','imu'])edge(positions[id],positions.snapshot);
+    edge(positions.capture,positions.scene,'full + timed context');
+    for(const id of ['motion','detection','imu','scene'])edge(positions[id],positions.snapshot);
+    // Context comes from IMU history, not a dependency on object detection.
+    const contextX=positions.imu.x+positions.imu.width/2;
+    $('edges').append(svg('path',{d:`M${contextX} ${positions.imu.y+positions.imu.height} V${positions.scene.y}`,class:'edge','stroke-dasharray':'3 3','marker-end':'url(#tip)'}));
     edge(positions.snapshot,positions.transport,'JSON');edge(positions.transport,positions.browser,'SSH');
     const requestY=34, browserMid=positions.browser.x+positions.browser.width/2, snapshotMid=positions.snapshot.x+positions.snapshot.width/2;
     $('edges').append(svg('path',{d:`M${browserMid} ${positions.browser.y} V${requestY} H${snapshotMid} V${positions.snapshot.y}`,class:'edge','stroke-dasharray':'4 5','marker-end':'url(#tip)'}));
@@ -279,7 +283,17 @@
 
     // Non-Fourier calculations use clearly labeled teaching values, not fake sensor outputs.
     const views={
-      overview:chips([['1 camera','One stream, two image consumers'],['1 IMU','Independent physical input'],['3 result types','Motion · boxes / IDs · gyro']]),
+      overview:chips([['1 camera','Motion + optional detector + scene consumers'],['1 IMU','Rates + optional orientation history'],['4 result stores','Motion · detection · IMU · scene/map']]),
+      axisMath:formula('ωcamera = R × (ωraw − bias)','Three dot products per sample. Unit: degrees/second. Coordinate conversion is not integration.'),
+      quaternionMath:formula('Δθ = ½(ωprevious + ωcurrent) Δt<br>qnext = normalize(qprevious × Δq)','Convert rates to radians for the increment. q=(cos(θ/2), axis·sin(θ/2)); no component is time or position.'),
+      contextMath:formula('preceding IMU context → frame receipt → ORB decision','Keep ≤256 history entries. Accept preceding context only within 200 ms; otherwise angular context is unknown.'),
+      sceneFlow:chips([['640×360 gray','Latest selected frame'],['≤600 ORB','Binary local-pattern descriptors'],['known / unknown','Geometric support, not an object ID']]),
+      orbMath:formula('Hamming(a,b) = number of differing bits','Illustrative descriptors 101100 and 100110 differ in two bits. Lower descriptor distance alone does not establish a scene revisit.'),
+      geometryMath:formula('descriptor matches → RANSAC inliers → spatial coverage → ambiguity check','A cluster on one small object must not establish a whole-scene match. Homography verifies overlap; it is not calibrated 3D pose.'),
+      bearingMath:formula('Look left 20° → saved center is right +20°<br>Look up 20° → saved center is up −20°','Illustrative pure turns. Separation is the unsigned angle between forward rays; pure roll does not change it.'),
+      linkMath:formula('Observed A → B → A<br>Connections: A→B and B→A','Two distinct directed connections. Another A→B increments its count. These are recognition-history edges, not physical paths.'),
+      queueMath:formula('recognize → submit → continue recognizing<br>writer: [1 active] ← [up to 4 waiting]','Full queue: drop new query evidence, defer new enrollment. Latest live recognition continues; final counters disclose missing recordings.'),
+      evidenceMath:chips([['1.12°','30 s stationary change'],['0.15°','Pan return change'],['~9 px','Tilt image vertical difference; not exact return']])+formula('Short-run consistency ≠ validated angular accuracy','Measured in direction-consistency-01. Earlier 16.53° discrepancy remains unresolved; no physical position or distance inferred.'),
       sizes:chips([['921,600 B','1280×720 gray frame'],['57,600 B','320×180 gray copy'],['16×','Full/small pixel payload ratio']]),
       resize:`<div class="visual">${picture(recorded.framePaths['313'],'Saved Pi scene · full-source branch represented by this thumbnail')}<span>→ ×¼ per dimension →</span>${picture(recorded.framePaths['313'],'Motion copy: 320×180; detector retains full 1280×720')}</div>`,
       slots:formula('F1 processing · F2 waiting → F3 replaces F2','A consumer finishes F1, then takes F3. Nothing cancels its in-progress F1.'),

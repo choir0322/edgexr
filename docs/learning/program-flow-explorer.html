@@ -11,6 +11,7 @@
 <main>
   <header><a href="README.md">EDGEXR / LEARNING</a><span>LOCAL EXPLORER · NO HARDWARE CONNECTED</span></header>
   <div class="heading"><div><h1>Inside the program.</h1><p>Start with the whole. Expand a node. Follow what changes.</p></div><button id="home" type="button">Collapse all</button></div>
+  <p>Updated 4 November 2026 · <a href="SPATIAL_PROGRESS_AND_SYSTEMS.md">Spatial progress, evidence and AP/systems opportunities</a></p>
   <nav id="breadcrumbs" aria-label="Location in the program"></nav>
   <section class="map-shell" aria-label="Expandable program graph">
     <div class="map-heading"><div><span id="depth" class="eyebrow"></span><h2 id="map-title"></h2></div><span id="map-kind"></span></div>
@@ -26,15 +27,16 @@
     <details id="rules"><summary>Decisions, limits & source</summary><p id="policy"></p><div id="source"></div></details>
   </section>
   <section class="execution" aria-label="Illustrative independent worker timing">
-    <div><span class="eyebrow">OPTIONAL · WATCH THE HAND-OFF</span><h2>Same screen. Different source times.</h2><p>This small teaching sequence is not a measured Pi trace.</p></div>
+    <div><span class="eyebrow">OPTIONAL · WATCH THE HAND-OFF</span><h2>Same screen. Different source times.</h2><p>Legacy camera/detector/IMU illustration only; scene and recorder workers are described in the graph above. This is not a measured Pi trace.</p></div>
     <div class="controls"><button id="play" type="button">Play</button><button id="step" type="button">Next event →</button><button id="reset" type="button">Reset</button></div>
     <div id="slots" class="slots"></div><p id="event" aria-live="polite"></p>
   </section>
-  <footer><p>Current live path: <code>--detect --imu</code>. Optional tracking/memory and recording are marked explicitly. No claimed 3D map, verified identity or exposure synchronization.</p><p>Real Pi motion images and precomputed Fourier arrays: <code>combined-motion-02</code>. Other numerical examples are labeled illustrative. <a href="../PIPELINE.md">Architecture reference</a> · <a href="../exec-plans/completed/program-flow-explorer.md">Completed plan</a></p></footer>
+  <footer><p>Optional detector, IMU, relative orientation and scene memory are shown together—not necessarily all enabled. No claimed 3D map, verified identity or exposure synchronization. The timing animation below illustrates the older camera/detector/IMU hand-off only; it is not a complete spatial-worker trace.</p><p>Real Pi motion images and precomputed Fourier arrays: <code>combined-motion-02</code>. Other numerical examples are labeled illustrative. <a href="../PIPELINE.md">Architecture reference</a> · <a href="../exec-plans/completed/program-flow-explorer.md">Original plan</a></p></footer>
 </main>
 <noscript>This graph requires JavaScript. Read <a href="../PIPELINE.md">the pipeline reference</a> instead.</noscript>
 <script src="images/hann-fft-data.js"></script>
 <script src="program-flow-map.js"></script>
+<script src="program-flow-spatial.js"></script>
 <script src="program-flow-explorer.js"></script>
 </body>
 </html>

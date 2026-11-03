@@ -1,5 +1,12 @@
 # EdgeXR technique and AP evidence register
 
+2026-11-04 — **Learning update requested by user; no runtime change.**
+[HTML walkthrough](learning/program-flow-explorer.html) now includes camera-axis
+conversion, quaternion history, ORB/geometric verification, scene map and bounded
+writer. [Progress and systems guide](learning/SPATIAL_PROGRESS_AND_SYSTEMS.md)
+links source and measured evidence, distinguishes unresolved accuracy, and proposes
+application handoff then a fixed spatial AP workload. No new benchmark claimed.
+
 2026-11-04 — **Bounded Pi check complete; qualified consistency: direction check.**
 User confirmed scene/map functional behavior (recognition, multiple references,
 direction signs, separation display, query counts and links), not angular accuracy.
