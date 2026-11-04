@@ -1,5 +1,21 @@
 # Roadmap
 
+## Primary outcome — clarified 2026-11-05
+
+**Application Processor engineering receives the greatest emphasis.** The
+spatial application supplies a real workload for compute, memory, scheduling,
+latency and energy experiments. Systems work supports those questions. Begin
+profiling the current v1 stalls now; feature completion must not indefinitely
+delay AP learning. This refines the development order below without restoring
+a mandatory lesson/benchmark after every small change. See
+[priority decision](decisions/2026-11-05-ap-first-priority.md) and
+[AP-led sequence](SYSTEMS_AND_AP_EXTENSIONS.md).
+
+Semantic view observations and person foreground exclusion are the next approved
+feature direction, staged after current reliability profiling as explicit
+quality/resource comparisons. [Plan](exec-plans/active/semantic-spatial-memory.md).
+These policies are planned, not present in the running application.
+
 ## Current development order — 2026-10-26
 
 1. Finish the bounded vision/spatial-awareness application: fixed-base relative

@@ -1,5 +1,17 @@
 # EdgeXR technique and AP evidence register
 
+2026-11-05 — **AP-first priority clarified; semantic extension planned.**
+[Decision](decisions/2026-11-05-ap-first-priority.md),
+[AP-led sequence](SYSTEMS_AND_AP_EXTENSIONS.md),
+[semantic plan](exec-plans/active/semantic-spatial-memory.md). AP profiling of
+current stalls takes precedence; systems work supports the processor question.
+Planned semantic observations for furniture and same-source person feature masks
+are class priors, not motion/position ground truth. Proposed S0–S3 comparisons
+isolate inference, metadata and masking cost/quality. Implementation/measurements
+pending. Pi follow-up shows two untracked benchmark summaries, no tracked diff;
+preserve historical dirty flag without implying modified application code.
+Pipeline/source guide reviewed; unchanged because no runtime path was added.
+
 2026-11-05 — **Pi run reviewed; acceptance needs investigation: Spatial v1.**
 [Review](SPATIAL_V1_ACCEPTANCE_RESULTS.md),
 [structured result](../benchmarks/results/spatial-v1-acceptance-2026-11-05.json).

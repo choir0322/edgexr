@@ -34,6 +34,14 @@ Do not interpret links as physical paths or missing evidence as a camera loss.
 | Evidence completeness | Recorder partial: 172 accepted/written, eight dropped, zero pending/error; queue reached four |
 | Exact source provenance | Metadata revision bcc0d73 with dirty=true; changed-file details absent |
 
+User follow-up on 2026-11-05 shows only two untracked benchmark summaries:
+`benchmarks/results/imu-resource-fixed-01.json` and
+`benchmarks/results/imu-resource-three-policy-01.json`; `git diff --stat` is empty.
+`vision.detect_image.git_info` uses `git status --porcelain`, so untracked files
+can account for dirty=true. There is no current evidence of tracked-code edits.
+Retain the recorded flag: later status is not proof of historical checkout state,
+but this is no reason to discard files or block the profiling investigation.
+
 Of 172 saved frame contexts, 14 are ready and 158 unknown (including startup).
 Visual recognition continued. This demonstrates useful failure isolation and
 honest unknown handling, but fails the profile's continuous-orientation goal.
@@ -66,10 +74,13 @@ complete-workload latency. Eight missing query rows bias distributions.
 Keep v1 acceptance open. The user selected embedded Linux systems engineering
 and AP performance engineering. The immediate issue is the sensor scheduling
 pause and recording backpressure exposed by this application run. This is a
-goal-aligned systems investigation; new spatial features need not precede it.
+AP-led investigation supported by systems tracing; new spatial features need
+not precede it. The [priority clarification](decisions/2026-11-05-ap-first-priority.md)
+places AP learning ahead of additional application scope.
 
-1. Obtain `git status --short` and tracked diff from the Pi to explain dirty
-   provenance. Do not discard changes or call this an exact clean baseline.
+1. Provenance follow-up received: untracked summaries only, no tracked diff.
+   Retain this explanation and record status at the next run's start; do not
+   discard the result files or repeat this request without new evidence.
 2. Prepare a bounded diagnostic run with thread names/native IDs and a common
    host timebase; correlate IMU lateness, scene intervals, writer intervals,
    process/thread CPU and system I/O activity. Check available tracing tools

@@ -15,6 +15,17 @@ latency, throughput, resource contention and measured quality/performance
 tradeoffs. There is no NPU. Spatial perception is the meaningful application
 workload, not an independent ambition to build production XR or full SLAM.
 
+**2026-11-05 priority clarification:** AP engineering is the primary learning
+outcome and receives more emphasis than general systems work or application
+feature completion. Choose milestones by the processor question they answer:
+compute cost, memory traffic, scheduling/contention, latency tails, energy or
+quality/resource tradeoffs. Keep computer-systems and AP evidence in distinct
+sections. Use kernel/BSP/driver work when it supports this goal or the user
+explicitly chooses that specialization. Do not postpone workload observation
+indefinitely while adding vision features. The current v1 continuity/recording
+failure is the first AP-oriented profiling case. See
+`docs/decisions/2026-11-05-ap-first-priority.md`.
+
 Use `docs/exec-plans/active/EdgeXR_AP_Workload_Benchmark_Handoff.md` as a flexible
 anchor, not a rigid specification. The user's 2026-10-24 clarification and
 verified repository/hardware facts take precedence over its proposed runtimes,
@@ -38,6 +49,9 @@ functionality. Keep concise implementation, experiment and decision records
 throughout; mark deferred AP measurements explicitly. This supersedes earlier
 instructions to alternate feature, AP and teaching stages. See
 `docs/decisions/2026-10-26-development-order.md` for completion criteria.
+The 2026-11-05 clarification above refines that order: keep v1 scope bounded,
+bring measurement into the current reliability investigation, and evaluate
+future semantic detection as an explicit quality/resource workload experiment.
 
 Before each new milestone, state the bounded application outcome. Explain
 whether work directly advances the goal, enables it, or is a less-relevant

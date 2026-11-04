@@ -2,6 +2,10 @@
 
 Date: 2026-10-26. Status: accepted user direction.
 
+Refined on 2026-11-05 by the [AP-first priority decision](2026-11-05-ap-first-priority.md):
+AP learning has greater weight than feature completion or general systems work.
+Profile current blocking behavior now, while preserving a bounded v1 target.
+
 The user replaces the repeated feature → lesson → AP experiment cycle with
 three larger phases. AP systems engineering remains the eventual learning
 objective. Preserve existing implementation and measurements.

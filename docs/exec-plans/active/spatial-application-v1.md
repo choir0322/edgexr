@@ -24,6 +24,9 @@ commands, safety limits, scope, source policies and an evidence template.
 - [x] 2026-11-05: Inspect transferred run and images; verdict needs investigation:
   three views, partial recorder (eight drops), 878.9 ms IMU gap, dirty provenance.
 - [ ] Diagnose scheduling pause and recording backpressure, then repeat affected checks.
+- [x] 2026-11-05: Pi status follow-up shows two untracked result summaries and
+  no tracked diff; this explains how dirty can be true without code edits.
+  Historical state not independently proven; retain flag, proceed with profiling.
 - [ ] Freeze accepted revision/profile and hand off to a separate spatial AP baseline.
 
 ## Plan of work
@@ -64,7 +67,8 @@ validation the next step despite newer evidence; update that stale guidance.
 
 Profile and acceptance procedure defined. Packaged run reviewed in
 `docs/SPATIAL_V1_ACCEPTANCE_RESULTS.md`; acceptance blocked by continuity/loss
-and provenance. Leave plan active. No thresholds relaxed. The user selected
-embedded Linux systems and AP performance extensions; investigate this concrete
+with provenance follow-up documented (untracked summaries, no current tracked
+diff). Leave plan active. No thresholds relaxed. The user prioritizes
+AP performance over general systems extension; investigate this concrete
 failure first. Pipeline and learning map reviewed; diagnostic evidence only,
 no new data flow. Raw recordings remain private.

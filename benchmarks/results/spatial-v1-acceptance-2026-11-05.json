@@ -8,7 +8,7 @@
   "opencv": "4.11.0",
   "revision": "bcc0d73e83066a780d28db747c058d74c3449b4f",
   "dirty": true,
-  "local_modifications": "not captured; provenance unresolved",
+  "local_modifications": "Not captured at run time. User follow-up 2026-11-05: only untracked benchmarks/results/imu-resource-fixed-01.json and imu-resource-three-policy-01.json; git diff --stat empty. This can explain dirty=true; no current tracked edits reported, historical state not independently proven.",
   "profile": {
     "camera_request": "1280x720 MJPEG 30 fps per documented launch; negotiated mode not recorded",
     "scene_shape": "640x360 grayscale",
@@ -69,5 +69,5 @@
   },
   "resource_metrics": "Total CPU percent, RSS, temperature, frequency, hardware counters and electrical energy not measured",
   "limits": "Saved-row distributions omit eight dropped query records. Map counters include unsaved decisions. Recorded-source gaps are not camera losses. No exposure sync, pose ground truth or recognition accuracy labels. Dirty checkout prevents an exact clean-revision baseline. Slow wall intervals alone do not attribute cause to disk, kernel scheduling or GIL.",
-  "next_step": "Preserve failure evidence; establish changed-file provenance and correlate per-thread scheduling, I/O and CPU evidence before altering policy, kernel or driver. Keep detector off."
+  "next_step": "Preserve failure evidence and untracked-summary provenance explanation; prioritize AP profiling with per-thread scheduling, I/O and CPU correlation before altering policy, kernel or driver. Keep detector off."
 }

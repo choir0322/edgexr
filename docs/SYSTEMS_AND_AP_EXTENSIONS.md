@@ -1,10 +1,36 @@
-# Embedded Linux and AP extensions
+# AP-first extensions with embedded Linux systems support
 
-User-selected sequence, 2026-11-05. Spatial application remains the workload.
+User-selected priority, clarified 2026-11-05: **Application Processor engineering
+is the primary learning outcome**. Spatial application remains the workload;
+embedded Linux systems work supports measured processor/resource questions.
 The [v1 acceptance review](SPATIAL_V1_ACCEPTANCE_RESULTS.md) exposes a scheduling
-and recording issue to investigate before a clean application handoff.
+and recording issue to investigate now. Do not delay profiling until the
+application is perfect. See [priority decision](decisions/2026-11-05-ap-first-priority.md).
 
-## Computer systems engineering
+## AP-led sequence
+
+1. **Explain current stalls:** correlate CPU/thread activity, scheduling delays,
+   sensor gaps and recording intervals. Question: why does a nominally light
+   sensor task miss its window while vision and evidence recording run?
+2. **Establish the exact spatial workload:** adapt the profiler for detector-off
+   scene/orientation work; retain rates, CPU/RSS, latency tails, skipped jobs,
+   temperature/throttling and orientation quality. Record observer overhead.
+3. **Optimize a demonstrated bottleneck:** test one scheduling, copying,
+   threading or native/SIMD change with before/after evidence and quality limits.
+   Inspect supported hardware counters to explain instruction/cache behavior.
+4. **Evaluate detection's incremental cost and value:** semantic-memory and
+   foreground-exclusion experiments follow the bounded plan below. Compare
+   recognition robustness against CPU, memory traffic, latency and continuity.
+5. **Study power/energy:** supported frequency policies and external electrical
+   measurement when available; include all powered devices in the stated boundary.
+6. **Specialize further if useful:** accelerator integration/scheduling or
+   driver/BSP work, selected for a concrete engineering question.
+
+Each experiment has a fixed input/configuration, an AP hypothesis, a quality
+constraint and a reproducible result. New models or features must earn their
+compute/memory budget. No optimization is assumed from fewer operations alone.
+
+## Computer systems engineering — supporting track
 
 First correlate thread scheduling, sensor continuity and recording backpressure
 in the existing application. Then assess one architectural change from evidence.
@@ -18,8 +44,8 @@ throughout the chosen path. Full OS design remains a separate substantial branch
 
 ## Application processor performance engineering
 
-Characterize the fixed spatial workload after resolving blocking reliability
-issues. Extend the historical detector-specific profiler to validate this exact
+Characterize current failures now, then freeze the spatial workload once the
+blocking issues are understood. Extend the historical detector-specific profiler to validate this exact
 scene/orientation configuration; do not reuse it unchanged (it requires a ready
 detector). Measure total/per-process CPU, RSS, rates, latency tails, temperature
 and throttling. Then inspect available hardware counters and profile a proven
@@ -32,7 +58,7 @@ Do not install dependencies, change kernel/driver/frequency policies, add hardwa
 or launch motor tests implicitly as part of this roadmap. Retain reproducible
 settings and quality outcomes for each comparison.
 
-## Optional semantic spatial memory — discussion, not implemented
+## Semantic spatial memory — direction approved; implementation planned
 
 MobileNet-SSD can attach timestamped category, confidence and image-box context
 to a recognized view: for example, a bottle was observed in View-2. Preserve
@@ -53,10 +79,18 @@ efficient; SSD predicts classes and boxes from feature maps. These operations
 do not independently supply position, depth or a persistent spatial map.
 Learned place descriptors would be a separate model/representation experiment.
 
-First freeze the working detector-off spatial baseline. Semantic annotation can
-then become an explicit optional workload profile, with measured CPU, latency,
-memory and recognition-quality changes. No detector integration is authorized
-by this consultation alone. Sources supporting the concepts:
+The user supports a potentially dynamic/person → foreground exclusion policy
+and persistent furniture → semantic memory policy. These are conservative class
+priors, not claims of measured motion or immovable objects. A standing person
+still receives the potentially dynamic policy; a chair can be moved. Furniture
+annotations describe observations and should expire or be marked last-seen,
+not declare a chair permanently present. Retain transient person observations
+separately when useful; they must not become location identity evidence.
+
+First retain the detector-off baseline. Follow the
+[semantic extension plan](exec-plans/active/semantic-spatial-memory.md) for
+bounded source-aligned annotations, optional masking and separate AP profiles.
+No semantic path is running yet. Sources supporting the concepts:
 
 - [MobileNet paper](https://arxiv.org/abs/1704.04861): depthwise separable features.
 - [SSD paper](https://arxiv.org/abs/1512.02325): category/box predictions.

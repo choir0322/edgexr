@@ -2,6 +2,12 @@
 
 ## Current priority
 
+**2026-11-05 clarification:** Application Processor learning has greatest weight.
+The spatial application is the workload for measured compute, memory, scheduling
+and energy tradeoffs. Start by profiling the v1 continuity/recording failure;
+systems work supports that AP goal. See [priority decision](docs/decisions/2026-11-05-ap-first-priority.md)
+and [semantic memory/masking experiment plan](docs/exec-plans/active/semantic-spatial-memory.md).
+
 **2026-10-26 development order:** finish the bounded vision/spatial-awareness
 application, then AP measurement and optimization, then detailed learning
 materials. Keep tests and technical records throughout. The current milestone
