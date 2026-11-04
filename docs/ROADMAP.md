@@ -16,6 +16,11 @@ feature direction, staged after current reliability profiling as explicit
 quality/resource comparisons. [Plan](exec-plans/active/semantic-spatial-memory.md).
 These policies are planned, not present in the running application.
 
+Low-level AP practice is explicitly selected: Linux scheduler/I/O inspection,
+recoverable custom kernel and BSP configuration, then a bounded driver/kernel
+implementation exercise. Track measured behavior, not only successful builds.
+First use the [spatial stall profiler](SPATIAL_STALL_PROFILING.md).
+
 ## Current development order — 2026-10-26
 
 1. Finish the bounded vision/spatial-awareness application: fixed-base relative

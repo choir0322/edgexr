@@ -536,8 +536,9 @@ def start_workers(
 
     # Run pipe draining, capture and motion as threads in this Python process.
     threads = [
-        threading.Thread(target=target, daemon=True)
-        for target in (log_errors, capture, run_motion_worker)
+        threading.Thread(target=target, name=name, daemon=True)
+        for name, target in (("ffmpeg-log", log_errors), ("camera-capture", capture),
+                             ("motion-worker", run_motion_worker))
     ]
     for thread in threads:
         thread.start()
@@ -659,6 +660,11 @@ def make_handler(state: State) -> type[BaseHTTPRequestHandler]:
                 snapshot.pop("pixels_b64", None)
                 snapshot["preview_pid"] = os.getpid()
                 snapshot["ffmpeg_pid"] = state.ffmpeg_pid
+                # Native IDs connect application roles to Linux /proc/PID/task/TID.
+                snapshot["worker_threads"] = [
+                    {"name": thread.name, "native_id": thread.native_id}
+                    for thread in threading.enumerate() if thread.native_id is not None
+                ]
                 content = json.dumps(snapshot, allow_nan=False).encode()
                 kind = "application/json"
             else:
@@ -917,7 +923,7 @@ def main() -> None:
             factory = build_detector
             worker = threading.Thread(
                 target=detect_latest, args=(state, factory),
-                kwargs={"recorder": recorder}, daemon=True
+                kwargs={"recorder": recorder}, name="detector-worker", daemon=True
             )
             worker.start()
             threads.append(worker)
@@ -934,6 +940,7 @@ def main() -> None:
                 imu_thread = threading.Thread(
                     target=poll_imu,
                     args=(state.imu, sensor, state.stop, args.imu_sleep_ms / 1000),
+                    name="imu-poll",
                     daemon=True,
                 )
                 imu_thread.start()

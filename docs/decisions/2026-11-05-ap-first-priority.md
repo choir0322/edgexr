@@ -7,6 +7,12 @@ systems extension or finishing spatial features. The Pi application is the
 workload through which processor behavior is investigated. Computer systems
 remains a distinct supporting discipline. Preserve existing work and measurements.
 
+Later clarification on the same date explicitly requests practical **kernel,
+BSP and driver development** as part of AP learning. Plan a recoverable kernel
+build/boot, board/device-tree configuration and a relevant driver/kernel change,
+with source inspection and before/after measurement. No such work is claimed
+complete, and the current profiler does not install a kernel or change drivers.
+
 This refines the 2026-10-26 development order. Keep the bounded v1 acceptance
 target, but use its current continuity/recording failures as the first profiling
 case now. Do not require a perfected spatial application before observing CPU,

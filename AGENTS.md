@@ -26,6 +26,14 @@ indefinitely while adding vision features. The current v1 continuity/recording
 failure is the first AP-oriented profiling case. See
 `docs/decisions/2026-11-05-ap-first-priority.md`.
 
+The user additionally selected **hands-on low-level AP work**, including kernel,
+BSP and device-driver development (2026-11-05). Plan actual bounded exercises,
+not only user-space tuning: trace the current Linux I/O/scheduler path, build a
+reproducible recoverable kernel/BSP image, then implement/test a relevant driver
+or kernel change after checking existing support. AP measurements motivate and
+evaluate this work. Record these as pending skills until performed. Installation,
+boot changes and hardware changes require a concrete reviewed procedure.
+
 Use `docs/exec-plans/active/EdgeXR_AP_Workload_Benchmark_Handoff.md` as a flexible
 anchor, not a rigid specification. The user's 2026-10-24 clarification and
 verified repository/hardware facts take precedence over its proposed runtimes,

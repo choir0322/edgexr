@@ -1,5 +1,11 @@
 # Current live pipeline
 
+The opt-in [stall profiler](SPATIAL_STALL_PROFILING.md) launches this pipeline
+and observes procfs task counters plus HTTP telemetry from a separate process.
+`worker_threads` maps Python names to native Linux IDs. Sampling is sequential
+on the host clock; no kernel policy or inference data path changes. Diagnostic
+JSONL writes add observer overhead. See `profiling.spatial_stalls`.
+
 [Spatial Application v1](SPATIAL_APPLICATION_V1.md) freezes a detector-off,
 10 ms IMU-pause, image-backed scene profile for acceptance. Diagram reviewed
 2026-11-05; unchanged because this is packaging of existing paths, not new flow.

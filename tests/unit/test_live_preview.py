@@ -263,6 +263,10 @@ class PreviewTests(unittest.TestCase):
                 self.assertIn("detector", json.loads(body))
                 self.assertNotIn("pixels_b64", json.loads(body))
                 self.assertIsInstance(json.loads(body)["preview_pid"], int)
+                workers = json.loads(body)["worker_threads"]
+                self.assertTrue(any(worker["native_id"] == threading.get_native_id()
+                                    for worker in workers))
+                self.assertTrue(all(isinstance(worker["name"], str) for worker in workers))
                 self.assertIsNone(json.loads(body)["ffmpeg_pid"])
 
     def test_startup_timeout_is_visible(self) -> None:

@@ -23,8 +23,11 @@ application is perfect. See [priority decision](decisions/2026-11-05-ap-first-pr
    recognition robustness against CPU, memory traffic, latency and continuity.
 5. **Study power/energy:** supported frequency policies and external electrical
    measurement when available; include all powered devices in the stated boundary.
-6. **Specialize further if useful:** accelerator integration/scheduling or
-   driver/BSP work, selected for a concrete engineering question.
+6. **Hands-on low-level AP track (explicitly requested):** build and boot a
+   recoverable custom kernel/BSP image; trace the camera/I²C/scheduler path;
+   implement and test a relevant sensor-driver or kernel change after auditing
+   existing support. Keep before/after timing and resource evidence. Accelerator
+   integration/scheduling remains optional and hardware-dependent.
 
 Each experiment has a fixed input/configuration, an AP hypothesis, a quality
 constraint and a reproducible result. New models or features must earn their
@@ -32,7 +35,9 @@ compute/memory budget. No optimization is assumed from fewer operations alone.
 
 ## Computer systems engineering — supporting track
 
-First correlate thread scheduling, sensor continuity and recording backpressure
+The user explicitly wants experience below application code, including kernel,
+BSP and drivers. These are planned practical milestones, not merely background
+reading or contingent interests. First correlate thread scheduling, sensor continuity and recording backpressure
 in the existing application. Then assess one architectural change from evidence.
 Follow with reproducible embedded Linux deployment/BSP work if useful: pinned
 boot/kernel configuration, device descriptions and application startup. A kernel

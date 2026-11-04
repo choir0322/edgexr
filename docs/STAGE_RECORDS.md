@@ -1,5 +1,17 @@
 # EdgeXR technique and AP evidence register
 
+2026-11-05 — **Implemented; Pi measurement pending: spatial stall profiler.**
+[Source](../src/profiling/spatial_stalls.py), [protocol](SPATIAL_STALL_PROFILING.md),
+[plan](exec-plans/active/spatial-stall-profiling.md), [source guide](learning/SCENE_MEMORY.md).
+AP question: CPU execution, runnable waiting and I/O activity around IMU lateness
+and image-write backlog. Standard-library observer launches the timed spatial
+profile and reads per-task procfs counters, host pressure/frequency/temperature
+and existing telemetry. New worker names/native IDs identify Linux tasks.
+No scheduler/sysctl/driver changes. Observer CPU and collection/sample delays
+are recorded; extra I/O is a confound. Hardware counter/energy measurements are
+not yet made. Low-level kernel/BSP/driver practice is explicitly added to the
+AP roadmap. Pipeline/source guide updated; Pi diagnosis remains pending.
+
 2026-11-05 — **AP-first priority clarified; semantic extension planned.**
 [Decision](decisions/2026-11-05-ap-first-priority.md),
 [AP-led sequence](SYSTEMS_AND_AP_EXTENSIONS.md),

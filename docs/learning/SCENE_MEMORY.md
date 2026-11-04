@@ -1,5 +1,11 @@
 # Scene memory: current source map
 
+AP diagnostic: [stall profiler](../SPATIAL_STALL_PROFILING.md) correlates
+`scene-worker`/`scene-recorder` native TIDs with kernel task counters. Their
+recognition/recording policies are unchanged. HTTP telemetry adds Python thread
+name/native-ID pairs, and the external observer samples procfs; this is sampled
+accounting, not a full scheduler trace or automatic stall diagnosis.
+
 The [v1 application guide](../SPATIAL_APPLICATION_V1.md) defines the exact live
 profile, unknown/stale contracts and acceptance procedure. Source map reviewed
 2026-11-05; functions, units and data flow unchanged. No new learning UI added.
