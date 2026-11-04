@@ -1,5 +1,12 @@
 # EdgeXR technique and AP evidence register
 
+2026-11-05 — **Measured: first Linux spatial-stall capture.**
+[Results](SPATIAL_STALL_RESULTS.md), [summary](../benchmarks/results/spatial-stalls-01.json).
+180 records, no drops; no IMU gaps above 200 ms. Writer tails still approach
+two seconds and overlap observer gaps. Observer costs 18.002 CPU seconds in
+184.362 wall seconds; scheduler-delay accounting disabled. No causal finding.
+Next distinguish observer write/wake delays before deeper Linux tracing.
+
 2026-11-05 — **Implemented; Pi measurement pending: spatial stall profiler.**
 [Source](../src/profiling/spatial_stalls.py), [protocol](SPATIAL_STALL_PROFILING.md),
 [plan](exec-plans/active/spatial-stall-profiling.md), [source guide](learning/SCENE_MEMORY.md).

@@ -21,7 +21,9 @@ map Python workers to Linux tasks. No scheduler/driver settings are changed.
 - [x] 2026-11-05: Add named worker/native-ID telemetry and bounded Linux observer.
 - [x] 2026-11-05: Test parsing, identity, unavailable counters and timing calculations.
 - [x] 2026-11-05: Update pipeline and learning source guide, with units/limits.
-- [ ] Run a Pi capture; compare task delays, image intervals and IMU events.
+- [x] 2026-11-05: Analyze spatial-stalls-01: no IMU continuity failure, but writer
+  tails and observer gaps persist. See ../../SPATIAL_STALL_RESULTS.md.
+- [ ] Separate observer serialization/write/wake timing; repeat before causal attribution.
 
 ## Plan of work
 
@@ -65,7 +67,10 @@ unchanged. Existing logs locate the pause but lack task scheduler evidence.
 
 ## Outcomes and retrospective
 
-Implementation complete; Pi diagnosis pending. Final full suite passed 196 tests
+Implementation and first Pi capture analysis complete; causal diagnosis pending.
+The first capture did not reproduce the IMU failure. It did retain long writer
+intervals and observer gaps; unavailable kernel accounting limits attribution.
+Final implementation full suite passed 196 tests
 after allowing the existing localhost HTTP test to bind its temporary server.
 Changed-source learning-contract checks passed; the global
 audit still reports unrelated pre-existing documentation issues. No Linux target
