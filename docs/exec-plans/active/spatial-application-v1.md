@@ -21,7 +21,9 @@ commands, safety limits, scope, source policies and an evidence template.
 - [x] 2026-11-05: Review pipeline and learning source guide; no data-flow change.
 - [x] 2026-11-05: All 191 unit tests passed in 5.296 s on Mac (OpenCV 4.11.0);
   guide links resolve and `git diff --check` passes. Not a Pi benchmark.
-- [ ] User executes packaged Pi demo; inspect transferred evidence and record verdict.
+- [x] 2026-11-05: Inspect transferred run and images; verdict needs investigation:
+  three views, partial recorder (eight drops), 878.9 ms IMU gap, dirty provenance.
+- [ ] Diagnose scheduling pause and recording backpressure, then repeat affected checks.
 - [ ] Freeze accepted revision/profile and hand off to a separate spatial AP baseline.
 
 ## Plan of work
@@ -60,5 +62,9 @@ validation the next step despite newer evidence; update that stale guidance.
 
 ## Outcomes and retrospective
 
-Profile and acceptance procedure defined. Final packaged Pi evidence pending;
-leave plan active. No runtime behavior, dependency or benchmark threshold changed.
+Profile and acceptance procedure defined. Packaged run reviewed in
+`docs/SPATIAL_V1_ACCEPTANCE_RESULTS.md`; acceptance blocked by continuity/loss
+and provenance. Leave plan active. No thresholds relaxed. The user selected
+embedded Linux systems and AP performance extensions; investigate this concrete
+failure first. Pipeline and learning map reviewed; diagnostic evidence only,
+no new data flow. Raw recordings remain private.

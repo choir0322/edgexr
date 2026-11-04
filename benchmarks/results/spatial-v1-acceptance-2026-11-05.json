@@ -1,0 +1,73 @@
+{
+  "stage": "spatial-v1-evidence",
+  "recording_folder": "spatial-v1-acceptance-01",
+  "verdict": "needs_investigation",
+  "device": "Raspberry Pi 4 (project hardware; RAM not recorded)",
+  "host": "Linux-6.12.47+rpt-rpi-v8-aarch64-with-glibc2.36",
+  "python": "3.11.2",
+  "opencv": "4.11.0",
+  "revision": "bcc0d73e83066a780d28db747c058d74c3449b4f",
+  "dirty": true,
+  "local_modifications": "not captured; provenance unresolved",
+  "profile": {
+    "camera_request": "1280x720 MJPEG 30 fps per documented launch; negotiated mode not recorded",
+    "scene_shape": "640x360 grayscale",
+    "scene_target_hz": 1,
+    "imu_sleep_ms": 10,
+    "opencv_threads": 2,
+    "detector_enabled": false,
+    "save_images": true,
+    "timing_schema": 2,
+    "requested_seconds": "180 per prescribed command; duration not in metadata",
+    "saved_source_span_seconds": 179.095922492,
+    "warmup": "startup bias collection; no separate benchmark warmup recorded",
+    "scene": "Indoor shelving/desk area; three enrollment images visually distinct; physical left/center/right ground truth not logged",
+    "power": "not recorded",
+    "cooling": "not recorded for this run"
+  },
+  "recording": {
+    "status": "partial",
+    "accepted": 172,
+    "written": 172,
+    "dropped": 8,
+    "pending": 0,
+    "queue_capacity": 4,
+    "queue_high_water": 4,
+    "writer_error": null,
+    "scene_error": null,
+    "missing_or_invalid_selected_images": 0
+  },
+  "saved_decisions": {
+    "enrolled": 3,
+    "known": 107,
+    "unknown_empty_memory": 13,
+    "unknown_no_verified_match": 49,
+    "known_rows_by_label": {"View-1": 93, "View-2": 13, "View-3": 1},
+    "orientation_ready": 14,
+    "orientation_unknown": 158,
+    "final_map_nodes": 3,
+    "final_unique_directed_links": 4,
+    "final_cumulative_label_changes": 5
+  },
+  "imu": {
+    "polls": 13938,
+    "gaps_over_200ms": 1,
+    "max_read_ms": 16.242773000016086,
+    "max_midpoint_gap_ms": 878.9032899999825,
+    "max_wake_late_ms": 863.5448980000149,
+    "gap_read_duration_ms": 4.894760000013321,
+    "first_stale_age_ms": 877.8406279999729,
+    "gap_read_start_host_s": 164.02069239,
+    "orientation_outcome": "continuity invalidated until restart; View-2 and View-3 enrolled with unknown orientation"
+  },
+  "saved_row_interval_metrics_ms": {
+    "scene_compute": {"median": 122.21805749999248, "p95": 135.5652884999941, "max": 1012.254237999997},
+    "scene_thread_cpu": {"median": 115.44262549999829, "p95": 125.01364389999975, "max": 129.8139460000005},
+    "png_write": {"median": 14.57446800000639, "p95": 36.798055299988164, "max": 9244.05613799999},
+    "queue_wait": {"median": 0.4499209999977438, "p95": 3013.925163149991, "max": 8245.919126000019},
+    "map_update": {"median": 0.2787670000259368, "p95": 0.3857066000023223, "max": 0.7064730000081454}
+  },
+  "resource_metrics": "Total CPU percent, RSS, temperature, frequency, hardware counters and electrical energy not measured",
+  "limits": "Saved-row distributions omit eight dropped query records. Map counters include unsaved decisions. Recorded-source gaps are not camera losses. No exposure sync, pose ground truth or recognition accuracy labels. Dirty checkout prevents an exact clean-revision baseline. Slow wall intervals alone do not attribute cause to disk, kernel scheduling or GIL.",
+  "next_step": "Preserve failure evidence; establish changed-file provenance and correlate per-thread scheduling, I/O and CPU evidence before altering policy, kernel or driver. Keep detector off."
+}

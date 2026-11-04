@@ -120,7 +120,10 @@ The [bounded direction check](DIRECTION_CONSISTENCY_RESULTS.md) is closed with
 qualified short-run consistency; precise angular accuracy and long-session drift
 remain unresolved. The [Spatial Application v1 profile](SPATIAL_APPLICATION_V1.md)
 now defines the reproducible handoff and six-part acceptance checklist. Next
-complete that short packaged demo, then establish its AP baseline without adding new spatial
+resolve the [packaged run's continuity/recording failures](SPATIAL_V1_ACCEPTANCE_RESULTS.md),
+then establish its AP baseline. Follow the separately documented
+[embedded Linux systems and AP performance sequence](SYSTEMS_AND_AP_EXTENSIONS.md).
+Do not add new spatial
 scope by default. This is not a moving-base position map. Maintain
 timestamp validity; camera calibration gates calibrated angular correction,
 rather than conservative visual scene recognition.

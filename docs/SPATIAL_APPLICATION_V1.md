@@ -1,7 +1,8 @@
 # EdgeXR Spatial Application v1
 
-Status: **profile defined; existing components implemented and individually
-exercised on Pi; final packaged acceptance run pending.** This is an application
+Status: **packaged run reviewed; acceptance needs investigation.** Three views
+were enrolled, but an IMU continuity gap and eight recording drops block a clean
+pass. See [review](SPATIAL_V1_ACCEPTANCE_RESULTS.md). This is an application
 milestone, not a claim of production reliability or a new algorithm release.
 
 ## Outcome and boundaries

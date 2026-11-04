@@ -1,5 +1,18 @@
 # EdgeXR technique and AP evidence register
 
+2026-11-05 — **Pi run reviewed; acceptance needs investigation: Spatial v1.**
+[Review](SPATIAL_V1_ACCEPTANCE_RESULTS.md),
+[structured result](../benchmarks/results/spatial-v1-acceptance-2026-11-05.json).
+172 saved decisions/images, three enrollments, four map links; partial recorder
+with eight query drops. One 878.9 ms IMU gap invalidates subsequent orientation.
+Ready/unknown contexts 14/158; fail-closed behavior works but continuity goal fails.
+Longest PNG write 9.24 s; gap overlaps slow scene wall interval, not slow PNG.
+Cause unresolved; dirty Pi checkout prevents clean-revision attribution.
+Computer systems next: thread scheduling/I/O attribution; AP total CPU/RSS/thermal/
+energy not measured. [Extension sequence](SYSTEMS_AND_AP_EXTENSIONS.md) records
+user direction and optional semantic detection discussion. No runtime change.
+Pipeline and learning source map reviewed; unchanged because this records evidence.
+
 2026-11-05 — **Profile defined; packaged Pi acceptance pending: Spatial Application v1.**
 [Guide](SPATIAL_APPLICATION_V1.md), [active plan](exec-plans/active/spatial-application-v1.md),
 [source map](learning/SCENE_MEMORY.md). Packages existing CLI, scene memory,

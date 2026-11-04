@@ -7,8 +7,10 @@ application, then AP measurement and optimization, then detailed learning
 materials. Keep tests and technical records throughout. The current milestone
 is [Spatial Application v1](docs/SPATIAL_APPLICATION_V1.md): one launch profile,
 three-view acceptance demo, timestamped relative orientation, explicit unknown
-states and bounded evidence recording. Components have Pi evidence; the packaged
-acceptance run is pending. The [view map](docs/VIEW_MAP.md) describes remembered
+states and bounded evidence recording. The [packaged run review](docs/SPATIAL_V1_ACCEPTANCE_RESULTS.md)
+found an IMU continuity gap and eight evidence drops; acceptance needs investigation.
+The [systems and AP extension sequence](docs/SYSTEMS_AND_AP_EXTENSIONS.md) starts
+with diagnosing these issues. The [view map](docs/VIEW_MAP.md) describes remembered
 views and observed label transitions, not position/depth.
 The first
 [offline scene-memory tool](docs/SCENE_MEMORY.md) now recognizes an A → B → A
