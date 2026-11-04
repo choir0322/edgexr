@@ -118,8 +118,9 @@ The [session-local view map](VIEW_MAP.md) now has live bookkeeping and user
 functional confirmation: explicit nodes, gyro direction context and transitions.
 The [bounded direction check](DIRECTION_CONSISTENCY_RESULTS.md) is closed with
 qualified short-run consistency; precise angular accuracy and long-session drift
-remain unresolved. Next package the bounded application's reproducible handoff
-and feature profile, then establish its AP baseline without adding new spatial
+remain unresolved. The [Spatial Application v1 profile](SPATIAL_APPLICATION_V1.md)
+now defines the reproducible handoff and six-part acceptance checklist. Next
+complete that short packaged demo, then establish its AP baseline without adding new spatial
 scope by default. This is not a moving-base position map. Maintain
 timestamp validity; camera calibration gates calibrated angular correction,
 rather than conservative visual scene recognition.

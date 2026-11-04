@@ -1,5 +1,15 @@
 # EdgeXR technique and AP evidence register
 
+2026-11-05 — **Profile defined; packaged Pi acceptance pending: Spatial Application v1.**
+[Guide](SPATIAL_APPLICATION_V1.md), [active plan](exec-plans/active/spatial-application-v1.md),
+[source map](learning/SCENE_MEMORY.md). Packages existing CLI, scene memory,
+timestamped orientation, session view map and bounded recorder into one
+180-second detector-off image-backed demo. No runtime or threshold change.
+Computer systems: bounded concurrency, freshness and recording failure contracts.
+Application processor: exact spatial-workload CPU/RSS/thermal baseline deferred;
+no new measurements. Existing component evidence remains linked, not relabelled
+as a new v1 acceptance result. Pipeline reviewed; unchanged.
+
 2026-11-04 — **Learning update requested by user; no runtime change.**
 [HTML walkthrough](learning/program-flow-explorer.html) now includes camera-axis
 conversion, quaternion history, ORB/geometric verification, scene map and bounded

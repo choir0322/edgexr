@@ -1,5 +1,9 @@
 # Scene memory: current source map
 
+The [v1 application guide](../SPATIAL_APPLICATION_V1.md) defines the exact live
+profile, unknown/stale contracts and acceptance procedure. Source map reviewed
+2026-11-05; functions, units and data flow unchanged. No new learning UI added.
+
 Display review (2026-11-04): `preview.html` renders the scene/map/enrollment panel
 before the camera and metric cards. `render` uses the unchanged map snapshot;
 stale/disconnected scene state hides current bearings. `make_handler` loads HTML

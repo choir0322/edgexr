@@ -5,9 +5,11 @@
 **2026-10-26 development order:** finish the bounded vision/spatial-awareness
 application, then AP measurement and optimization, then detailed learning
 materials. Keep tests and technical records throughout. The current milestone
-is the [lightweight view map](docs/VIEW_MAP.md): remembered views, estimated
-relative viewing directions and observed label transitions, not position/depth.
-Implementation and local tests are complete; Pi three-view validation is next.
+is [Spatial Application v1](docs/SPATIAL_APPLICATION_V1.md): one launch profile,
+three-view acceptance demo, timestamped relative orientation, explicit unknown
+states and bounded evidence recording. Components have Pi evidence; the packaged
+acceptance run is pending. The [view map](docs/VIEW_MAP.md) describes remembered
+views and observed label transitions, not position/depth.
 The first
 [offline scene-memory tool](docs/SCENE_MEMORY.md) now recognizes an A → B → A
 sequence in two existing Pi recordings without threshold changes. The opt-in

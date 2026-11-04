@@ -1,5 +1,9 @@
 # Current live pipeline
 
+[Spatial Application v1](SPATIAL_APPLICATION_V1.md) freezes a detector-off,
+10 ms IMU-pause, image-backed scene profile for acceptance. Diagram reviewed
+2026-11-05; unchanged because this is packaging of existing paths, not new flow.
+
 Direction-consistency diagnostic: the separate attended `servo_orientation_demo`
 process can add `--still-seconds 30` before its unchanged sweeps. It saves four
 HTTP image/orientation checkpoints and `direction_summary.json` with local
