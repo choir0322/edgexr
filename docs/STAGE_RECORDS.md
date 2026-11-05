@@ -1,5 +1,13 @@
 # EdgeXR technique and AP evidence register
 
+2026-11-06 — **Measured: kernel I/O run 02; trace partially overwritten.**
+[Review](KERNEL_IO_RESULTS_02.md), [summary](../benchmarks/results/kernel-io-02.json).
+All 180 scene records saved, no IMU gaps above 200 ms; observer write 2.870 s,
+image write 2.049 s. Retained late MMC request 2.236 s overlaps journal and
+user-space writes. CPU 0 overwrote 88,730 events; no sole-cause attribution.
+Next propose storage-host filtering for trace retention before kernel tuning.
+Pipeline diagram reviewed; unchanged because this is evidence-only work.
+
 2026-11-06 — **Implemented; Pi check pending: private kernel I/O trace.**
 [Source](../src/profiling/kernel_io_trace.py), [protocol](KERNEL_IO_TRACE.md),
 [tests](../tests/unit/test_kernel_io_trace.py), [plan](exec-plans/active/spatial-stall-profiling.md).
