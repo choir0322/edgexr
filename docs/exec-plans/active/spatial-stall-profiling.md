@@ -31,10 +31,23 @@ map Python workers to Linux tasks. No scheduler/driver settings are changed.
   ../../SPATIAL_STALL_RESULTS_02.md. Pipeline/source guide reviewed; unchanged.
 - [x] 2026-11-06: Confirm recording storage: ext4 root /dev/mmcblk0p2 on
   mmcblk0; tracefs/debugfs already mounted. No settings changed.
-- [ ] Inspect available kernel events and select bounded kernel I/O trace;
+- [x] 2026-11-06: Available events include JBD2 buffer stalls/commit, ext4,
+  block request and MMC start/done; root tracer nop/tracing_on=1, 86 GB free.
+- [x] 2026-11-06: Implement private-instance bounded I/O trace helper and protocol;
   retain calibration failure as a limitation for full-workload CPU comparison.
+- [ ] Validate kernel trace helper on Pi, check loss/coverage, and correlate I/O waits.
+- [x] 2026-11-06: Review/update pipeline and relevant learning source map for trace helper.
 
 ## Plan of work
+
+Current focused step: [KERNEL_IO_TRACE.md](../../KERNEL_IO_TRACE.md). A separate
+root helper enables 18 selected events in a unique trace instance for 210 seconds,
+while the existing normal-user spatial observer runs for 180 seconds. Allocate
+2 MiB per CPU with total cap 32 MiB; export stopped trace only, cap 64 MiB, retain
+event formats, per-CPU loss statistics, monotonic timing and cleanup failures.
+Do not write global trace controls or run the camera app as root. The user has
+seen the trace design and provided target event inventory; no further discovery
+run is required before preparing this concrete helper.
 
 Implement a separate standard-library observer with a fixed duration, new
 output directory, exact launched-child identity and graceful stop. Keep raw
@@ -75,6 +88,12 @@ unchanged. Existing logs locate the pause but lack task scheduler evidence.
 
 ## Decision log
 
+- 2026-11-06: Use a private ftrace instance with selected I/O events and delayed
+  export to avoid live trace logging to the same recording storage. Existing
+  root tracing_on=1 and nop selection are preserved. Save event layouts rather
+  than assuming fixed request identities or MMC formatting. Default capture
+  covers unrelated I/O too, with task/device attribution deferred to analysis.
+
 - 2026-11-06: Conclude phase-localization repeat; move to mount/backing-device
   inspection and bounded I/O tracing. Exclude arm-related right-view recognition
   changes from diagnosis. Do not attribute run-to-run CPU differences to phase
@@ -90,6 +109,13 @@ unchanged. Existing logs locate the pause but lack task scheduler evidence.
   gaps are retained, with bounded timer and no unowned process termination.
 
 ## Outcomes and retrospective
+
+2026-11-06 kernel helper validation: all 203 hardware-independent tests passed;
+new source/test contract checks passed. Fixtures verify core event requirements,
+private controls and host clock, memory bound, missing/lost accounting, exact
+export cap, stop-before-export, preserved global state, existing-output rejection
+and setup-failure cleanup. These do not exercise the real Pi tracefs; target
+execution and subsequent loss/coverage analysis remain pending.
 
 2026-11-06 instrumentation validation: all 198 hardware-independent unit tests
 passed, including fake-clock phase timing and existing HTTP behavior. Pi repeat

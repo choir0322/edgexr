@@ -1,5 +1,16 @@
 # EdgeXR technique and AP evidence register
 
+2026-11-06 — **Implemented; Pi check pending: private kernel I/O trace.**
+[Source](../src/profiling/kernel_io_trace.py), [protocol](KERNEL_IO_TRACE.md),
+[tests](../tests/unit/test_kernel_io_trace.py), [plan](exec-plans/active/spatial-stall-profiling.md).
+User inventory confirms ext4/JBD2/block/MMC events, including buffer-stall event;
+root nop/tracing_on=1 and 86 GB free. Separate root helper requests 2 MiB/CPU
+private ring (32 MiB total limit), mono clock, 210 seconds, stopped export capped
+64 MiB. Retains formats, loss/cleanup and root-state observations. Normal-user
+app workload remains separate. AP question: correlate file-write tails with
+journal/buffer and storage activity. Kernel tracing overhead not yet measured;
+no diagnosis or Pi runtime pass claimed. Pipeline/source map updated.
+
 2026-11-06 — **Observed: recording storage and tracing mounts.**
 [Inventory and next command](SPATIAL_STALL_RESULTS_02.md#confirmed-target-inventory--2026-11-06).
 User confirms recordings on ext4 /dev/mmcblk0p2 (root), parent mmcblk0;

@@ -1,5 +1,11 @@
 # Current live pipeline
 
+Optional [kernel I/O trace](KERNEL_IO_TRACE.md): a separate privileged helper
+collects selected filesystem/journal/block/MMC events in a private ftrace ring,
+then exports after stop. Host `mono` times align with spatial observer samples.
+No camera/motion/IMU data flows through this helper and no global trace controls
+are changed; kernel collection adds overhead. Source: `profiling.kernel_io_trace`.
+
 2026-11-06: observer schema 2 times serialization, buffered write and sleep/wake
 separately; previous-cycle details flow to the next diagnostic row and final
 summary. Application graph reviewed; unchanged (observer-only instrumentation).

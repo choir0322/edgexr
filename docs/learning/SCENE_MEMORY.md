@@ -1,5 +1,11 @@
 # Scene memory: current source map
 
+Low-level recording investigation: [kernel I/O trace protocol](../KERNEL_IO_TRACE.md)
+uses `profiling.kernel_io_trace.configure_instance` for private event controls,
+`run` for timed collection/cleanup and `export_trace` for capped stopped export.
+The app still uses the same scene/IMU workers; kernel event timestamps provide
+additional evidence about the recording path, not a new perception input.
+
 `profiling.spatial_stalls.write_and_wait` now separates observer serialization,
 write and sleep timing. This measures the diagnostic process, not scene matching;
 previous-cycle records and the last-cycle summary avoid self-timing recursion.
