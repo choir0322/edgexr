@@ -1,5 +1,13 @@
 # EdgeXR technique and AP evidence register
 
+2026-11-06 — **Implemented; repeat measurement pending: observer phase timing.**
+[Source](../src/profiling/spatial_stalls.py), [protocol](SPATIAL_STALL_PROFILING.md).
+Schema 2 separates serialization/write wall and CPU, work overrun, sleep and
+wake lateness; retains final-cycle timing. Same application workload and buffered
+I/O policy. AP question: which observer phase hides events during sampling gaps?
+Fake-clock tests cover normal sleep, write overrun and write failure. No new Pi
+performance claim. Pipeline and learning guide reviewed/updated.
+
 2026-11-05 — **Measured: first Linux spatial-stall capture.**
 [Results](SPATIAL_STALL_RESULTS.md), [summary](../benchmarks/results/spatial-stalls-01.json).
 180 records, no drops; no IMU gaps above 200 ms. Writer tails still approach

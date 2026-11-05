@@ -8,6 +8,29 @@ limit and recording queue remain unchanged so we can observe the same failure.
 
 ## What is measured
 
+Schema 2 (2026-11-06) additionally separates observer serialization and buffered
+write wall/CPU times, requested/actual sleep, wake lateness and work overrun.
+`previous_observer_cycle` in sample N describes sample N-1, identified by index
+and host timestamps; the first is null. `last_observer_cycle` in summary preserves
+the final cycle, including partial phase timing on interruption/error. Summary
+maxima cover completed cycles only. `post_wake_to_sample_ms` includes loop/check
+overhead after sleep; `sample_gap_ms` uses all sample starts, independent of procfs
+availability. Collection time remains separate from serialization/write time.
+
+`work_overrun_ms` is lateness already accumulated before sleep; `wake_late_ms`
+is excess elapsed time after the requested sleep (including a zero-duration
+yield on overrun). Neither alone proves OS scheduler starvation. Wall time can
+include descheduling; process CPU time measures this observer's execution.
+No flush/fsync is added: write time covers Python buffering/encoding and any
+underlying write in that call, not durable storage completion. Final close/flush
+is outside these per-cycle timings. Logging more timing fields adds overhead.
+
+Repeat once as `recordings/spatial-stalls-02`, using the commands below with
+that output name, unchanged 180 seconds/250 ms sampling and the same scene.
+Use `spatial-stalls-02` in the summary and SCP commands too. Enroll center,
+left, right; revisit each for 10 seconds; show an unenrolled view for 10 seconds;
+return to center until automatic stop. Preserve run 01 for comparison.
+
 - Every 250 ms by default: preview and direct-child process/task `stat`,
   `status`, `schedstat`, `wchan` and `io`. CPU ticks, faults, context switches,
   sampled state and task IDs can be correlated with the application's workers.

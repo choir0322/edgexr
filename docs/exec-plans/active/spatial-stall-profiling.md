@@ -23,7 +23,9 @@ map Python workers to Linux tasks. No scheduler/driver settings are changed.
 - [x] 2026-11-05: Update pipeline and learning source guide, with units/limits.
 - [x] 2026-11-05: Analyze spatial-stalls-01: no IMU continuity failure, but writer
   tails and observer gaps persist. See ../../SPATIAL_STALL_RESULTS.md.
-- [ ] Separate observer serialization/write/wake timing; repeat before causal attribution.
+- [x] 2026-11-06: Separate observer serialization/write/wake timing, with fake-clock
+  tests and final-cycle retention; pipeline/source guide reviewed and updated.
+- [ ] Repeat once as spatial-stalls-02 before causal attribution.
 
 ## Plan of work
 
@@ -60,12 +62,20 @@ unchanged. Existing logs locate the pause but lack task scheduler evidence.
 
 ## Decision log
 
+- 2026-11-06: Keep buffered I/O and workload unchanged; carry previous-cycle
+  timings in the next sample and retain the last in summary. No fsync or kernel
+  setting changes. Schema 2 distinguishes this repeat from the initial capture.
+
 - 2026-11-05: Begin with existing readable procfs counters; record schedstats
   availability instead of silently enabling it. Deeper tracing follows evidence.
 - 2026-11-05: Launch observer and app together so startup failures and early
   gaps are retained, with bounded timer and no unowned process termination.
 
 ## Outcomes and retrospective
+
+2026-11-06 instrumentation validation: all 198 hardware-independent unit tests
+passed, including fake-clock phase timing and existing HTTP behavior. Pi repeat
+is pending; no stall cause inferred from these tests.
 
 Implementation and first Pi capture analysis complete; causal diagnosis pending.
 The first capture did not reproduce the IMU failure. It did retain long writer

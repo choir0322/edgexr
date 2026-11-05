@@ -1,5 +1,9 @@
 # Current live pipeline
 
+2026-11-06: observer schema 2 times serialization, buffered write and sleep/wake
+separately; previous-cycle details flow to the next diagnostic row and final
+summary. Application graph reviewed; unchanged (observer-only instrumentation).
+
 The opt-in [stall profiler](SPATIAL_STALL_PROFILING.md) launches this pipeline
 and observes procfs task counters plus HTTP telemetry from a separate process.
 `worker_threads` maps Python names to native Linux IDs. Sampling is sequential

@@ -10,7 +10,7 @@ import tempfile
 import unittest
 from unittest.mock import patch, Mock
 
-from profiling.spatial_stalls import cpu_delta, fetch_telemetry, parse_schedstat, parse_stat, read_process, run, stop_child
+from profiling.spatial_stalls import cpu_delta, fetch_telemetry, parse_schedstat, parse_stat, read_process, run, stop_child, write_and_wait
 
 
 def stat_record(pid: int = 42, start: int = 100, cpu: int = 20) -> str:
@@ -31,6 +31,48 @@ def stat_record(pid: int = 42, start: int = 100, cpu: int = 20) -> str:
 
 
 class SpatialStallTests(unittest.TestCase):
+    def test_observer_phases_and_previous_cycle_are_separate(self) -> None:
+        """Separate serialization, write, sleep and oversleep with a fake clock.
+
+        Args: None.
+        Returns: None.
+        """
+        log = io.StringIO()
+        row = {"sample_index": 1, "started_host_s": 10.0,
+               "previous_observer_cycle": {"sample_index": 0}}
+        timing = {}
+        with patch("profiling.spatial_stalls.time.monotonic", side_effect=[10.02, 10.03, 10.04, 10.09, 10.10, 10.27]), patch("profiling.spatial_stalls.time.process_time", side_effect=[0, .005, .005, .006]), patch("profiling.spatial_stalls.time.sleep") as sleep:
+            write_and_wait(log, row, .25, timing)
+        self.assertAlmostEqual(timing["serialize_wall_ms"], 10)
+        self.assertAlmostEqual(timing["write_wall_ms"], 50)
+        self.assertAlmostEqual(timing["write_cpu_ms"], 1)
+        self.assertAlmostEqual(timing["wake_late_ms"], 20)
+        self.assertAlmostEqual(sleep.call_args.args[0], .15)
+        self.assertEqual(timing["work_overrun_ms"], 0)
+        self.assertEqual(json.loads(log.getvalue()), row)
+        self.assertEqual(timing["phase"], "complete")
+
+    def test_overrun_is_not_reported_as_oversleep(self) -> None:
+        """A slow write consumes the budget; interrupted phases remain explicit.
+
+        Args: None.
+        Returns: None.
+        """
+        timing = {}
+        with patch("profiling.spatial_stalls.time.monotonic", side_effect=[0, .01, .01, 2, 2, 2.001]), patch("profiling.spatial_stalls.time.sleep") as sleep:
+            write_and_wait(io.StringIO(), {"sample_index": 0, "started_host_s": 0}, .25, timing)
+        sleep.assert_called_once_with(0.0)
+        self.assertAlmostEqual(timing["work_overrun_ms"], 1750)
+        self.assertAlmostEqual(timing["wake_late_ms"], 1)
+        failed = {}
+        with self.assertRaises(OSError):
+            write_and_wait(Mock(write=Mock(side_effect=OSError("disk"))),
+                           {"sample_index": 0, "started_host_s": 0}, .25, failed)
+        self.assertEqual(failed["phase"], "write")
+        self.assertIn("write_finished_host_s", failed)
+        self.assertNotIn("write_completed", failed)
+        self.assertNotIn("sleep_started_host_s", failed)
+
     def test_existing_output_is_preserved_before_launch(self) -> None:
         """Reject a previous evidence folder before starting any hardware process.
 

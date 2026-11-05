@@ -1,5 +1,9 @@
 # Scene memory: current source map
 
+`profiling.spatial_stalls.write_and_wait` now separates observer serialization,
+write and sleep timing. This measures the diagnostic process, not scene matching;
+previous-cycle records and the last-cycle summary avoid self-timing recursion.
+
 AP diagnostic: [stall profiler](../SPATIAL_STALL_PROFILING.md) correlates
 `scene-worker`/`scene-recorder` native TIDs with kernel task counters. Their
 recognition/recording policies are unchanged. HTTP telemetry adds Python thread

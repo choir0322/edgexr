@@ -14,6 +14,7 @@ import socket
 import subprocess
 import sys
 import time
+from typing import TextIO
 from urllib.request import urlopen
 
 
@@ -165,6 +166,51 @@ def stop_child(child: subprocess.Popen, grace: float = 10.0) -> None:
         child.wait()
 
 
+def write_and_wait(log: TextIO, row: dict, interval: float, timing: dict) -> None:
+    """Measure observer phases without changing buffered-write or pacing policy.
+
+    Args:
+        log (TextIO): Existing buffered sample log; no added flush or fsync.
+        row (dict): Completed sample, with index and collection start time.
+        interval (float): Target seconds between sample starts.
+        timing (dict): Mutable record retained even if a phase raises.
+    Returns:
+        None: Completed timings are carried in the next row and final summary.
+    """
+    timing.update(sample_index=row["sample_index"], sample_started_host_s=row["started_host_s"])
+    # A row cannot contain the duration of its own write. Carry it forward instead.
+    for phase in ("serialize", "write"):
+        timing["phase"] = phase
+        start = time.monotonic()
+        cpu = time.process_time()
+        timing[f"{phase}_started_host_s"] = start
+        try:
+            if phase == "serialize":
+                payload = json.dumps(row, allow_nan=False) + "\n"
+            else:
+                log.write(payload)
+                timing["write_completed"] = True
+        finally:
+            end = time.monotonic()
+            timing[f"{phase}_finished_host_s"] = end
+            timing[f"{phase}_wall_ms"] = (end - start) * 1000
+            timing[f"{phase}_cpu_ms"] = (time.process_time() - cpu) * 1000
+    # Separate work that already missed the deadline from oversleep after a request.
+    start = time.monotonic()
+    target = row["started_host_s"] + interval
+    requested = max(0.0, target - start)
+    timing.update(phase="sleep", target_next_sample_host_s=target,
+                  sleep_started_host_s=start, sleep_requested_s=requested,
+                  work_overrun_ms=max(0.0, start - target) * 1000)
+    try:
+        time.sleep(requested)
+    finally:
+        end = time.monotonic()
+        timing.update(sleep_finished_host_s=end, sleep_actual_ms=(end - start) * 1000,
+                      wake_late_ms=max(0.0, end - start - requested) * 1000)
+    timing["phase"] = "complete"
+
+
 def run(args: argparse.Namespace) -> dict:
     """Launch one fixed profile and save bounded-time Linux observations.
 
@@ -195,7 +241,8 @@ def run(args: argparse.Namespace) -> dict:
     revision = subprocess.run(["git", "rev-parse", "HEAD"], capture_output=True, text=True)
     started, cpu_started = time.monotonic(), time.process_time()
     ticks = os.sysconf("SC_CLK_TCK")
-    metadata = {"schema": 1, "started_host_s": started, "started_unix_s": time.time(),
+    metadata = {"schema": 2, "started_host_s": started, "started_unix_s": time.time(),
+                "observer_timing": "Previous cycle in next sample; last cycle in summary. Buffered write, no fsync; wall intervals include descheduling.",
                 "command": command, "revision": revision.stdout.strip(),
                 "git_status": status.stdout, "host": platform.platform(),
                 "python": platform.python_version(), "ticks_per_second": ticks,
@@ -218,6 +265,9 @@ def run(args: argparse.Namespace) -> dict:
     child = None
     next_http = started
     error = None
+    cycle = None
+    last_sample_at = None
+    phase_max_ms = {}
     print(f"Preview: http://127.0.0.1:{args.port}; saving profiling and scene images to {output}", flush=True)
     print(f"Remain still at startup. Enroll/revisit three views in browser; app timer is {args.seconds:g} s. No servo commands.", flush=True)
     try:
@@ -229,11 +279,16 @@ def run(args: argparse.Namespace) -> dict:
                 if now - started > args.seconds + 40:
                     reason = "watchdog_expired"
                     break
-                row = {"started_host_s": now, "observer_cpu_s": time.process_time() - cpu_started}
+                row = {"sample_index": count, "started_host_s": now,
+                       "observer_cpu_s": time.process_time() - cpu_started,
+                       "previous_observer_cycle": cycle}
+                if last_sample_at is not None:
+                    max_gap = max(max_gap, now - last_sample_at)
+                    row["sample_gap_ms"] = (now - last_sample_at) * 1000
+                    row["post_wake_to_sample_ms"] = (now - cycle["sleep_finished_host_s"]) * 1000
+                last_sample_at = now
                 process = read_process(child.pid)
                 current = process["stat"].get("parsed")
-                if previous_at is not None:
-                    max_gap = max(max_gap, now - previous_at)
                 row["preview_cpu_pct_one_core"] = (cpu_delta(previous, current, now - previous_at, ticks)
                     if current is not None and previous_at is not None else None)
                 if current is not None:
@@ -258,10 +313,14 @@ def run(args: argparse.Namespace) -> dict:
                 row["finished_host_s"] = time.monotonic()
                 row["collection_ms"] = (row["finished_host_s"] - now) * 1000
                 max_collection = max(max_collection, row["collection_ms"])
-                # Buffered JSONL writes can themselves stall; next sample gap records it.
-                log.write(json.dumps(row, allow_nan=False) + "\n")
-                count += 1
-                time.sleep(max(0, args.interval - (time.monotonic() - now)))
+                cycle = {}
+                try:
+                    write_and_wait(log, row, args.interval, cycle)
+                finally:
+                    count += int(cycle.get("write_completed", False))
+                for key in ("serialize_wall_ms", "serialize_cpu_ms", "write_wall_ms",
+                            "write_cpu_ms", "work_overrun_ms", "wake_late_ms"):
+                    phase_max_ms[key] = max(phase_max_ms.get(key, 0.0), cycle[key])
     except KeyboardInterrupt:
         reason = "interrupted"
     except Exception as failure:
@@ -282,6 +341,8 @@ def run(args: argparse.Namespace) -> dict:
                "samples": count, "elapsed_s": elapsed,
                "observer_cpu_s": time.process_time() - cpu_started,
                "max_sample_gap_s": max_gap, "max_collection_ms": max_collection,
+               "last_observer_cycle": cycle,
+               "completed_observer_cycle_max_ms": phase_max_ms,
                "telemetry_errors_including_startup_shutdown": telemetry_errors,
                "scene_final": final,
                "limits": "Collector completion does not mean application acceptance. Missing/disabled counters are not zero delay. Observer polling/HTTP/JSON I/O perturbs workload; no event-by-event scheduler trace or causal attribution."}
