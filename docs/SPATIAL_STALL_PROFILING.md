@@ -1,5 +1,11 @@
 # Profile the IMU pause and recording backlog
 
+Results: [initial capture](SPATIAL_STALL_RESULTS.md) and
+[separated observer timing](SPATIAL_STALL_RESULTS_02.md). Run 02 localizes its
+largest observer gap to buffered writing and samples kernel waits in the app
+recorder; its startup gyro check failed. Next inspect recording storage and select
+bounded I/O tracing rather than assuming a slower sample interval fixes the issue.
+
 This is the first AP-led Linux investigation of v1's 879 ms IMU gap and 9.24 s
 PNG write. `profiling.spatial_stalls` launches the detector-off spatial profile
 and samples Linux procfs from a separate process. It changes no kernel, driver,

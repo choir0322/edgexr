@@ -1,5 +1,16 @@
 # EdgeXR technique and AP evidence register
 
+2026-11-06 — **Measured: observer phase attribution and kernel recording waits.**
+[Review](SPATIAL_STALL_RESULTS_02.md), [summary](../benchmarks/results/spatial-stalls-02.json).
+Observer 740.461 ms sample gap includes 714.929 ms buffered write; serialization
+2.601 ms and wake lateness 0.101 ms in that cycle. App PNG max 3.612 s, recorder
+sampled D/__lock_buffer; 180 written, zero dropped, queue high-water 3/4.
+Raw IMU has no >200 ms gaps, but initial gyro check failed and orientation stays
+unknown. No direct CPU comparison or orientation acceptance claim. Arm entering
+rightmost view excluded from recognition diagnosis. Next inspect mount/backing
+device and select bounded filesystem/block tracing. Pipeline/source guide reviewed;
+unchanged because this stage adds evidence only.
+
 2026-11-06 — **Implemented; repeat measurement pending: observer phase timing.**
 [Source](../src/profiling/spatial_stalls.py), [protocol](SPATIAL_STALL_PROFILING.md).
 Schema 2 separates serialization/write wall and CPU, work overrun, sleep and

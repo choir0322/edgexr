@@ -25,7 +25,12 @@ map Python workers to Linux tasks. No scheduler/driver settings are changed.
   tails and observer gaps persist. See ../../SPATIAL_STALL_RESULTS.md.
 - [x] 2026-11-06: Separate observer serialization/write/wake timing, with fake-clock
   tests and final-cycle retention; pipeline/source guide reviewed and updated.
-- [ ] Repeat once as spatial-stalls-02 before causal attribution.
+- [x] 2026-11-06: Analyze spatial-stalls-02: largest observer gap is dominated by
+  buffered write; app recorder sampled in D/__lock_buffer during longest PNG.
+  Initial gyro stability rejected, so orientation remains unknown. See
+  ../../SPATIAL_STALL_RESULTS_02.md. Pipeline/source guide reviewed; unchanged.
+- [ ] Inspect recording mount/backing device and select bounded kernel I/O trace;
+  retain calibration failure as a limitation for full-workload CPU comparison.
 
 ## Plan of work
 
@@ -57,10 +62,21 @@ energy or root-cause claim from wall time alone.
 
 ## Surprises and discoveries
 
+Run 02 completes raw polling and recording while corrected orientation is absent:
+startup gyro stability rejected. Timing counters alone are not orientation health.
+The largest observer write uses 0.435 ms CPU across 714.929 ms wall time; the app
+writer separately appears in kernel D/__lock_buffer waits for 15 samples during
+its longest PNG call. Kernel waiting is observed; ultimate device cause unresolved.
+
 The old AP profiler requires a ready detector and cannot collect this workload
 unchanged. Existing logs locate the pause but lack task scheduler evidence.
 
 ## Decision log
+
+- 2026-11-06: Conclude phase-localization repeat; move to mount/backing-device
+  inspection and bounded I/O tracing. Exclude arm-related right-view recognition
+  changes from diagnosis. Do not attribute run-to-run CPU differences to phase
+  instrumentation when startup failure disables orientation processing.
 
 - 2026-11-06: Keep buffered I/O and workload unchanged; carry previous-cycle
   timings in the next sample and retain the last in summary. No fsync or kernel
@@ -75,7 +91,10 @@ unchanged. Existing logs locate the pause but lack task scheduler evidence.
 
 2026-11-06 instrumentation validation: all 198 hardware-independent unit tests
 passed, including fake-clock phase timing and existing HTTP behavior. Pi repeat
-is pending; no stall cause inferred from these tests.
+reviewed: 741 unique cycle indices, 180 matching image files, zero recording
+drops. Observer write phase explains its largest gap; kernel write waits narrow
+the next investigation. Full-workload CPU/orientation comparison is limited by
+the rejected startup baseline. Ultimate stall cause remains open.
 
 Implementation and first Pi capture analysis complete; causal diagnosis pending.
 The first capture did not reproduce the IMU failure. It did retain long writer
@@ -83,7 +102,7 @@ intervals and observer gaps; unavailable kernel accounting limits attribution.
 Final implementation full suite passed 196 tests
 after allowing the existing localhost HTTP test to bind its temporary server.
 Changed-source learning-contract checks passed; the global
-audit still reports unrelated pre-existing documentation issues. No Linux target
-performance or root cause has yet been measured with this observer.
+audit still reports unrelated pre-existing documentation issues. Linux task and
+observer timings are now measured; original IMU failure cause remains unresolved.
 Low-level kernel/BSP/driver exercises
 are now explicit roadmap outcomes, not claimed experience already completed.
