@@ -119,5 +119,32 @@ An empty last command only means those tracing filesystems are not currently
 listed as mounts. Keep device and filesystem identities with the next trace;
 this inventory installs nothing and changes no mount or kernel setting.
 
+### Confirmed target inventory — 2026-11-06
+
+User-provided Pi output resolves `recordings/` to `/`, source `/dev/mmcblk0p2`,
+ext4 with `rw,noatime`. Its parent is `mmcblk0` (119.3 GiB as displayed by lsblk),
+with a 512 MiB vfat firmware partition and 118.7 GiB ext4 root partition.
+Both `/sys/kernel/tracing` (tracefs) and `/sys/kernel/debug` (debugfs) are mounted.
+Application and observer evidence share the root storage device. This does not
+identify media make, health, service latency or the cause of buffer waiting.
+
+Next read available event names and current tracer state before choosing a
+small event set. This does not start tracing:
+
+```bash
+sudo grep -E '^(block|ext4|jbd2|writeback|mmc):' \
+  /sys/kernel/tracing/available_events
+sudo cat /sys/kernel/tracing/current_tracer \
+  /sys/kernel/tracing/tracing_on
+df -h recordings
+```
+
+Current tracer state records existing tracing activity; later collection should
+use its own trace instance and retain buffer-loss statistics. The planned trace
+will distinguish filesystem/journal waiting from block-request delays where
+supported, use bounded kernel memory buffers and avoid streaming trace output
+to the recording device during measurement. Event availability and tracing
+overhead must be checked on this kernel before claiming that distinction.
+
 Pipeline and learning source map reviewed; unchanged because this is analysis
 of existing paths, with no runtime modification or new inference connection.

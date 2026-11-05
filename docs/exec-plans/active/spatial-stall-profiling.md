@@ -29,7 +29,9 @@ map Python workers to Linux tasks. No scheduler/driver settings are changed.
   buffered write; app recorder sampled in D/__lock_buffer during longest PNG.
   Initial gyro stability rejected, so orientation remains unknown. See
   ../../SPATIAL_STALL_RESULTS_02.md. Pipeline/source guide reviewed; unchanged.
-- [ ] Inspect recording mount/backing device and select bounded kernel I/O trace;
+- [x] 2026-11-06: Confirm recording storage: ext4 root /dev/mmcblk0p2 on
+  mmcblk0; tracefs/debugfs already mounted. No settings changed.
+- [ ] Inspect available kernel events and select bounded kernel I/O trace;
   retain calibration failure as a limitation for full-workload CPU comparison.
 
 ## Plan of work

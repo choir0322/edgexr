@@ -1,5 +1,12 @@
 # EdgeXR technique and AP evidence register
 
+2026-11-06 — **Observed: recording storage and tracing mounts.**
+[Inventory and next command](SPATIAL_STALL_RESULTS_02.md#confirmed-target-inventory--2026-11-06).
+User confirms recordings on ext4 /dev/mmcblk0p2 (root), parent mmcblk0;
+tracefs and debugfs mounted. App and profiler share storage. Media health and
+device latency unknown. Next inspect kernel event availability; no trace enabled
+or filesystem setting changed. Application pipeline unchanged.
+
 2026-11-06 — **Measured: observer phase attribution and kernel recording waits.**
 [Review](SPATIAL_STALL_RESULTS_02.md), [summary](../benchmarks/results/spatial-stalls-02.json).
 Observer 740.461 ms sample gap includes 714.929 ms buffered write; serialization
