@@ -1,5 +1,19 @@
 # EdgeXR technique and AP evidence register
 
+2026-11-07 — **Implemented; Pi measurement pending: profiler-only RAM control.**
+[Protocol](OBSERVER_RAM_CONTROL.md), [plan](exec-plans/active/observer-ram-control.md),
+[sample sink](../src/profiling/sample_sink.py),
+[comparison](../src/profiling/compare_observer_storage.py).
+64 MiB sample-payload cap; explicit overflow/no spill; post-collection export
+with separately timed CPU/wall cost. App recording stays microSD. Observer
+RSS/swap and system swap counters bound the interpretation, not physical RAM.
+AP question: observer latency versus memory and shared-path interference.
+Existing-run comparison and all 211 hardware-independent tests pass; no
+new target result. Pipeline/source map updated. Learning page now has software
+and software+hardware modes plus CPU execution links, not fixed core assignments.
+[DIY computer evaluation](DIY_COMPUTER_OPTIONS.md) is exploratory; no purchase,
+FPGA implementation, kernel/driver experience or benchmark is claimed.
+
 2026-11-07 — **Implemented: unified worker/resource learning graph.**
 [Learning page](learning/edgexr-worker-rates.html) now connects capture to the
 optional scene worker, snapshot, bounded writer and shared storage in one SVG.

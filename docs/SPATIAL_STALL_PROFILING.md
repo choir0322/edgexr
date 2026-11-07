@@ -1,5 +1,11 @@
 # Profile the IMU pause and recording backlog
 
+Current next control: [profiler-only bounded RAM](OBSERVER_RAM_CONTROL.md).
+Schema 3 adds file/RAM destination selection, sampled observer RSS/swap,
+system swap counters and post-collection export timing. Fresh file and RAM
+runs use identical new accounting. The older schema-2 protocol below remains
+historical context; use the linked paired commands for the current experiment.
+
 Results: [initial capture](SPATIAL_STALL_RESULTS.md) and
 [separated observer timing](SPATIAL_STALL_RESULTS_02.md). Run 02 localizes its
 largest observer gap to buffered writing and samples kernel waits in the app

@@ -13,8 +13,8 @@
       note:'Application and profiler both wrote to microSD. Trace stayed in RAM until stop. CPU 0 overwrote 88,730 older trace events. No scene records were dropped. The earlier missing trace cannot be reconstructed.'},
     run03: {title:'Measured · run 03 / mmc0 filter', status:'Measured · no reported trace loss', queue:true, profiler:true, ram:false, filter:true,
       note:'Same application workload; only MMC diagnostics were narrowed to mmc0. Both filters read back correctly; all 4,009 retained MMC events name mmc0. All per-CPU loss counters are zero. Filtering did not repair or accelerate storage.'},
-    ram: {title:'Proposed · profiler output in bounded RAM', status:'PROPOSED · not implemented or measured', queue:true, profiler:true, ram:true, filter:true,
-      note:'Keep scene images/JSON on microSD, but stage profiler measurements in bounded RAM and copy after collection. Capacity, overflow handling and memory/swap policy must be specified before running. No CPU or latency improvement is claimed.'}
+    ram: {title:'Ready to test · profiler samples in bounded RAM', status:'Implemented · Pi measurement pending', queue:true, profiler:true, ram:true, filter:true,
+      note:'Only samples.jsonl is staged in process RAM (64 MiB payload cap by default). Scene images/JSON and preview.log stay on microSD. Export follows collection plus a 45 s delay. No spill on overflow. RAM is pageable; inspect swap evidence. No improvement measured yet.'}
   };
   const definitions = {
     recognize:['Scene worker','Compares camera views with remembered views. It produces a scene record; this workload has MobileNet object detection disabled. A record is a software item, not a network packet.'],
@@ -29,7 +29,7 @@
     block:['Block layer','Linux represents storage work as requests for ranges of blocks. Requests can merge, split, requeue or complete partially. A requeue does not automatically mean an error or lost file.'],
     driver:['Driver + controller','A driver is kernel code communicating with a device. The storage controller is hardware that communicates with the card. Our trace does not isolate which component explains the wait.'],
     sd:['microSD / persistent storage','The card retains files after power-off. The reviewed recordings use ext4 on /dev/mmcblk0p2. A slow request is not proof that the card is defective: controller, driver, filesystem and scheduling interactions also matter.'],
-    ram:['Proposed RAM staging','A separate bounded area for profiler output, not the existing scene queue or trace ring. Copy to microSD after the timed run. Volatile data can be lost on reboot; capacity and any swap behavior need explicit handling.'],
+    ram:['Bounded RAM staging','Profiler sample bytes stay in a capped list in its process memory. This is not a tmpfs mount, scene queue or trace ring. Overflow stops collection with an error; no automatic disk spill. Export happens after collection and a delay. RAM is volatile and pageable: inspect recorded VmSwap and system swap activity.'],
     trace:['Kernel trace','Timestamped diagnostic events from inside Linux. This helper collects selected storage events into bounded per-CPU RAM rings, then exports them after tracing stops. It does not record every kernel action.'],
     mmc:['MMC host / filter','MMC is the Linux subsystem serving devices such as this SD storage. mmc0 is the host label seen on the reviewed storage requests; mmc1 is another host, not CPU core 1. The expression name == "mmc0" keeps matching diagnostic entries only. Real device operations continue. Other event groups remain unfiltered.'],
     ring:['Trace ring / overrun','A fixed-size circular RAM log. In overwrite mode, new events replace the oldest when full. Each CPU has its own ring. An overrun counts diagnostic evidence lost, not camera or IMU data loss.'],
@@ -37,7 +37,7 @@
     coverage:['Coverage / completeness','Coverage asks whether tracing was enabled for the entire application interval. Completeness additionally asks whether recorded events were lost. A long-enough trace can still have overwritten events, as run 02 did.'],
     cause:['Correlation / cause','Concurrent intervals show related activity in time. They do not prove which component caused the others to wait. We need a controlled change and additional evidence to distinguish competing explanations.']
   };
-  let selected='run03', step=0, expanded=false, branch=false, timer=null;
+  let selected='run03', step=0, expanded=false, branch=false, hardware=false, timer=null;
   const states=[
     {q:0,w:'idle',msg:'A scene result is ready. The profiler independently takes a measurement.'},
     {q:0,w:'R1',msg:'R1 moves to the writer. Both programs send file work toward shared storage.'},
@@ -79,6 +79,11 @@
   bridge.id='lab-bridge';
   bridge.innerHTML='<path d="M290 205V445H95V498"/><text x="300" y="437">newest frame → optional scene worker</text><path d="M150 498V475H690V260H710"/><text x="700" y="335">scene result</text><text x="700" y="352">→ snapshot</text>';
   graph.insertBefore(bridge,flow);
+  const resources=document.createElementNS('http://www.w3.org/2000/svg','g');
+  resources.id='lab-resources';
+  // Resource links mean execution, never a measured core assignment or data copy.
+  resources.innerHTML='<title>Pi CPU executes these workers; browser runs on the Mac</title>'+[ [90,150],[290,150],[510,75],[510,215],[510,345],[930,210] ].map(([x,y])=>`<path d="M1190 775V${y-45}H${x}V${y-25}"/>`).join('')+'<path d="M510 775H1190"/>';
+  graph.insertBefore(resources,bridge);
   // Evidence is available on demand within the existing canvas.
   document.querySelector('.canvas').append(root);
   const evidence=document.createElement('details');
@@ -108,10 +113,14 @@
   /** Draw configuration-specific routing and a bounded conceptual queue. */
   function drawFlow(){
     const c=configs[selected],s=states[step],blocked=step>=2&&step<=5;
-    const svg=el('lab-flow'),height=expanded?550:345;
+    const svg=el('lab-flow'),height=hardware?(expanded?550:345):240;
     svg.setAttribute('viewBox',`0 0 1100 ${height}`);
     svg.setAttribute('height',String(height*1200/1100));
     graph.setAttribute('viewBox',`0 0 1200 ${460+height*1200/1100}`);
+    resources.style.display=hardware?'':'none';
+    el('software-mode').setAttribute('aria-pressed',String(!hardware));
+    el('hardware-mode').setAttribute('aria-pressed',String(hardware));
+    el('architecture-hint').textContent=hardware?'Dotted green links = CPU executes software. Solid arrows = data. No fixed core assignment.':'Software data flow. Hardware resources are hidden.';
     el('lab-expand').textContent=branch?'Collapse recording path':'Expand recording path';
     el('lab-expand').setAttribute('aria-expanded',String(branch));
     let out=defs+node('recognize',25,35,175,'Spatial recognition',!c.queue&&blocked?'scene worker waits':branch?'collapse recording':'expand recording');
@@ -119,7 +128,7 @@
     if(!branch){
       out+='<text x="245" y="60">recording details hidden</text><path class="wire" d="M410 65H655"/>';
     }else if(c.queue){
-      out+=`<g role="button" tabindex="0" data-term="queue" aria-label="Explain four-slot queue"><text x="230" y="25">RAM queue · ${s.q}/4 waiting</text>`;
+      out+=`<g role="button" tabindex="0" data-term="queue" aria-label="Explain four-slot queue"><text x="230" y="25">${hardware?'RAM queue':'Queue'} · ${s.q}/4 waiting</text>`;
       for(let i=0;i<4;i++)out+=`<rect x="${230+i*45}" y="40" width="38" height="50" rx="4" fill="${i<s.q?'var(--blue)':'var(--bg)'}" stroke="var(--line)"/><text x="${249+i*45}" y="70" text-anchor="middle" style="fill:${i<s.q?'var(--bg)':'var(--muted)'}">${i<s.q?'R'+(step>=6?step-3+i:2+i):'·'}</text>`;
       out+='</g><path class="wire" d="M410 65H440"/>';
     }else out+='<text x="245" y="60">same worker saves</text><path class="wire" d="M395 65H440"/>';
@@ -127,17 +136,19 @@
       out+=node('writer',440,35,165,c.queue?'Recording worker':'Inline save',blocked?`${s.w} · waiting`:s.w);
       out+='<path class="wire" d="M605 65H655"/>';
     }
-    out+=node('storage',655,35,205,'Linux storage',expanded?'click to collapse':'click to expand');
-    out+='<path class="wire" d="M860 65H915"/>'+node('sd',915,35,160,'microSD','images + JSON','card');
+    out+=node('storage',655,35,205,hardware?'Linux storage':'File output',hardware?(expanded?'click to collapse':'click to expand'):'images + JSON');
+    if(hardware)out+='<path class="wire" d="M860 65H915"/>'+node('sd',915,35,160,'microSD','images + JSON','card');
     if(c.profiler){
       out+=node('profiler',25,155,175,'Profiler program',blocked&&!c.ram?'write waits; no sample':'observes application');
       out+='<path class="wire observe" d="M110 95V155"/>';
-      if(c.ram)out+='<path class="wire" d="M200 185H290"/>'+node('ram',290,155,210,'Bounded RAM output','PROPOSED · volatile','ram')+'<path class="wire observe" d="M500 185H995V100"/><text class="sub" x="575" y="175">copy to card AFTER collection</text>';
+      if(c.ram)out+='<path class="wire" d="M200 185H290"/>'+node('ram',290,155,210,hardware?'Bounded RAM output':'Capped sample buffer','Pi measurement pending',hardware?'ram':'box')+`<path class="wire observe" d="M500 185H${hardware?995:820}V100"/><text class="sub" x="545" y="175">export AFTER collection + delay</text>`;
       else out+='<path class="wire" d="M200 185H755V100"/><text class="sub" x="290" y="175">separate measurement file · same storage</text>';
     }
-    out+=node('imu',25,260,175,'IMU continues above',`independent of file writes`)+node('cpu',290,260,180,'Shared CPU · 4 cores','Linux schedules threads','chip');
-    out+='<text class="sub" x="500" y="280">CPU and RAM are shared resources, not extra file-processing stages.</text><text class="sub" x="500" y="305">Four queue slots exclude the record currently held by the writer.</text>';
-    if(expanded){
+    if(hardware){
+      out+=node('imu',25,260,175,'IMU continues above',`independent of file writes`)+node('cpu',290,260,180,'Shared CPU · 4 cores','Linux schedules threads','chip');
+      out+=`<path class="execution" d="M375 260V240H15V65H25 ${c.profiler?'M15 185H25':''} ${branch?'M375 240H530V95':''}"/><text class="sub" x="500" y="280">Dotted links: CPU executes software, not a data-transfer path.</text><text class="sub" x="500" y="305">A waiting thread can leave CPU time for other runnable threads.</text>`;
+    }
+    if(expanded&&hardware){
       out+='<path class="wire observe" d="M850 95H1090V360H120V390"/>';
       out+=node('cache',25,390,230,'ext4 + RAM cache','file organization / buffering','ram')+'<path class="wire" d="M255 420H320"/>'+node('block',320,390,175,'Block requests','may merge / requeue')+'<path class="wire" d="M495 420H560"/>'+node('driver',560,390,200,'Driver + controller','kernel code + hardware')+'<path class="wire" d="M760 420H915"/>'+node('sd',915,390,160,'microSD','persistent files','card');
       out+='<path class="wire observe" d="M140 450V475"/>'+node('journal',25,475,230,'Journal bookkeeping','recovery transactions');
@@ -146,7 +157,8 @@
     el('lab-event').textContent=!c.queue&&blocked?'Illustration: the scene worker waits inside its own save. The next scene query is delayed; IMU remains independent.':s.msg;
     if(!c.profiler&&step===0)el('lab-event').textContent='A scene result is ready. This architecture view does not include a profiler.';
     if(step===5)el('lab-event').textContent+=' The 4/4 measured value belongs to run 03; run 02 reached only 2/4.';
-    if(c.ram)el('lab-event').textContent+=' Proposed routing only: this does not simulate a measured performance improvement.';
+    if(c.ram)el('lab-event').textContent=`Illustrative event ${step+1}: scene writer ${blocked?'waits on file output':s.w}; ${s.q}/4 scene records waiting. Profiler samples stay in its separate capped buffer until post-collection export. No measured latency benefit is implied.`;
+    else if(!c.profiler)el('lab-event').textContent=c.queue?`Illustration: recording worker ${blocked?'waits':s.w}; ${s.q}/4 records queued. No profiler in this configuration. Full queues reject new submissions; this sequence does not simulate a drop.`:blocked?'Illustration: the scene worker waits inside its own save. The next scene query is delayed; IMU remains independent.':'Illustration: scene recognition and file saving share one worker. No profiler in this configuration.';
   }
   /** Contrast selective diagnostic logging with actual device work and ring loss. */
   function drawFilter(){
@@ -179,6 +191,8 @@
     surface.addEventListener('keydown',event=>{const target=event.target.closest('svg [data-term]');if(target&&['Enter',' '].includes(event.key)){event.preventDefault();explain(target.dataset.term);}});
   }
   el('lab-expand').addEventListener('click',()=>{branch=!branch;drawFlow();});
+  el('software-mode').addEventListener('click',()=>{hardware=false;drawFlow();});
+  el('hardware-mode').addEventListener('click',()=>{hardware=true;drawFlow();});
   document.addEventListener('expand-recording',()=>{branch=!branch;drawFlow();});
   el('lab-config').addEventListener('change',event=>{pause();selected=event.target.value;step=0;render();});
   el('lab-next').addEventListener('click',()=>{pause();branch=true;advance();});

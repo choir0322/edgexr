@@ -1,5 +1,12 @@
 # Read the EdgeXR code from end to end
 
+The [worker/resource learning lab](edgexr-worker-rates.html) now offers **Software**
+and **Software + hardware** modes. CPU dotted links mean execution, not data
+movement or core affinity. Expand the recording/storage nodes and evidence
+disclosure to connect queues, observer file writes, RAM and microSD. The
+[RAM observer protocol](../OBSERVER_RAM_CONTROL.md) is implemented but not yet
+Pi-measured; [DIY computer options](../DIY_COMPUTER_OPTIONS.md) are exploratory.
+
 These guides explain the currently inspected implementation, not an idealized
 replacement. Start with the interactive [whole-program flow explorer](program-flow-explorer.html).
 Updated through 2026-11-04: expand **Scene memory + map** or **Read IMU** to follow

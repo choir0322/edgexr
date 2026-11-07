@@ -11,7 +11,7 @@ not a claim that the corresponding code or experiment exists.
 | Bounded writer | Implemented and Pi-observed | Four waiting records in RAM plus one active write; separate writer to microSD | Separate concern | Separate concern | [Implementation and evidence](BOUNDED_SCENE_RECORDING.md); prevents disk wait from directly holding scene worker |
 | kernel-io-02 / spatial-io-02 | Measured, partial trace | Bounded writer to microSD | Buffered JSONL to same microSD | All selected MMC hosts, 2 MiB/CPU RAM, export after stop | [Run 02](KERNEL_IO_RESULTS_02.md); CPU 0 overwrote 88,730 trace entries |
 | kernel-io-03 / spatial-io-03 | Measured, no reported loss | Same bounded writer | Same microSD destination | Only MMC name == mmc0; other groups unfiltered | [Run 03](KERNEL_IO_RESULTS_03.md); improved evidence retention, not a latency fix |
-| RAM-staged observer | Proposed, not implemented | Keep images/scene JSON on microSD | Bounded RAM during collection; copy after stop | Keep mmc0 profile | Isolate observer-generated storage contention; capacity/overflow/swap handling and memory cost must be specified first |
+| RAM-staged observer | Implemented; Pi comparison pending | Keep images/scene JSON on microSD | samples.jsonl in process memory, 64 MiB payload cap; export after collection + 45 s | Keep mmc0 profile | [Paired protocol](OBSERVER_RAM_CONTROL.md); no spill on overflow, sampled RSS/swap plus system swap deltas |
 
 ## What changes and what does not
 
@@ -24,11 +24,13 @@ The MMC filter applies to diagnostic entries in the private trace instance.
 It does not filter sensor data, disable mmc1, or change device commands.
 mmc0 identifies a host interface in this Pi's trace, not CPU core zero.
 
-The proposed RAM area is distinct from the scene queue, Linux file cache and
-kernel trace rings. It must be bounded, report exhaustion and preserve failure
-status. RAM is volatile. A tmpfs design must account for possible swapping before
-claiming it eliminates timed storage writes. No mount or kernel policy change
-has been made. Do not give run commands until this option is implemented.
+The implemented RAM area is distinct from the scene queue, Linux file cache and
+kernel trace rings. It uses ordinary pageable process-memory byte chunks, not
+tmpfs. Payload exhaustion stops collection with an explicit error; no disk
+fallback. RAM is volatile and swap remains possible. No mount or kernel policy
+change has been made. Preview stdout remains on microSD in both modes.
+Schema 3 records observer RSS/swap and export timing; use fresh file/RAM runs
+at the same revision to compare the new instrumentation fairly.
 
 ## Repeatable workload record
 

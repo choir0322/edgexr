@@ -31,6 +31,56 @@ def stat_record(pid: int = 42, start: int = 100, cpu: int = 20) -> str:
 
 
 class SpatialStallTests(unittest.TestCase):
+    def test_ram_run_exports_after_collection_and_keeps_scene_path(self) -> None:
+        """Exercise collector lifecycle with a fake child and real bounded sink.
+
+        Args: None.
+        Returns: None.
+        """
+        original_exists = Path.exists
+
+        def proc_exists(path: Path) -> bool:
+            """Admit the Linux check without requiring Linux on the test host.
+
+            Args: path (Path): Queried file.
+            Returns: bool: Real existence except the injected procfs sentinel.
+            """
+            return str(path) == "/proc/self/stat" or original_exists(path)
+
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            output = root / "recordings" / "ram"
+            args = argparse.Namespace(output=output, device="fake", port=8765,
+                seconds=180, interval=.25, scene="fixture", power="unknown", cooling="unknown",
+                observer_output="ram", ram_limit_mib=4, ram_export_delay=45)
+            child = Mock(pid=42, returncode=0)
+            child.poll.side_effect = [None, 0, 0]
+            process = {"stat": {"parsed": parse_stat(stat_record())}}
+            with patch("profiling.spatial_stalls.Path.cwd", return_value=root), \
+                 patch.object(Path, "exists", proc_exists), \
+                 patch.object(Path, "is_file", return_value=True), \
+                 patch("profiling.spatial_stalls.platform.system", return_value="Linux"), \
+                 patch("profiling.spatial_stalls.platform.platform", return_value="Linux fixture"), \
+                 patch("profiling.spatial_stalls.shutil.which", return_value="fake"), \
+                 patch("profiling.spatial_stalls.socket.socket"), \
+                 patch("profiling.spatial_stalls.subprocess.run", return_value=Mock(stdout="fixture")), \
+                 patch("profiling.spatial_stalls.subprocess.Popen", return_value=child) as launch, \
+                 patch("profiling.spatial_stalls.read_optional", return_value={"text": None, "error": "fixture"}), \
+                 patch("profiling.spatial_stalls.read_process", return_value=process), \
+                 patch("profiling.spatial_stalls.fetch_telemetry", return_value={"error": "fixture"}), \
+                 patch("profiling.spatial_stalls.time.sleep") as sleep, \
+                 patch("builtins.print"):
+                result = run(args)
+            self.assertEqual(result["collector_outcome"], "child_exited")
+            self.assertEqual(result["sample_sink"]["mode"], "ram")
+            self.assertEqual(result["sample_export"]["status"], "complete")
+            self.assertEqual(result["samples"], 1)
+            self.assertGreaterEqual(result["sample_export"]["started_host_s"], result["collection_ended_host_s"])
+            sleep.assert_any_call(45)
+            self.assertTrue((output / "samples.jsonl").is_file())
+            self.assertIn(str((output / "scene").resolve()), launch.call_args.args[0])
+            self.assertTrue((output / "preview.log").is_file())
+
     def test_observer_phases_and_previous_cycle_are_separate(self) -> None:
         """Separate serialization, write, sleep and oversleep with a fake clock.
 

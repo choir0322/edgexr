@@ -26,8 +26,9 @@ map Python workers to Linux tasks. No scheduler/driver settings are changed.
   no unexpected MMC hosts, complete trace coverage and zero loss before analysis.
 - [x] 2026-11-07: Record run-03 configuration and evidence; illustrate architecture
   evolution, queue/writer, observer storage, trace filtering/coverage and timing.
-- [ ] Implement a separately specified bounded RAM observer destination control;
-  currently proposed, not measured. Application image output remains on microSD.
+- [x] Implement separately specified bounded RAM observer destination control;
+  see [observer-ram-control.md](observer-ram-control.md). Pi results pending.
+  Application image output remains on microSD.
 
 - [x] 2026-11-05: Scope and read-only collection design recorded.
 - [x] 2026-11-05: Add named worker/native-ID telemetry and bounded Linux observer.

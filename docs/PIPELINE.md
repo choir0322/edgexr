@@ -1,5 +1,15 @@
 # Current live pipeline
 
+2026-11-07: [bounded observer RAM control](OBSERVER_RAM_CONTROL.md) adds
+`profiling.spatial_stalls --observer-output ram`. Only profiler sample JSONL
+goes to capped process-memory chunks (default 64 MiB), then exports after
+collection plus an explicit delay. Overflow aborts collection, never spills.
+Application images/JSON and preview.log retain their microSD paths. Schema 3
+adds observer RSS/swap and separates export CPU/time from collection. RAM is
+pageable; no kernel/mount/swap settings change. Source: `profiling.sample_sink`.
+Application diagram reviewed; unchanged. Learning graph offers software-only
+and hardware/resource layers; CPU execution links are not data-flow edges.
+
 Optional [kernel I/O trace](KERNEL_IO_TRACE.md): a separate privileged helper
 collects selected filesystem/journal/block/MMC events in a private ftrace ring,
 then exports after stop. Host `mono` times align with spatial observer samples.

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+from contextlib import closing
 import json
 import math
 import os
@@ -16,6 +17,8 @@ import sys
 import time
 from typing import TextIO
 from urllib.request import urlopen
+
+from profiling.sample_sink import SampleSink
 
 
 def read_optional(path: Path) -> dict:
@@ -166,11 +169,11 @@ def stop_child(child: subprocess.Popen, grace: float = 10.0) -> None:
         child.wait()
 
 
-def write_and_wait(log: TextIO, row: dict, interval: float, timing: dict) -> None:
+def write_and_wait(log: TextIO | SampleSink, row: dict, interval: float, timing: dict) -> None:
     """Measure observer phases without changing buffered-write or pacing policy.
 
     Args:
-        log (TextIO): Existing buffered sample log; no added flush or fsync.
+        log (TextIO | SampleSink): File or bounded-RAM sink; no flush or fsync.
         row (dict): Completed sample, with index and collection start time.
         interval (float): Target seconds between sample starts.
         timing (dict): Mutable record retained even if a phase raises.
@@ -241,8 +244,13 @@ def run(args: argparse.Namespace) -> dict:
     revision = subprocess.run(["git", "rev-parse", "HEAD"], capture_output=True, text=True)
     started, cpu_started = time.monotonic(), time.process_time()
     ticks = os.sysconf("SC_CLK_TCK")
-    metadata = {"schema": 2, "started_host_s": started, "started_unix_s": time.time(),
-                "observer_timing": "Previous cycle in next sample; last cycle in summary. Buffered write, no fsync; wall intervals include descheduling.",
+    metadata = {"schema": 3, "started_host_s": started, "started_unix_s": time.time(),
+                "observer_output_mode": args.observer_output,
+                "ram_payload_limit_bytes": args.ram_limit_mib * 1024 * 1024,
+                "ram_export_delay_s": args.ram_export_delay,
+                "swaps_before": read_optional(Path("/proc/swaps")),
+                "vmstat_before": read_optional(Path("/proc/vmstat")),
+                "observer_timing": "Previous cycle in next sample; last cycle in summary. Write means buffered file write or RAM admission according to mode. No fsync; wall intervals include descheduling.",
                 "command": command, "revision": revision.stdout.strip(),
                 "git_status": status.stdout, "host": platform.platform(),
                 "python": platform.python_version(), "ticks_per_second": ticks,
@@ -268,10 +276,16 @@ def run(args: argparse.Namespace) -> dict:
     cycle = None
     last_sample_at = None
     phase_max_ms = {}
+    sink = None
     print(f"Preview: http://127.0.0.1:{args.port}; saving profiling and scene images to {output}", flush=True)
+    print(f"Observer sample policy: {args.observer_output}; scene images/JSON and preview.log remain on disk.", flush=True)
+    if args.observer_output == "ram":
+        print(f"RAM payload cap: {args.ram_limit_mib} MiB; no spill. Samples export {args.ram_export_delay:g} s after collection ends.", flush=True)
     print(f"Remain still at startup. Enroll/revisit three views in browser; app timer is {args.seconds:g} s. No servo commands.", flush=True)
     try:
-        with (output / "preview.log").open("x") as app_log, (output / "samples.jsonl").open("x") as log:
+        sink = SampleSink(output / "samples.jsonl", args.observer_output,
+                          args.ram_limit_mib * 1024 * 1024)
+        with (output / "preview.log").open("x") as app_log, closing(sink) as log:
             child = subprocess.Popen(command, stdout=app_log, stderr=subprocess.STDOUT,
                                      start_new_session=True)
             while child.poll() is None:
@@ -303,6 +317,8 @@ def run(args: argparse.Namespace) -> dict:
                     if observation["stat"].get("parsed", {}).get("ppid") == child.pid:
                         row["child_processes"][pid] = observation
                 if now >= next_http:
+                    row["observer_status"] = read_optional(Path("/proc/self/status"))
+                    row["sample_sink_payload_bytes"] = sink.payload_bytes
                     row["telemetry"] = fetch_telemetry(args.port, child.pid)
                     telemetry_errors += int("error" in row["telemetry"])
                     row["system"] = {name: read_optional(Path("/proc") / name) for name in
@@ -328,6 +344,27 @@ def run(args: argparse.Namespace) -> dict:
     finally:
         if child is not None:
             stop_child(child)
+        if sink is not None and not sink.closed:
+            try:
+                sink.close()
+            except OSError as failure:
+                reason, error = "collector_error", str(failure)
+    # Freeze collection counters before copying RAM evidence to persistent storage.
+    collection_end = time.monotonic()
+    collection_cpu = time.process_time() - cpu_started
+    swaps_after = read_optional(Path("/proc/swaps"))
+    vmstat_after = read_optional(Path("/proc/vmstat"))
+    observer_final_status = read_optional(Path("/proc/self/status"))
+    export = {"status": "not_started"}
+    if sink is not None:
+        if args.observer_output == "ram":
+            print(f"COLLECTION ENDED. Waiting {args.ram_export_delay:g} s before RAM export; allow the trace to finish.", flush=True)
+            try:
+                time.sleep(args.ram_export_delay)
+            except KeyboardInterrupt:
+                reason = "interrupted"
+                print("Delay interrupted; exporting available RAM evidence now.", flush=True)
+        export = sink.export()
     final_file = output / "scene" / "timing-final.json"
     final = read_optional(final_file)
     if final["text"] is not None:
@@ -335,11 +372,16 @@ def run(args: argparse.Namespace) -> dict:
             final = json.loads(final["text"])
         except ValueError as failure:
             final = {"error": str(failure)}
-    elapsed = time.monotonic() - started
+    elapsed = collection_end - started
     summary = {"collector_outcome": reason, "error": error,
                "preview_returncode": child.returncode if child else None,
                "samples": count, "elapsed_s": elapsed,
-               "observer_cpu_s": time.process_time() - cpu_started,
+               "observer_cpu_s": collection_cpu,
+               "collection_ended_host_s": collection_end,
+               "sample_sink": sink.describe() if sink else None,
+               "sample_export": export,
+               "observer_final_status": observer_final_status,
+               "swaps_after": swaps_after, "vmstat_after": vmstat_after,
                "max_sample_gap_s": max_gap, "max_collection_ms": max_collection,
                "last_observer_cycle": cycle,
                "completed_observer_cycle_max_ms": phase_max_ms,
@@ -368,16 +410,22 @@ def main() -> None:
     parser.add_argument("--scene", required=True)
     parser.add_argument("--power", default="unknown")
     parser.add_argument("--cooling", default="unknown")
+    parser.add_argument("--observer-output", choices=("file", "ram"), default="file")
+    parser.add_argument("--ram-limit-mib", type=int, default=64)
+    parser.add_argument("--ram-export-delay", type=float, default=45,
+                        help="After collection, delay RAM export to avoid the 210 s trace window")
     args = parser.parse_args()
     if (not math.isfinite(args.seconds) or not 10 <= args.seconds <= 600 or
             not math.isfinite(args.interval) or not 0.1 <= args.interval <= 2 or
-            not 1024 <= args.port <= 65535):
-        parser.error("Require seconds 10–600, interval 0.1–2, port 1024–65535")
+            not 1024 <= args.port <= 65535 or not 4 <= args.ram_limit_mib <= 128 or
+            not math.isfinite(args.ram_export_delay) or not 0 <= args.ram_export_delay <= 60):
+        parser.error("Require seconds 10–600, interval 0.1–2, port 1024–65535, RAM MiB 4–128, export delay 0–60")
     try:
         summary = run(args)
     except (OSError, ValueError) as error:
         parser.exit(1, f"Profiler failed: {error}\n")
-    if summary["collector_outcome"] != "child_exited" or summary["preview_returncode"] != 0:
+    if (summary["collector_outcome"] != "child_exited" or summary["preview_returncode"] != 0 or
+            summary["sample_export"]["status"] not in ("complete", "not_needed")):
         parser.exit(1, "Collector/preview did not finish normally; inspect saved evidence.\n")
 
 

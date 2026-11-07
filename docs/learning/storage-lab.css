@@ -3,6 +3,9 @@
 #lab-flow .sub{fill:var(--muted);font-size:12px}
 #lab-flow .wire{fill:none;stroke:var(--line);stroke-width:2;marker-end:url(#lab-arrow)}
 #lab-flow .observe{stroke-dasharray:5 5}
+#lab-flow .execution,#lab-resources path{fill:none;stroke:var(--green);stroke-width:1;stroke-dasharray:2 7;opacity:.55}
+#lab-resources{pointer-events:none}
+#lab-resources text{fill:var(--green);font:11px system-ui,sans-serif}
 #lab-flow .part{fill:var(--bg);stroke:var(--blue);stroke-width:1.6}
 #lab-flow .hardware{stroke:var(--green)}
 #lab-flow [role=button]{cursor:pointer}

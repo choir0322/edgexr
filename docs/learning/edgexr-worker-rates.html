@@ -39,6 +39,14 @@ footer{color:var(--muted);font-size:13px;border-top:1px solid var(--line);paddin
   <div class="layout">
   <aside class="panel" aria-label="Controls">
     <section class="panel-group">
+      <h3>Architecture</h3>
+      <div class="toolbar" role="group" aria-label="Architecture layers">
+        <button id="software-mode" aria-pressed="true" type="button">Software</button>
+        <button id="hardware-mode" aria-pressed="false" type="button">Software + hardware</button>
+      </div>
+      <p class="hint" id="architecture-hint">Software data flow. Hardware resources are hidden.</p>
+    </section>
+    <section class="panel-group">
       <h3>View</h3>
       <div class="toolbar" role="group" aria-label="Illustration mode">
         <button id="static-mode" aria-pressed="true" type="button">1 · Static</button>
@@ -70,7 +78,7 @@ footer{color:var(--muted);font-size:13px;border-top:1px solid var(--line);paddin
   <div class="canvas">
   <div class="eyebrow">EdgeXR learning lab · current live-preview architecture</div>
   <h1>One camera, independent workers</h1>
-  <p>Click <strong>Capture</strong> or <strong>Spatial recognition</strong> to expand recording in this graph. Click <strong>Linux storage</strong> to look below Python.</p>
+  <p>Click <strong>Capture</strong> or <strong>Spatial recognition</strong> to expand recording. Switch to <strong>Software + hardware</strong> to see CPU, RAM and storage connections.</p>
   <p class="intro">A camera frame splits into two image branches. The IMU runs from its own sensor. The browser collects whatever each worker has finished.</p>
 
   <!-- buildGraph() fills the SVG from NODES/EDGES; the card shows one .detail at a time. -->
