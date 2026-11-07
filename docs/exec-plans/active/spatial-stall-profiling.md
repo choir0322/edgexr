@@ -161,3 +161,10 @@ audit still reports unrelated pre-existing documentation issues. Linux task and
 observer timings are now measured; original IMU failure cause remains unresolved.
 Low-level kernel/BSP/driver exercises
 are now explicit roadmap outcomes, not claimed experience already completed.
+
+2026-11-07 learning integration: joined recording/resource paths to the original
+worker SVG, with Capture/scene and Linux-storage expansion rather than a second
+standalone architecture diagram. Evidence and definitions remain available in a
+collapsed disclosure. Browser interaction/screenshot checks and JS syntax checks
+passed. Pipeline reviewed; unchanged (learning-only change). Bounded RAM observer
+staging remains the next proposed experiment, not an implemented optimization.

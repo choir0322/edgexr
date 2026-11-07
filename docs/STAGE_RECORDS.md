@@ -1,5 +1,17 @@
 # EdgeXR technique and AP evidence register
 
+2026-11-07 — **Implemented: unified worker/resource learning graph.**
+[Learning page](learning/edgexr-worker-rates.html) now connects capture to the
+optional scene worker, snapshot, bounded writer and shared storage in one SVG.
+Capture/scene clicks reveal recording; Linux storage expands its layers in place.
+CPU and RAM are resources, not mandatory serial processing stages. Historical,
+measured and proposed configurations remain selectable; timelines/definitions
+are collapsed by default. Browser checks exercised expansion, Capture, proposed
+RAM routing and evidence disclosure; JavaScript syntax and diff checks passed.
+No runtime or benchmark protocol changed; `PIPELINE.md` reviewed, unchanged.
+Next AP experiment: bounded RAM staging for observer output only, keeping scene
+files on microSD; specify capacity/overflow and measure before claiming benefit.
+
 2026-11-07 — **Measured: filtered trace retained; configuration history visualized.**
 [Run 03](KERNEL_IO_RESULTS_03.md), [metrics](../benchmarks/results/kernel-io-03.json),
 [configuration register](SYSTEMS_EXPERIMENTS.md),

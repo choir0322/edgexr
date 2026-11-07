@@ -70,7 +70,7 @@ footer{color:var(--muted);font-size:13px;border-top:1px solid var(--line);paddin
   <div class="canvas">
   <div class="eyebrow">EdgeXR learning lab · current live-preview architecture</div>
   <h1>One camera, independent workers</h1>
-  <p><a href="#storage-learning">New: AP and systems — why recording can pause while IMU reads continue ↓</a></p>
+  <p>Click <strong>Capture</strong> or <strong>Spatial recognition</strong> to expand recording in this graph. Click <strong>Linux storage</strong> to look below Python.</p>
   <p class="intro">A camera frame splits into two image branches. The IMU runs from its own sensor. The browser collects whatever each worker has finished.</p>
 
   <!-- buildGraph() fills the SVG from NODES/EDGES; the card shows one .detail at a time. -->
@@ -137,7 +137,7 @@ footer{color:var(--muted);font-size:13px;border-top:1px solid var(--line);paddin
   </div>
   <div class="legend dynamic-only"><span class="working">◯ blue ring: working</span><span class="waiting">◯ orange ring: waiting</span><span class="accepted">✓ accepted</span><span class="rejected">! rejected estimate</span><span class="skipped">× bypassed</span></div>
   <p class="notice dynamic-only timing-note">Illustrative timings, not a recorded Pi trace: capture 33.3 ms apart · motion 40 ms/job · detection 240 ms/job · IMU 2.4 ms read + 50 ms pause · browser 20 ms + 200 ms pause.</p>
-  <footer><p><strong>Bypassed</strong> = not selected; <strong>rejected</strong> = failed a quality check; <strong>stale</strong> = too old to display.</p><p>Assumes <code>--detect</code> and <code>--imu</code>. One valid ordering with simplified durations; real scheduling varies. No hardware is accessed.</p><div class="source-links"><a href="README.md">Learning index</a><a href="../PIPELINE.md">Live pipeline diagram</a></div></footer>
+  <footer><p><strong>Bypassed</strong> = not selected; <strong>rejected</strong> = failed a quality check; <strong>stale</strong> = too old to display.</p><p>Top worker-rate illustration assumes <code>--detect</code> and <code>--imu</code>. The optional scene branch shows the storage experiments: detector off, 10 ms IMU pause. These are distinct workload configurations, not simultaneous measured runs. No hardware is accessed.</p><div class="source-links"><a href="README.md">Learning index</a><a href="../PIPELINE.md">Live pipeline diagram</a></div></footer>
   </div>
   </div>
 <section id="storage-learning" aria-label="AP and systems experiment explorer">
@@ -312,7 +312,10 @@ function hover(id){clearTimeout(leaveTimer);hovered=id;showCard();}
 /** Hide hover details after a short grace period so the pointer can reach the card. @returns {void} */
 function unhoverSoon(){clearTimeout(leaveTimer);leaveTimer=setTimeout(()=>{hovered=null;showCard();},160);}
 /** Pin or unpin a node's details. @param {string} id @returns {void} */
-function togglePin(id){pinned=pinned===id?null:id;showCard();}
+function togglePin(id){
+  if(id==='capture')document.dispatchEvent(new Event('expand-recording'));
+  pinned=pinned===id?null:id;showCard();
+}
 /** Close both hover and pinned details. @returns {void} */
 function closeCard(){pinned=null;hovered=null;showCard();}
 /** Show the hovered node's details, else the pinned node's, else nothing. @returns {void} */

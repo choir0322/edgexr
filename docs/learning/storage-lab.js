@@ -37,7 +37,7 @@
     coverage:['Coverage / completeness','Coverage asks whether tracing was enabled for the entire application interval. Completeness additionally asks whether recorded events were lost. A long-enough trace can still have overwritten events, as run 02 did.'],
     cause:['Correlation / cause','Concurrent intervals show related activity in time. They do not prove which component caused the others to wait. We need a controlled change and additional evidence to distinguish competing explanations.']
   };
-  let selected='run03', step=0, expanded=false, timer=null;
+  let selected='run03', step=0, expanded=false, branch=false, timer=null;
   const states=[
     {q:0,w:'idle',msg:'A scene result is ready. The profiler independently takes a measurement.'},
     {q:0,w:'R1',msg:'R1 moves to the writer. Both programs send file work toward shared storage.'},
@@ -49,12 +49,11 @@
     {q:2,w:'R3',msg:'The writer catches up. The profiler can take another observation. A gap in its notes did not imply an IMU gap.'},
     {q:0,w:'idle',msg:'The queued work drains. Run 03 saved all 180 accepted records; it had no drops.'}
   ];
-  root.innerHTML=`<div class="eyebrow">AP performance + Linux systems · an evolving experiment</div>
-    <h1>Follow the work. Then follow the evidence.</h1>
+  root.innerHTML=`<div class="eyebrow">Shared resources · architecture and evidence</div>
     <p class="lab-note">Rounded boxes = programs/workers · slots = queued records · chip = CPU · memory bank = RAM · card = microSD. Solid arrows carry work; dashed links show observation or labelled detail/after-run connections. All controls are local illustrations.</p>
     <div class="lab-tools"><label for="lab-config">Architecture / experiment</label><select id="lab-config">${Object.entries(configs).map(([k,v])=>`<option value="${k}" ${k===selected?'selected':''}>${v.title}</option>`).join('')}</select><span id="lab-status" class="lab-badge"></span></div>
     <p id="lab-config-note" class="lab-note"></p>
-    <div class="lab-tools"><button id="lab-play" type="button">Play</button><button id="lab-next" type="button">Next event</button><button id="lab-reset" type="button">Reset</button><span>Illustrative sequence · not a replay of measured arrivals</span></div>
+    <div class="lab-tools"><button id="lab-expand" type="button" aria-expanded="false">Expand recording path</button><button id="lab-play" type="button">Play</button><button id="lab-next" type="button">Next event</button><button id="lab-reset" type="button">Reset</button><span>Storage illustration · independent of the worker-rate clock above</span></div>
     <p id="lab-event" class="lab-state" aria-live="polite"></p>
     <div class="lab-stage"><svg id="lab-flow" role="group" aria-label="Programs and shared resources"></svg></div>
     <div id="lab-detail" class="lab-detail" aria-live="polite"></div>
@@ -71,6 +70,24 @@
     <p class="lab-note">Measured setup: Pi 4 · Linux 6.12.47+rpt-rpi-v8 · Python 3.11.2 · 720p MJPEG 30 fps requested · 10 ms IMU pause · scene memory, detector off · passive heatsink/no fan · power unknown. No electrical-energy or tracing-overhead claim.</p>
     <p class="source-links"><a href="../SYSTEMS_EXPERIMENTS.md">Configuration and architecture register</a><a href="../KERNEL_IO_RESULTS_03.md">Run 03 evidence</a><a href="../../src/spatial/scene_recorder.py">Queue code</a><a href="../../src/profiling/spatial_stalls.py">Profiler code</a><a href="../../src/profiling/kernel_io_trace.py">Trace/filter code</a></p>`;
   const el=id=>document.getElementById(id);
+  // Keep one SVG graph: recording grows inside it, not in a second diagram.
+  const graph=el('graph'),flow=el('lab-flow');
+  flow.parentElement.remove();
+  graph.append(flow);
+  flow.setAttribute('x','0');flow.setAttribute('y','460');flow.setAttribute('width','1200');
+  const bridge=document.createElementNS('http://www.w3.org/2000/svg','g');
+  bridge.id='lab-bridge';
+  bridge.innerHTML='<path d="M290 205V445H95V498"/><text x="300" y="437">newest frame → optional scene worker</text><path d="M150 498V475H690V260H710"/><text x="700" y="335">scene result</text><text x="700" y="352">→ snapshot</text>';
+  graph.insertBefore(bridge,flow);
+  // Evidence is available on demand within the existing canvas.
+  document.querySelector('.canvas').append(root);
+  const evidence=document.createElement('details');
+  evidence.id='lab-evidence';
+  evidence.innerHTML='<summary>Measured timelines, kernel trace and terminology</summary>';
+  const firstEvidence=root.querySelector('h2');
+  while(firstEvidence.nextSibling)evidence.append(firstEvidence.nextSibling);
+  evidence.insertBefore(firstEvidence,evidence.firstChild.nextSibling);
+  root.append(evidence);
   const defs=`<defs><marker id="lab-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0L10 5L0 10" fill="var(--line)"/></marker></defs>`;
   /** Build one keyboard-accessible program or hardware symbol. Coordinates are SVG units. */
   function node(id,x,y,w,label,sub,shape='box'){
@@ -86,20 +103,30 @@
     el('lab-detail').innerHTML=`<h3>${title}</h3><p>${body}</p>`;
     el('lab-glossary').innerHTML=`<h3>${title}</h3><p>${body}</p>`;
     if(id==='storage'){expanded=!expanded;drawFlow();}
+    if(id==='recognize'){branch=!branch;drawFlow();}
   }
   /** Draw configuration-specific routing and a bounded conceptual queue. */
   function drawFlow(){
     const c=configs[selected],s=states[step],blocked=step>=2&&step<=5;
-    const svg=el('lab-flow');svg.setAttribute('viewBox',`0 0 1100 ${expanded?550:345}`);
-    let out=defs+node('recognize',25,35,175,'Spatial application',!c.queue&&blocked?'scene worker waits':'scene recognition');
+    const svg=el('lab-flow'),height=expanded?550:345;
+    svg.setAttribute('viewBox',`0 0 1100 ${height}`);
+    svg.setAttribute('height',String(height*1200/1100));
+    graph.setAttribute('viewBox',`0 0 1200 ${460+height*1200/1100}`);
+    el('lab-expand').textContent=branch?'Collapse recording path':'Expand recording path';
+    el('lab-expand').setAttribute('aria-expanded',String(branch));
+    let out=defs+node('recognize',25,35,175,'Spatial recognition',!c.queue&&blocked?'scene worker waits':branch?'collapse recording':'expand recording');
     out+=`<path class="wire" d="M200 65H230"/>`;
-    if(c.queue){
+    if(!branch){
+      out+='<text x="245" y="60">recording details hidden</text><path class="wire" d="M410 65H655"/>';
+    }else if(c.queue){
       out+=`<g role="button" tabindex="0" data-term="queue" aria-label="Explain four-slot queue"><text x="230" y="25">RAM queue · ${s.q}/4 waiting</text>`;
       for(let i=0;i<4;i++)out+=`<rect x="${230+i*45}" y="40" width="38" height="50" rx="4" fill="${i<s.q?'var(--blue)':'var(--bg)'}" stroke="var(--line)"/><text x="${249+i*45}" y="70" text-anchor="middle" style="fill:${i<s.q?'var(--bg)':'var(--muted)'}">${i<s.q?'R'+(step>=6?step-3+i:2+i):'·'}</text>`;
       out+='</g><path class="wire" d="M410 65H440"/>';
     }else out+='<text x="245" y="60">same worker saves</text><path class="wire" d="M395 65H440"/>';
-    out+=node('writer',440,35,165,c.queue?'Recording worker':'Inline save',blocked?`${s.w} · waiting`:s.w);
-    out+='<path class="wire" d="M605 65H655"/>';
+    if(branch){
+      out+=node('writer',440,35,165,c.queue?'Recording worker':'Inline save',blocked?`${s.w} · waiting`:s.w);
+      out+='<path class="wire" d="M605 65H655"/>';
+    }
     out+=node('storage',655,35,205,'Linux storage',expanded?'click to collapse':'click to expand');
     out+='<path class="wire" d="M860 65H915"/>'+node('sd',915,35,160,'microSD','images + JSON','card');
     if(c.profiler){
@@ -108,10 +135,10 @@
       if(c.ram)out+='<path class="wire" d="M200 185H290"/>'+node('ram',290,155,210,'Bounded RAM output','PROPOSED · volatile','ram')+'<path class="wire observe" d="M500 185H995V100"/><text class="sub" x="575" y="175">copy to card AFTER collection</text>';
       else out+='<path class="wire" d="M200 185H755V100"/><text class="sub" x="290" y="175">separate measurement file · same storage</text>';
     }
-    out+=node('imu',25,260,175,'IMU worker',`read #${step+1} · schematic`)+node('cpu',290,260,180,'Shared CPU cores','execute runnable workers','chip');
+    out+=node('imu',25,260,175,'IMU continues above',`independent of file writes`)+node('cpu',290,260,180,'Shared CPU · 4 cores','Linux schedules threads','chip');
     out+='<text class="sub" x="500" y="280">CPU and RAM are shared resources, not extra file-processing stages.</text><text class="sub" x="500" y="305">Four queue slots exclude the record currently held by the writer.</text>';
     if(expanded){
-      out+='<path class="wire observe" d="M755 95V360H120V390"/>';
+      out+='<path class="wire observe" d="M850 95H1090V360H120V390"/>';
       out+=node('cache',25,390,230,'ext4 + RAM cache','file organization / buffering','ram')+'<path class="wire" d="M255 420H320"/>'+node('block',320,390,175,'Block requests','may merge / requeue')+'<path class="wire" d="M495 420H560"/>'+node('driver',560,390,200,'Driver + controller','kernel code + hardware')+'<path class="wire" d="M760 420H915"/>'+node('sd',915,390,160,'microSD','persistent files','card');
       out+='<path class="wire observe" d="M140 450V475"/>'+node('journal',25,475,230,'Journal bookkeeping','recovery transactions');
     }
@@ -147,12 +174,16 @@
   /** Stop the local animation; no timers survive page hiding or configuration changes. */
   function pause(){clearInterval(timer);timer=null;el('lab-play').textContent='Play';}
   function advance(){step=Math.min(step+1,states.length-1);drawFlow();if(step===states.length-1)pause();}
-  root.addEventListener('click',event=>{const target=event.target.closest('[data-term]');if(target)explain(target.dataset.term);});
-  root.addEventListener('keydown',event=>{const target=event.target.closest('svg [data-term]');if(target&&['Enter',' '].includes(event.key)){event.preventDefault();explain(target.dataset.term);}});
+  for(const surface of [root,flow]){
+    surface.addEventListener('click',event=>{const target=event.target.closest('[data-term]');if(target)explain(target.dataset.term);});
+    surface.addEventListener('keydown',event=>{const target=event.target.closest('svg [data-term]');if(target&&['Enter',' '].includes(event.key)){event.preventDefault();explain(target.dataset.term);}});
+  }
+  el('lab-expand').addEventListener('click',()=>{branch=!branch;drawFlow();});
+  document.addEventListener('expand-recording',()=>{branch=!branch;drawFlow();});
   el('lab-config').addEventListener('change',event=>{pause();selected=event.target.value;step=0;render();});
-  el('lab-next').addEventListener('click',()=>{pause();advance();});
+  el('lab-next').addEventListener('click',()=>{pause();branch=true;advance();});
   el('lab-reset').addEventListener('click',()=>{pause();step=0;drawFlow();});
-  el('lab-play').addEventListener('click',()=>{if(timer){pause();return;}if(step===states.length-1)step=0;drawFlow();el('lab-play').textContent='Pause';timer=setInterval(advance,1600);});
+  el('lab-play').addEventListener('click',()=>{if(timer){pause();return;}branch=true;if(step===states.length-1)step=0;drawFlow();el('lab-play').textContent='Pause';timer=setInterval(advance,1600);});
   document.addEventListener('visibilitychange',()=>{if(document.hidden)pause();});
   function render(){el('lab-status').textContent=configs[selected].status;el('lab-config-note').textContent=configs[selected].note;drawFlow();drawFilter();}
   render();measured();explain('coverage');

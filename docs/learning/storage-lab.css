@@ -1,4 +1,15 @@
 #storage-learning{margin-top:36px;padding-top:26px;border-top:1px solid var(--line)}
+#lab-flow text{fill:var(--text);font-family:system-ui,sans-serif;font-size:14px}
+#lab-flow .sub{fill:var(--muted);font-size:12px}
+#lab-flow .wire{fill:none;stroke:var(--line);stroke-width:2;marker-end:url(#lab-arrow)}
+#lab-flow .observe{stroke-dasharray:5 5}
+#lab-flow .part{fill:var(--bg);stroke:var(--blue);stroke-width:1.6}
+#lab-flow .hardware{stroke:var(--green)}
+#lab-flow [role=button]{cursor:pointer}
+#lab-flow [role=button]:focus .part,#lab-flow [role=button]:hover .part{stroke:var(--orange);stroke-width:3}
+#lab-bridge path{fill:none;stroke:var(--green);stroke-width:1.5;marker-end:url(#lab-arrow)}
+#lab-bridge text{fill:var(--muted);font:12px system-ui,sans-serif}
+#lab-evidence>summary{padding:16px 0;color:var(--blue);cursor:pointer}
 #storage-learning .lab-tools{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:16px 0}
 #storage-learning select{font:inherit;background:var(--paper);color:var(--text);padding:10px;border:1px solid var(--line);border-radius:8px;max-width:100%}
 #storage-learning .lab-note{max-width:1000px;color:var(--muted)}
