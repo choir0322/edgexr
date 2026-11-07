@@ -4,6 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>EdgeXR · How the workers share frames</title>
+<link rel="stylesheet" href="storage-lab.css">
+<script src="storage-lab.js" defer></script>
 <style>
 /* Palette and base typography; the page is always dark, so light-dark() resolves to its second value. */
 :root{color-scheme:dark;--bg:light-dark(#f5f7fa,#10161e);--paper:light-dark(#fff,#192330);--text:light-dark(#172b40,#e6edf5);--muted:light-dark(#4c6279,#a5b6c8);--line:light-dark(#b7c5d3,#58708a);--blue:light-dark(#176297,#72baff);--green:light-dark(#17694b,#68d5a5);--orange:light-dark(#b0601f,#ffb573);--red:light-dark(#a73145,#ff91a5);--tint:light-dark(#eaf1f8,#223348);--on-color:light-dark(#fff,#10161e)}
@@ -138,35 +140,8 @@ footer{color:var(--muted);font-size:13px;border-top:1px solid var(--line);paddin
   <footer><p><strong>Bypassed</strong> = not selected; <strong>rejected</strong> = failed a quality check; <strong>stale</strong> = too old to display.</p><p>Assumes <code>--detect</code> and <code>--imu</code>. One valid ordering with simplified durations; real scheduling varies. No hardware is accessed.</p><div class="source-links"><a href="README.md">Learning index</a><a href="../PIPELINE.md">Live pipeline diagram</a></div></footer>
   </div>
   </div>
-<section id="storage-learning" style="margin-top:32px;border-top:1px solid var(--line);padding-top:24px">
-  <div class="eyebrow">AP performance + Linux systems · measured run 02</div>
-  <h1>One slow writer does not stop every worker</h1>
-  <p class="intro">The graph above explains the detection preview. This section follows a different workload: scene memory with 10 ms IMU polling, image recording enabled, and detection off. Click each stage to open its explanation.</p>
-  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px">
-    <details class="notice"><summary><strong>1 · Recognize → bounded queue → writer</strong></summary><p>The scene worker recognizes the newest view and offers a record to a queue. A separate writer saves it. The queue holds at most four waiting records; if full, new recording jobs are dropped instead of making recognition wait for storage. The IMU worker runs independently.</p><p>Measured: 180 records saved, zero dropped, queue high-water 2/4. A queue absorbs a temporary delay; it cannot fix storage that stays slower than arrivals.</p><a href="../../src/spatial/scene_recorder.py">Recording implementation</a></details>
-    <details class="notice"><summary><strong>2 · Profiler → its own measurement file</strong></summary><p>The profiler is a second program observing the application. It also uses CPU and writes to the same microSD storage. Its 2.87-second write delayed its next observation. That observation gap does not establish that the application stopped.</p><p>During the longest write, only 0.626 ms of process CPU time elapsed. Wall time includes waiting and descheduling. Across the whole run the observer consumed 18.397 CPU seconds in 184.453 wall seconds—about 10% of one core.</p><a href="../../src/profiling/spatial_stalls.py">Profiler implementation</a></details>
-    <details class="notice"><summary><strong>3 · Shared Linux storage path</strong></summary><p>Both writers → Linux filesystem and RAM cache → block requests → controller → microSD card. A Python write can first copy data to RAM; it is not necessarily one physical card write.</p><p>The ext4 filesystem organizes files. Its journal records bookkeeping used for recovery. MMC is Linux's subsystem for communicating with this storage. Different layers can be waiting on related work at the same time: do not add their overlapping durations.</p></details>
-  </div>
-  <h2 style="margin-top:24px">The later pause: different layers on one clock</h2>
-  <p class="muted">Actual host-monotonic timestamps, seconds since boot. Bar lengths show wall duration. Overlap is evidence of concurrent activity, not proof of the complete causal chain.</p>
-  <div class="graph-scroll">
-  <svg viewBox="0 0 1000 300" style="display:block;width:100%;min-width:730px" role="img" aria-labelledby="io-title io-desc">
-    <title id="io-title">Overlapping storage, journal and writer intervals</title>
-    <desc id="io-desc">MMC request 582.368 to 584.604; journal commit 582.708 to 585.182; profiler write 582.961 to 585.174; image write 583.140 to 585.190. IMU timing is summarized independently, not shown as synchronized samples.</desc>
-    <g fill="var(--muted)" font-size="13"><text x="250" y="25">582 s</text><text x="460" y="25">583 s</text><text x="670" y="25">584 s</text><text x="880" y="25">585 s</text></g>
-    <g stroke="var(--line)" opacity=".4"><path d="M250 35V245 M460 35V245 M670 35V245 M880 35V245"/></g>
-    <g fill="var(--text)" font-size="15"><text x="20" y="70">MMC storage request</text><text x="20" y="120">Filesystem journal</text><text x="20" y="170">Profiler file write</text><text x="20" y="220">Scene image write</text></g>
-    <rect x="327" y="48" width="470" height="30" rx="5" fill="var(--orange)"/><rect x="399" y="98" width="520" height="30" rx="5" fill="var(--blue)"/><rect x="452" y="148" width="465" height="30" rx="5" fill="var(--red)"/><rect x="489" y="198" width="431" height="30" rx="5" fill="var(--green)"/>
-    <g fill="var(--bg)" font-size="14" font-weight="600"><text x="340" y="69">2.236 seconds</text><text x="412" y="119">2.474 seconds</text><text x="465" y="169">2.213 seconds</text><text x="502" y="219">2.049 seconds</text></g>
-    <text x="20" y="277" fill="var(--green)" font-size="15">Meanwhile: longest IMU gap across the run = 32.48 ms; no gaps above 200 ms.</text>
-  </svg></div>
-  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px;margin-top:16px">
-    <details class="notice"><summary><strong>AP lesson · CPU time ≠ response time</strong></summary><p>CPU time counts time executing on the processor. Wall time counts how long the user or caller waited, including time off the CPU. Low CPU usage alone does not guarantee a responsive workload.</p><p>We measure each worker's timing separately. Background recording protected IMU continuity in this run; this is an observation, not a hard real-time guarantee. Electrical energy and tracing overhead were not measured.</p></details>
-    <details class="notice"><summary><strong>Systems lesson · trace below Python</strong></summary><p>The kernel manages devices, memory and scheduling. Its trace adds timestamps inside Linux so we can follow storage requests beneath Python. This run exposes multi-second storage-path intervals, but does not isolate a faulty card, driver, controller or scheduler.</p><p>MMC completion task names are execution context, not necessarily the program that requested the write. Requeues are not automatically failed writes.</p></details>
-    <details class="notice"><summary><strong>Evidence limit · the notebook filled up</strong></summary><p>The kernel trace uses a bounded RAM ring per CPU. CPU 0 overwrote 88,730 older diagnostic entries. These are missing trace events, not missing camera images. Zero “dropped events” does not cancel a nonzero “overrun” counter.</p><p>The later interval above survives. The next capture filters MMC events to storage host mmc0, excluding unrelated MMC hosts. Other event groups and the application workload stay unchanged. Reduced logging is expected, not a guarantee of zero loss.</p></details>
-  </div>
-  <p class="hint">Pi 4 · Linux 6.12.47+rpt-rpi-v8 · commit d72e335 · 180 s scene workload / 210 s trace · requested 720p MJPEG 30 fps · passive heatsink, no fan · power unknown. These measurements are separate from the illustrative animation above.</p>
-  <p class="source-links"><a href="../KERNEL_IO_RESULTS_02.md">Full evidence and limits</a><a href="../KERNEL_IO_TRACE.md#filtered-repeat">Run the filtered repeat</a><a href="../../src/profiling/kernel_io_trace.py">Trace implementation</a><a href="https://docs.kernel.org/trace/events.html">Linux event-filter documentation</a></p>
+<section id="storage-learning" aria-label="AP and systems experiment explorer">
+  <noscript>Enable JavaScript to explore the diagrams, or read <a href="../SYSTEMS_EXPERIMENTS.md">the experiment register</a>.</noscript>
 </section>
 </main>
 <script>

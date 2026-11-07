@@ -1,0 +1,25 @@
+#storage-learning{margin-top:36px;padding-top:26px;border-top:1px solid var(--line)}
+#storage-learning .lab-tools{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:16px 0}
+#storage-learning select{font:inherit;background:var(--paper);color:var(--text);padding:10px;border:1px solid var(--line);border-radius:8px;max-width:100%}
+#storage-learning .lab-note{max-width:1000px;color:var(--muted)}
+#storage-learning .lab-stage{border:1px solid var(--line);border-radius:12px;background:var(--paper);overflow:auto;margin:12px 0}
+#storage-learning svg{display:block;width:100%;min-width:850px;height:auto}
+#storage-learning svg text{fill:var(--text);font-family:system-ui,sans-serif;font-size:14px}
+#storage-learning svg .sub{fill:var(--muted);font-size:12px}
+#storage-learning svg .wire{fill:none;stroke:var(--line);stroke-width:2;marker-end:url(#lab-arrow)}
+#storage-learning svg .observe{stroke-dasharray:5 5}
+#storage-learning svg .part{fill:var(--bg);stroke:var(--blue);stroke-width:1.6}
+#storage-learning svg .hardware{stroke:var(--green)}
+#storage-learning svg [role=button]{cursor:pointer;outline:none}
+#storage-learning svg [role=button]:focus .part,#storage-learning svg [role=button]:hover .part{stroke:var(--orange);stroke-width:3}
+#storage-learning .lab-detail{background:var(--tint);border-left:3px solid var(--blue);padding:12px 16px;max-width:1100px;min-height:100px}
+#storage-learning .lab-detail h3{color:var(--text);font-size:16px;text-transform:none;margin:0}
+#storage-learning .lab-metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin:15px 0}
+#storage-learning .lab-metric{border:1px solid var(--line);border-radius:10px;padding:12px;background:var(--paper)}
+#storage-learning .lab-metric strong{display:block;font-size:23px;color:var(--blue)}
+#storage-learning .lab-terms{display:flex;flex-wrap:wrap;gap:7px;margin:14px 0}
+#storage-learning .lab-terms button{font-size:13px;padding:5px 10px}
+#storage-learning h2{font-size:20px;margin-top:26px}
+#storage-learning .lab-state{min-height:48px;padding:9px 12px;border-left:3px solid var(--orange);background:var(--tint)}
+#storage-learning .lab-badge{color:var(--orange);font-size:13px}
+@media(prefers-reduced-motion:reduce){#storage-learning *{scroll-behavior:auto}}

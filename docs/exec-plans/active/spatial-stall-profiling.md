@@ -22,8 +22,12 @@ map Python workers to Linux tasks. No scheduler/driver settings are changed.
 - [x] 2026-11-07: Add opt-in exact MMC-host filtering and beginner worker-page
   diagrams separating AP wall/CPU cost from Linux storage mechanisms.
 - [x] 2026-11-07: Update pipeline and learning page for the filtered observer path.
-- [ ] Run filtered kernel-io-03 / spatial-io-03 on Pi; confirm filter readback,
+- [x] Run filtered kernel-io-03 / spatial-io-03 on Pi; confirm filter readback,
   no unexpected MMC hosts, complete trace coverage and zero loss before analysis.
+- [x] 2026-11-07: Record run-03 configuration and evidence; illustrate architecture
+  evolution, queue/writer, observer storage, trace filtering/coverage and timing.
+- [ ] Implement a separately specified bounded RAM observer destination control;
+  currently proposed, not measured. Application image output remains on microSD.
 
 - [x] 2026-11-05: Scope and read-only collection design recorded.
 - [x] 2026-11-05: Add named worker/native-ID telemetry and bounded Linux observer.
@@ -117,6 +121,14 @@ unchanged. Existing logs locate the pause but lack task scheduler evidence.
   gaps are retained, with bounded timer and no unowned process termination.
 
 ## Outcomes and retrospective
+
+2026-11-07 learning expansion: added local JS/CSS diagrams, configuration selector,
+step/play/reset queue illustration, in-graph storage expansion, MMC filter and
+per-CPU rings, measured coverage and overlapping intervals, same-scale wall/CPU
+dials and terminology. Browser checks exercised four-slot occupancy, expansion,
+run-02 all-host and proposed-RAM routing; measurements and proposals are labelled.
+JavaScript syntax, local HTML links, benchmark JSON and diff whitespace checked.
+No Pi runtime changes; the RAM output control remains future work.
 
 2026-11-07: six focused trace tests pass, including exact host filters, missing
 events/field rejection and failed readback. Existing stop/export/cleanup checks

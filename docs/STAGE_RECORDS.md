@@ -1,5 +1,15 @@
 # EdgeXR technique and AP evidence register
 
+2026-11-07 — **Measured: filtered trace retained; configuration history visualized.**
+[Run 03](KERNEL_IO_RESULTS_03.md), [metrics](../benchmarks/results/kernel-io-03.json),
+[configuration register](SYSTEMS_EXPERIMENTS.md),
+[interactive diagrams](learning/edgexr-worker-rates.html#storage-learning).
+Zero reported trace loss, 4,009 MMC events all mmc0; trace covers app/observer.
+Image/profiler writes 4.630/4.567 s overlap a 4.621 s journal commit; IMU max
+gap 30.91 ms, queue 4/4, no drops. RAM-backed observer remains proposed.
+Application data-flow diagram reviewed; unchanged, since this stage adds evidence
+and learning illustrations rather than a new application storage policy.
+
 2026-11-07 — **Implemented; Pi validation pending: filtered MMC tracing.**
 [Protocol](KERNEL_IO_TRACE.md#filtered-repeat),
 [learning visualization](learning/edgexr-worker-rates.html#storage-learning).
