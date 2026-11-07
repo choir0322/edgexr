@@ -5,6 +5,8 @@ collects selected filesystem/journal/block/MMC events in a private ftrace ring,
 then exports after stop. Host `mono` times align with spatial observer samples.
 No camera/motion/IMU data flows through this helper and no global trace controls
 are changed; kernel collection adds overhead. Source: `profiling.kernel_io_trace`.
+The optional `--mmc-host mmc0` filters both MMC events by exact host name;
+other event groups stay unfiltered. Filter readbacks are saved before collection.
 
 2026-11-06: observer schema 2 times serialization, buffered write and sleep/wake
 separately; previous-cycle details flow to the next diagnostic row and final

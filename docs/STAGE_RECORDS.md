@@ -1,5 +1,13 @@
 # EdgeXR technique and AP evidence register
 
+2026-11-07 — **Implemented; Pi validation pending: filtered MMC tracing.**
+[Protocol](KERNEL_IO_TRACE.md#filtered-repeat),
+[learning visualization](learning/edgexr-worker-rates.html#storage-learning).
+`profiling.kernel_io_trace --mmc-host mmc0` applies exact string filters to both
+MMC start/done events, verifies readback and records schema-2 configuration.
+Other groups, ring bounds and app workload unchanged. Goal: reduce unrelated
+events after run 02 CPU-0 overrun. No measured overhead/loss improvement yet.
+
 2026-11-06 — **Measured: kernel I/O run 02; trace partially overwritten.**
 [Review](KERNEL_IO_RESULTS_02.md), [summary](../benchmarks/results/kernel-io-02.json).
 All 180 scene records saved, no IMU gaps above 200 ms; observer write 2.870 s,

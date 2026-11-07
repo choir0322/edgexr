@@ -14,6 +14,38 @@ from profiling.kernel_io_trace import (
 
 
 class KernelIoTraceTests(unittest.TestCase):
+    def test_mmc_filter_is_exact_and_required_on_both_events(self) -> None:
+        """Verify private host filtering, saved readback and fail-closed setup."""
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            (root / "events").mkdir()
+            (root / "trace_clock").write_text("mono")
+            (root / "buffer_total_size_kb").write_text("8192")
+            events = ["mmc:mmc_request_start", "mmc:mmc_request_done"]
+            for event in events:
+                path = root / "events" / event.replace(":", "/")
+                path.mkdir(parents=True)
+                (path / "format").write_text("field:__data_loc char[] name;")
+            result = configure_instance(root, events, 2048, "mmc0")
+            self.assertEqual(result["event_filters"], {e: 'name == "mmc0"' for e in events})
+            original_read = Path.read_text
+
+            def wrong_filter(path: Path, *args: object, **kwargs: object) -> str:
+                """Emulate a kernel returning an unapplied filter."""
+                return "none" if path.name == "filter" else original_read(path, *args, **kwargs)
+
+            with patch.object(Path, "read_text", wrong_filter):
+                with self.assertRaisesRegex(ValueError, "readback mismatch"):
+                    configure_instance(root, events, 2048, "mmc0")
+            with self.assertRaisesRegex(ValueError, "both MMC"):
+                configure_instance(root, events[:1], 2048, "mmc0")
+            with self.assertRaisesRegex(ValueError, "exact name"):
+                configure_instance(root, events, 2048, 'mmc0" || name != "')
+            path = root / "events/mmc/mmc_request_start/format"
+            path.write_text("field:int name;")
+            with self.assertRaisesRegex(ValueError, "host string"):
+                configure_instance(root, events, 2048, "mmc0")
+
     def test_required_events_and_missing_optional_are_explicit(self) -> None:
         """Fail before configuration without the essential target event groups.
 
@@ -103,7 +135,8 @@ class KernelIoTraceTests(unittest.TestCase):
                 (trace / "current_tracer").write_text("nop\n")
                 output = root / "recordings" / "new"
 
-                def prepare(instance: Path, events: list[str], buffer_kb: int) -> dict:
+                def prepare(instance: Path, events: list[str], buffer_kb: int,
+                            mmc_host: str | None = None) -> dict:
                     """Emulate files that tracefs creates automatically for an instance.
 
                     Args:

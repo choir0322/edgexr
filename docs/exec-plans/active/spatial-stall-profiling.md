@@ -17,6 +17,14 @@ map Python workers to Linux tasks. No scheduler/driver settings are changed.
 
 ## Progress
 
+- [x] 2026-11-07: Review run 02: storage requests overlap writer tails; CPU 0
+  trace overwritten. Preserve limitations in KERNEL_IO_RESULTS_02.md.
+- [x] 2026-11-07: Add opt-in exact MMC-host filtering and beginner worker-page
+  diagrams separating AP wall/CPU cost from Linux storage mechanisms.
+- [x] 2026-11-07: Update pipeline and learning page for the filtered observer path.
+- [ ] Run filtered kernel-io-03 / spatial-io-03 on Pi; confirm filter readback,
+  no unexpected MMC hosts, complete trace coverage and zero loss before analysis.
+
 - [x] 2026-11-05: Scope and read-only collection design recorded.
 - [x] 2026-11-05: Add named worker/native-ID telemetry and bounded Linux observer.
 - [x] 2026-11-05: Test parsing, identity, unavailable counters and timing calculations.
@@ -109,6 +117,13 @@ unchanged. Existing logs locate the pause but lack task scheduler evidence.
   gaps are retained, with bounded timer and no unowned process termination.
 
 ## Outcomes and retrospective
+
+2026-11-07: six focused trace tests pass, including exact host filters, missing
+events/field rejection and failed readback. Existing stop/export/cleanup checks
+remain green. Browser verified the rendered timeline and expanding explanation;
+existing worker graph still renders. Diff whitespace check passed. These tests
+do not emulate kernel filter evaluation: actual Pi filter acceptance and trace
+retention remain pending in the documented run-03 protocol.
 
 2026-11-06 kernel helper validation: all 203 hardware-independent tests passed;
 new source/test contract checks passed. Fixtures verify core event requirements,

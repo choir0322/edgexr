@@ -8,6 +8,7 @@ import math
 import os
 from pathlib import Path
 import platform
+import re
 import signal
 import subprocess
 import threading
@@ -86,13 +87,15 @@ def export_trace(source: BinaryIO, target: BinaryIO, limit: int = EXPORT_LIMIT) 
     return {"bytes": written, "truncated": bool(source.read(1))}
 
 
-def configure_instance(instance: Path, events: list[str], buffer_kb: int) -> dict:
+def configure_instance(instance: Path, events: list[str], buffer_kb: int,
+                       mmc_host: str | None = None) -> dict:
     """Configure only a newly owned instance and preserve event field layouts.
 
     Args:
         instance (Path): Fresh directory under tracefs/instances, created by caller.
         events (list[str]): Supported exact event names.
         buffer_kb (int): KiB per CPU; caller checks total CPUs before allocation.
+        mmc_host (str | None): Exact MMC host to retain, or all hosts when None.
     Returns:
         dict: Actual buffer size, clock and event formats before collection.
     """
@@ -107,14 +110,29 @@ def configure_instance(instance: Path, events: list[str], buffer_kb: int) -> dic
     if total > 32768:
         raise ValueError("Actual kernel ring allocation exceeds 32 MiB bound")
     formats = {}
+    filters = {}
+    if mmc_host is not None:
+        if not re.fullmatch(r"mmc[0-9]+", mmc_host):
+            raise ValueError("MMC host must be an exact name such as mmc0")
+        if not {"mmc:mmc_request_start", "mmc:mmc_request_done"} <= set(events):
+            raise ValueError("Filtered capture requires both MMC start and done events")
     for event in events:
         group, name = event.split(":")
         folder = instance / "events" / group / name
         formats[event] = (folder / "format").read_text()
+        if mmc_host is not None and group == "mmc":
+            if not re.search(r"field:__data_loc char\[\] name;", formats[event]):
+                raise ValueError(f"{event} lacks the expected MMC host string field")
+            expression = f'name == "{mmc_host}"'
+            (folder / "filter").write_text(expression + "\n")
+            actual = (folder / "filter").read_text().strip()
+            filters[event] = actual
+            if actual != expression:
+                raise ValueError(f"MMC filter readback mismatch for {event}: {actual}")
         (folder / "enable").write_text("1\n")
     return {"buffer_total_kb": total, "clock": (instance / "trace_clock").read_text().strip(),
             "trace_options": read_optional(instance / "trace_options"),
-            "event_formats": formats}
+            "event_formats": formats, "event_filters": filters}
 
 
 def run(args: argparse.Namespace) -> dict:
@@ -150,7 +168,9 @@ def run(args: argparse.Namespace) -> dict:
                       "error": revision.stderr.strip() or None}
     except (OSError, subprocess.TimeoutExpired) as error:
         provenance = {"revision": None, "error": str(error)}
-    metadata = {"schema": 1, "host": platform.platform(), "python": platform.python_version(),
+    mmc_host = getattr(args, "mmc_host", None)
+    metadata = {"schema": 2, "host": platform.platform(), "python": platform.python_version(),
+                "mmc_host_filter": mmc_host,
                 "git": provenance,
                 "requested_seconds": args.seconds, "events": events, "missing_events": missing,
                 "instance": str(instance), "requested_buffer_kb_per_cpu": 2048,
@@ -158,7 +178,7 @@ def run(args: argparse.Namespace) -> dict:
                 "root_tracer_before": read_optional(TRACE_ROOT / "current_tracer"),
                 "root_tracing_on_before": read_optional(TRACE_ROOT / "tracing_on"),
                 "mounts": read_optional(Path("/proc/mounts")),
-                "scope": "System-wide selected I/O events, private ring. No PID/device filter; inspect event device fields. Trace writes exported only after stop. Kernel tracing adds overhead."}
+                "scope": "System-wide selected I/O events, private ring. Optional exact MMC-host filter; other events remain unfiltered. No PID filter. Trace exported only after stop; tracing adds overhead."}
     summary = {"status": "error", "error": None, "cleanup_errors": [],
                "trace_export": None, "per_cpu_stats": {}}
     stop = threading.Event()
@@ -180,7 +200,7 @@ def run(args: argparse.Namespace) -> dict:
         (output / "metadata.json").write_text(json.dumps(metadata, indent=2) + "\n")
         instance.mkdir()
         created = True
-        metadata.update(configure_instance(instance, events, 2048))
+        metadata.update(configure_instance(instance, events, 2048, mmc_host))
         (output / "metadata.json").write_text(json.dumps(metadata, indent=2) + "\n")
         for signum in (signal.SIGINT, signal.SIGTERM):
             old_handlers[signum] = signal.signal(signum, request_stop)
@@ -254,6 +274,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--seconds", type=float, default=210)
+    parser.add_argument("--mmc-host", help="Retain only this MMC host, e.g. mmc0; other event groups unchanged")
     args = parser.parse_args()
     if not math.isfinite(args.seconds) or not 10 <= args.seconds <= 300:
         parser.error("Require seconds 10–300")

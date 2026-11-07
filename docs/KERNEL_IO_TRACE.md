@@ -55,6 +55,66 @@ not an uninstrumented performance baseline. Timer and cleanup can be delayed by
 OS I/O; no hard deadline guarantee. Block requests may merge, split, requeue or
 complete partially: do not blindly pair sector numbers as unique request IDs.
 
+## Filtered repeat
+
+2026-11-07: run 02 lost older CPU-0 events. Repeat the same workload using
+`--mmc-host mmc0`, retaining only this storage host in the two MMC events.
+Other event groups remain system-wide, with no PID filter. This deliberately
+changes the tracing protocol, not the application; it is not a clean measurement
+of tracing overhead. Existing unfiltered commands remain supported.
+See [results](KERNEL_IO_RESULTS_02.md) and the
+[beginner diagram](learning/edgexr-worker-rates.html#storage-learning).
+
+The helper checks the string field, applies `name == "mmc0"` separately to
+both events and requires exact filter readback before enabling collection.
+Metadata schema 2 saves `mmc_host_filter` and `event_filters`. Rejection aborts
+setup and cleans the private instance; it never silently falls back to all hosts.
+Syntax follows [Linux event filtering](https://docs.kernel.org/trace/events.html).
+The mmc0 choice is specific to the reviewed Pi trace; reverify after hardware
+or host changes. Reduced event volume does not guarantee loss-free capture.
+
+Prepare the Mac tunnel and both Pi terminals first. Pull on the Pi, then start:
+
+```bash
+cd ~/projects/edgexr
+git pull --ff-only
+sudo env PYTHONPATH=src python3 -m profiling.kernel_io_trace \
+  --output recordings/kernel-io-03 --seconds 210 --mmc-host mmc0
+```
+
+Within about 15 seconds of `TRACING`, in Pi terminal 2:
+
+```bash
+cd ~/projects/edgexr
+PYTHONPATH=src python3 -m profiling.spatial_stalls \
+  --device /dev/video0 --output recordings/spatial-io-03 \
+  --seconds 180 --interval 0.25 \
+  --scene "three remembered views and revisits; fixed base; kernel I/O tracing" \
+  --power "unknown" --cooling "passive metal heatsink; no fan"
+```
+
+Use the same still-start, center/left/right enrollment and revisit sequence below.
+After both programs stop, print both summaries and transfer the new pair:
+
+```bash
+# Pi
+cat recordings/kernel-io-03/summary.json
+cat recordings/spatial-io-03/summary.json
+```
+
+```bash
+# Mac
+scp -r pi@ai-fusion.local:/home/pi/projects/edgexr/recordings/kernel-io-03 \
+  pi@ai-fusion.local:/home/pi/projects/edgexr/recordings/spatial-io-03 \
+  /Users/ryanchoi/Desktop/
+```
+
+Acceptance: both MMC filter readbacks equal the requested expression; inspect
+trace for no MMC hosts other than mmc0, both start/done events present, all CPU
+loss counters available and zero, export untruncated and app duration covered.
+Preserve partial evidence if any check fails. Use fresh paired folder suffixes
+for retries; do not overwrite earlier runs.
+
 ## Run: prepare two Pi terminals and the Mac preview
 
 Stop any previous preview. Open both SSH terminals before starting, and remove
