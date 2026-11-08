@@ -1,0 +1,67 @@
+/* Offline evidence replay: canvas drawings never substitute for estimator results. */
+'use strict';
+const names=['Resize','Find features','Describe','Remember','Compare','Reject weak','Verify geometry','Check distribution','Decide'];
+const short=['640 × 360 grayscale','Textured keypoints','256-bit patterns','Reference memory','Nearest descriptors','Distance + ratio + mutual','RANSAC homography','Hull + 3 × 3 coverage','Known or unknown'];
+const titles=['Keep visual detail, standardize coordinates.','Corners and texture become repeatable landmarks.','Describe a neighborhood—not an object label.','Keep a compact reference, not a new identity for each frame.','Which query descriptor looks closest?','A nearest neighbor is not automatically a good match.','Do the correspondences fit one consistent transformation?','One small matching object cannot establish a whole view.','Recognize only when the evidence survives every gate.'];
+const explains=[
+ 'Live input is 1280×720 grayscale. prepare_gray() reduces it to 640×360; all following coordinates and pixel thresholds use that size.',
+ 'ORB detects distinctive points at multiple image scales. The dots below are actual keypoint positions, not evenly spaced sampling windows.',
+ 'ORB compares local brightness patterns and packs the results into a binary descriptor. Two similar neighborhoods should differ in relatively few bits.',
+ 'When you click Remember, usable reference coordinates and descriptors are copied into session memory. Querying does not automatically add another view.',
+ 'For each reference descriptor, search the query descriptors. The nearest and second-nearest candidates provide distance and ambiguity evidence.',
+ 'Keep only close, distinctive, mutually agreed correspondences. Orange lines are discarded candidates; green lines survived all three rules.',
+ 'RANSAC seeks a homography supported by many matches while tolerating outliers. Green lines agree with it; orange matches disagree. This is image geometry, not a 3D room model.',
+ 'Matching points must cover a substantial area and at least four grid cells in BOTH images. The 3×3 grid measures distribution; it is not nine independent FFT patches.',
+ 'The production code decides known or unknown. If multiple references pass almost equally well, it also abstains rather than guessing.'
+];
+let stage=0, choice=0, timer=null, loaded=false;
+const images={}; const canvas=document.getElementById('diagram'), ctx=canvas.getContext('2d');
+const rail=document.getElementById('rail');
+names.forEach((name,i)=>{const button=document.createElement('button');button.type='button';button.innerHTML=`<span class="number">${i+1}</span><span>${name}</span><small>${short[i]}</small>`;button.onclick=()=>{pause();stage=i;render();};rail.append(button);});
+
+function pause(){clearInterval(timer);timer=null;document.getElementById('play').textContent='Play';}
+function text(value,x,y,color='#e5edf6',size=18){ctx.fillStyle=color;ctx.font=`${size}px system-ui`;ctx.fillText(value,x,y);}
+function line(x,y,xx,yy,color,width=1){ctx.strokeStyle=color;ctx.lineWidth=width;ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(xx,yy);ctx.stroke();}
+function point(x,y,color,r=2){ctx.fillStyle=color;ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fill();}
+function picture(name,x){ctx.drawImage(images[name],x,50,640,360);}
+function crop(id,name,p){const c=document.getElementById(id),g=c.getContext('2d'),image=images[name];const sx=image.width/640,sy=image.height/360;g.imageSmoothingEnabled=false;g.drawImage(image,(p[0]-24)*sx,(p[1]-24)*sy,48*sx,48*sy,0,0,160,160);g.strokeStyle='#65d8bb';g.strokeRect(77,77,6,6);}
+function drawPairs(e,pairs,geometry=false){
+ const stride=Math.max(1,Math.ceil(pairs.length/50));
+ pairs.forEach((p,i)=>{if(i%stride)return;const a=e.points_a[p.a],b=e.points_b[p.b];const ok=geometry?p.inlier:p.accepted;line(10+a[0],50+a[1],690+b[0],50+b[1],ok?'#65d8bb99':'#efb77b66');point(10+a[0],50+a[1],ok?'#65d8bb':'#efb77b');point(690+b[0],50+b[1],ok?'#65d8bb':'#efb77b');});
+}
+function support(e,side){
+ const x=side?690:10,pts=side?e.points_b:e.points_a,hull=e.hulls[side];
+ const inliers=e.pairs.filter(p=>p.inlier), cells=new Set();
+ for(const p of inliers){const q=pts[side?p.b:p.a];cells.add(`${Math.min(2,Math.floor(q[0]*3/640))},${Math.min(2,Math.floor(q[1]*3/360))}`);}
+ for(let row=0;row<3;row++)for(let col=0;col<3;col++){if(cells.has(`${col},${row}`)){ctx.fillStyle='#65d8bb30';ctx.fillRect(x+col*640/3,50+row*120,640/3,120);}ctx.strokeStyle='#82bcff';ctx.strokeRect(x+col*640/3,50+row*120,640/3,120);}
+ if(hull.length){ctx.beginPath();hull.forEach((p,i)=>i?ctx.lineTo(x+p[0],50+p[1]):ctx.moveTo(x+p[0],50+p[1]));ctx.closePath();ctx.fillStyle='#65d8bb33';ctx.fill();ctx.strokeStyle='#65d8bb';ctx.lineWidth=3;ctx.stroke();}
+ for(const p of inliers){const q=pts[side?p.b:p.a];point(x+q[0],50+q[1],'#65d8bb');}
+}
+function render(){
+ if(!loaded)return;const e=ORB_DATA.examples[choice],c=e.decision.candidates[0],s=e.selected;
+ const good=e.pairs.filter(p=>p.accepted),inliers=good.filter(p=>p.inlier);
+ document.getElementById('title').textContent=titles[stage];document.getElementById('subtitle').textContent=`${stage+1} / 9 · ${short[stage]}`;document.getElementById('explanation').textContent=explains[stage];document.getElementById('stage-count').textContent=`Stage ${stage+1}: ${names[stage]}`;
+ Array.from(rail.children).forEach((b,i)=>{if(i===stage)b.setAttribute('aria-current','step');else b.removeAttribute('aria-current');});
+ document.getElementById('next').disabled=stage===8;
+ document.getElementById('source').textContent=stage<4?'SceneMemory.process()':stage<8?'verify_view() / spatial_support()':'SceneMemory.process() → live_scene';
+ document.getElementById('descriptor').hidden=stage!==2;document.getElementById('visual').hidden=stage===2;
+ ctx.clearRect(0,0,1340,430);picture(e.reference,10);picture(e.query,690);text('Reference A · remembered first',10,29);text('Query B · observed later',690,29);
+ let metric='',rules='';
+ if(stage===0){text('Stored teaching asset: 320×180 → 640×360',30,390,'#65d8bb',20);metric='Live: 1280×720 → 640×360 (¼ of the pixels). This replay enlarges an existing small reference; it is not a new full-resolution capture.';rules='prepare_gray: uint8, two dimensions, at least 160×90, aspect ratio within 0.01 of 16:9. Downsize with INTER_AREA; smaller teaching inputs use INTER_LINEAR. Timestamp must be finite, nonnegative and strictly increasing.';}
+ if(stage===1){for(const p of e.points_a)point(p[0]+10,p[1]+50,'#65d8bb');for(const p of e.points_b)point(p[0]+690,p[1]+50,'#65d8bb');metric=`Reference: ${e.points_a.length} keypoints · query: ${e.points_b.length}. Default limit: 600; a blank wall may yield very few.`;rules='ORB combines oriented corner features with binary neighborhood descriptions. The code requires ≥60 usable features, convex-hull coverage ≥12%, and ≥4 occupied cells before enrolling or querying. Counts alone are insufficient.';}
+ if(stage===2){crop('crop-a',e.reference,e.points_a[s.a]);crop('crop-b',e.query,e.points_b[s.b]);const bits=document.getElementById('bits');bits.replaceChildren();for(let row=0;row<2;row++)for(let i=0;i<256;i++){const el=document.createElement('span');const v=row?e.bits_b[i]:e.bits_a[i];el.className=`bit ${v?'one':''} ${e.bits_a[i]!==e.bits_b[i]?'diff':''}`;el.textContent=v;el.title=`${row?'Query':'Reference'} bit ${i}: ${v}`;bits.append(el);}metric=`Top 8 rows: reference descriptor; bottom 8: query. Hamming distance = ${s.d1} differing bits out of 256.`;rules='A descriptor is 32 bytes, not an RGB embedding or object category. Hamming distance counts set bits in XOR(A,B). The displayed bits are actual OpenCV output. Spatial sample-pair coordinates are deliberately not invented. ORB handles rotation/scale approximately, not perfectly.';}
+ if(stage===3){ctx.fillStyle='#0c1118e8';ctx.fillRect(10,50,640,360);text('REFERENCE A',40,96,'#65d8bb',25);text(`ID 1  •  ${e.points_a.length} feature positions (x, y)`,40,145);text(`${e.points_a.length} × 32 descriptor bytes`,40,184);text('Label + observation time + last-used time',40,223);text('No raw image inside the View record',40,278,'#82bcff');text('Up to 12 references; least recently used evicted',40,322,'#98a8bb',17);metric='Remember is an explicit branch. It stores copies of features once; the next query compares against that stored reference.';rules='View contains scene_id, label, observed_s, last_used_s, points and descriptors. Empty/duplicate labels fail. Weak imagery does not enroll. The optional evidence recorder may save a PNG separately; that is not the in-memory matching database. Session reset clears references; IDs are not reused by reset.';}
+ if(stage===4){drawPairs(e,e.pairs);metric=`${e.pairs.length} nearest-neighbor proposals. Selected pair: best ${s.d1}, second-best ${s.d2} bits. Lines are sampled for readability.`;rules='BFMatcher(NORM_HAMMING). knnMatch(reference, query, k=2) finds two candidates per reference feature. A separate query→reference match supplies the reverse check. This is feature matching, not bounding-box IoU or person re-identification.';}
+ if(stage===5){drawPairs(e,e.pairs);metric=`${good.length} of ${e.pairs.length} pairs survive. Selected: ${s.d1} ≤ 64; ${s.d1} < 0.75 × ${s.d2}; mutual = ${s.mutual}. Need ≥24 survivors.`;rules='All three gates must pass: Hamming ≤64, best distance strictly <75% of runner-up distance, reverse nearest match points back to the same reference feature. This rejects ambiguous texture; the ratio is not a confidence probability. Fewer than 24 matches stops geometry.';}
+ if(stage===6){if(good.length>=24){drawPairs(e,good,true);const h=e.homography;ctx.fillStyle='#0c1118e8';ctx.fillRect(410,140,520,140);text('H maps reference (x, y, 1) → query',430,170,'#82bcff',19);for(let i=0;i<3;i++)text(h[i].map(n=>n.toFixed(3)).join('     '),440,205+i*25,'#e5edf6',17);metric=`${inliers.length}/${good.length} geometric inliers (${(100*c.inlier_ratio).toFixed(1)}%). Residual threshold: 3 canonical pixels.`;}else{metric='Geometry was NOT run: fewer than 24 matches survived. Showing candidates only, not a fabricated homography.';drawPairs(e,good);}rules='findHomography: RANSAC, 3 px reprojection threshold, maxIters=2000, confidence=0.995 (algorithm setting, not recognition probability). Require ≥20 inliers and ≥55% inliers. H is a 3×3 projective image transform; normalize by the homogeneous third coordinate. A homography alone does not recover room depth.';}
+ if(stage===7){if(e.hulls[0].length){support(e,0);support(e,1);metric=`Hull area: reference ${(100*c.reference_coverage).toFixed(1)}%, query ${(100*c.query_coverage).toFixed(1)}%. Occupied cells: ${c.reference_cells}/9 and ${c.query_cells}/9.`;}else metric='Distribution was NOT evaluated: matching failed earlier. No inlier hull exists for this query.';rules='Require convex-hull area ≥12% of frame and ≥4 cells in both reference and query. Also project frame corners: finite denominators of consistent sign, convex nonfolding footprint, oriented area ratio 0.25–4.0. Wide support reduces foreground-only matches; it does not guarantee correctness.';}
+ if(stage===8){ctx.fillStyle='#0c1118d9';ctx.fillRect(260,115,820,215);text(e.decision.state.toUpperCase(),310,173,e.decision.state==='known'?'#65d8bb':'#efb77b',42);text(e.decision.reason,310,220);text(`Stored references: ${e.decision.stored_views}  •  scene ID: ${e.decision.scene_id??'none'}`,310,260);text('Timestamped scene result → view map → browser',310,300,'#82bcff');metric=e.decision.state==='known'?'This query passed the current code gates for Reference A. That is visual overlap—not exact lens direction, identity, physical position or measured distance.':'Unknown is intentional: this query does not have enough verified overlap with Reference A.';rules='Rank passing references by inlier count then fraction. If the runner-up has ≥85% of winner inliers, return ambiguous_views. Only confirmed matches refresh last_used_s. LiveScene marks results stale after 2 s or camera unavailability; recognition target is 1 Hz, not a guarantee. This example has one reference, so it does not demonstrate multi-reference ambiguity.';}
+ document.getElementById('metric').textContent=metric;document.getElementById('rules').textContent=rules;
+ document.getElementById('ready').textContent=`Offline replay · OpenCV ${ORB_DATA.opencv} · ${e.decision.state}`;
+}
+document.getElementById('next').onclick=()=>{pause();stage=Math.min(8,stage+1);render();};
+document.getElementById('reset').onclick=()=>{pause();stage=0;render();};
+document.getElementById('example').onchange=event=>{pause();choice=Number(event.target.value);render();};
+document.getElementById('play').onclick=()=>{if(timer){pause();return;}if(stage===8)stage=0;render();document.getElementById('play').textContent='Pause';timer=setInterval(()=>{stage++;render();if(stage===8)pause();},3500);};
+document.addEventListener('visibilitychange',()=>{if(document.hidden)pause();});
+Promise.all([...new Set(ORB_DATA.examples.flatMap(e=>[e.reference,e.query]))].map(name=>new Promise((resolve,reject)=>{const im=new Image();im.onload=()=>{images[name]=im;resolve();};im.onerror=reject;im.src=`images/${name}`;}))).then(()=>{loaded=true;document.getElementById('provenance').textContent='Actual Pi-derived images and computed ORB evidence. No live camera, new private footage, or simulated match counts.';render();}).catch(()=>{document.getElementById('ready').textContent='Asset loading failed. Keep the HTML, JS and images folders together.';});

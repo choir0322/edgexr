@@ -1,5 +1,11 @@
 # A DIY computer as an AP learning extension
 
+2026-11-08 update: user has Apple-Silicon Mac + Pi only and prioritizes price.
+Use the [current purchase shortlist](FPGA_PURCHASE_SHORTLIST.md), not a Zynq
+recommendation that assumes an x86 build host. User also added a proposed
+[bounded 3D milestone](decisions/2026-11-08-reconstruction-before-fpga.md) before
+FPGA implementation. The foundational distinctions below still apply.
+
 2026-11-07 evaluation; exploratory, not a hardware purchase or roadmap reset.
 
 ## Recommendation

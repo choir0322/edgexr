@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>EdgeXR · How a view becomes familiar</title><link rel="stylesheet" href="hann-fft-explorer.css"><link rel="stylesheet" href="orb-scene-explorer.css"></head>
+<body><main>
+<header><a href="README.md">EDGEXR / LEARNING</a><span>ACTUAL ORB DATA · RECORDED PI IMAGES</span></header>
+<h1>How does this view become familiar?</h1>
+<p class="intro">Follow the same reference and query through nine stages. A match needs appearance <em>and</em> consistent geometry.</p>
+<div class="toolbar"><div><button id="play">Play</button> <button id="next">Next step →</button> <button id="reset">Restart</button></div>
+<label>Query image <select id="example"><option value="0">Adjacent recorded view · known</option><option value="1">Different recorded view · unknown</option></select></label></div>
+<p class="muted" id="provenance"></p>
+<nav class="rail" id="rail" aria-label="Scene recognition stages"></nav>
+<div class="progress"><span id="stage-count"></span><span id="ready" role="status">Loading replay…</span></div>
+<section class="workspace" aria-labelledby="title">
+<div class="stage-head"><div><div class="stage-num" id="subtitle"></div><h2 id="title"></h2></div><a class="source" href="../../src/spatial/scene_memory.py" id="source">scene_memory.py</a></div>
+<p id="explanation"></p>
+<div id="visual"><canvas id="diagram" width="1340" height="430" role="img" aria-label="Reference and query with stage-specific feature evidence"></canvas></div>
+<div id="descriptor" hidden><div class="descriptor-head"><canvas id="crop-a" width="160" height="160" aria-label="Reference feature neighborhood"></canvas><span>local brightness comparisons<br>→ 256 bits → 32 bytes</span><canvas id="crop-b" width="160" height="160" aria-label="Query feature neighborhood"></canvas></div><div id="bits"></div><p class="legend">Actual selected ORB descriptors: each square is one bit. Orange outlines mark differing bits. The crops show the neighborhood, not OpenCV’s exact rotated test locations.</p></div>
+<div id="metric" class="metric" aria-live="polite"></div>
+<details id="detail"><summary>Exact code rules, units and limitations</summary><div id="rules"></div></details>
+</section>
+<section class="context"><details><summary>Where do the IMU, motion worker and person detector fit?</summary>
+<p>The nine-patch Hann/FFT motion worker measures image displacement separately. It does not supply ORB descriptors. The IMU attaches host-timestamped relative orientation to the recognized view; it does not override a failed visual match.</p>
+<p>With <code>--scene-exclude-people</code>, fresh person boxes become an allowed-feature mask for both enrollment and queries. Detector source lag must be 0–500 ms relative to the scene source. Missing/stale evidence yields unknown; too little background support also yields unknown. A recent box can still be misaligned. This replay has foreground exclusion <strong>off</strong>.</p>
+<p>Scene worker: latest fresh full frame, target 1 Hz → result mailbox → view map → HTTP/browser. Selected evidence goes to a bounded background writer. “Known” is visual overlap, not a measured physical position.</p></details>
+<details><summary>What this teaching replay does—and does not—measure</summary><p>Images are existing small derived frames from your Pi, already stored in this repository. The 320×180 reference is enlarged to canonical 640×360 for this example; the real live scene branch starts with 1280×720 and reduces it. Enlargement does not restore detail. No private images from the new person trial are embedded.</p><p>The browser draws precomputed OpenCV results. It does not run ORB, RANSAC, an IMU or a live camera. Lines are thinned for readability; the counts use every match. The animation advances stages, not hardware time. Stage 4 enrolls the reference once; later stages query it, rather than re-enrolling every frame.</p><p><a href="../../scripts/build_orb_learning_data.py">Reproducible data generator</a> · <a href="../SPATIAL_FOREGROUND_RESULTS_01.md">Latest trial: why a left view was never stored</a></p></details></section>
+<footer><a href="SCENE_MEMORY.md">Source map</a> · <a href="hann-fft-explorer.html">Compare the Hann/FFT pipeline</a> · <a href="../PIPELINE.md">Current live architecture</a></footer>
+</main><noscript>This replay requires JavaScript. Read <a href="SCENE_MEMORY.md">the source map</a> instead.</noscript><script src="images/orb-scene-data.js"></script><script src="orb-scene-explorer.js"></script></body></html>

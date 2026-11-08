@@ -1,5 +1,23 @@
 # EdgeXR technique and AP evidence register
 
+2026-11-08 — **Reviewed first foreground trial; recognition benefit unvalidated.**
+[Report](SPATIAL_FOREGROUND_RESULTS_01.md),
+[structured evidence](../benchmarks/results/spatial-foreground-01.json).
+View-2 enrollment rejected after ~78% masking; crossing occurred at left,
+which had no stored reference. Two enrolled, seven known, 171 unknown is not an
+accuracy score. All 180 written, no drops/IMU >200ms gaps; scene compute median
+65.55ms, p95 190.32ms. No global CPU/memory/energy comparison; dirty Pi revision.
+Next: unmistakable enrollment feedback before retesting left-view occlusion.
+
+2026-11-08 — **Learning explorer implemented; 3D/FPGA scope recorded.**
+[ORB explorer](learning/orb-scene-explorer.html) uses existing small public Pi
+images and actual computed matches with source links. Diagram reviewed unchanged.
+[Reconstruction decision](decisions/2026-11-08-reconstruction-before-fpga.md)
+adds a proposed calibrated offline sparse milestone before FPGA implementation;
+dense/live scope still requires clarification. [FPGA shortlist](FPGA_PURCHASE_SHORTLIST.md)
+prioritizes Mac-compatible budget options. No purchases, installations, 3D
+capability or hardware acceleration measured. AP learning remains primary.
+
 2026-11-08 — **Measured single pair: observer RAM control closed with limits.**
 [Results](OBSERVER_RAM_RESULTS.md),
 [structured evidence](../benchmarks/results/observer-ram-control-01.json).

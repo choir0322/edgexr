@@ -1,0 +1,103 @@
+{
+  "trial": "spatial-foreground-01",
+  "review_date": "2026-11-08",
+  "revision": "729b080f5b3986022e207662a94c5342d3aef7f3",
+  "dirty": true,
+  "device": "Pi 4",
+  "host": "Linux-6.12.47+rpt-rpi-v8-aarch64",
+  "python": "3.11.2",
+  "opencv": "4.11.0",
+  "camera_source": "1280x720 grayscale (requested live mode; negotiated mode not independently recorded)",
+  "scene_shape": [
+    640,
+    360
+  ],
+  "scene_target_hz": 1,
+  "imu_pause_ms": 10,
+  "detector_enabled": true,
+  "foreground_policy": "person_boxes_v1",
+  "duration_requested_s": 180,
+  "power": "not recorded",
+  "cooling": "not recorded in trial metadata",
+  "warmup": "not separately controlled",
+  "user_protocol": "requested center, left, right; person crossing while fixed at left; finish on unenrolled direction",
+  "records": 180,
+  "states": {
+    "unknown": 171,
+    "known": 7,
+    "enrolled": 2
+  },
+  "reasons": {
+    "no_verified_match": 139,
+    "weak_image": 20,
+    "empty_memory": 10,
+    "geometry_verified": 7,
+    "foreground_evidence_unavailable": 2,
+    "explicit_reference": 2
+  },
+  "foreground": {
+    "fresh": 178,
+    "missing": 1,
+    "stale": 1,
+    "records_with_person_boxes": 58
+  },
+  "enrollment": [
+    {
+      "seconds": 11.01,
+      "label": "View-1",
+      "state": "enrolled",
+      "scene_id": 1
+    },
+    {
+      "seconds": 22.01,
+      "label": "View-2",
+      "state": "unknown",
+      "reason": "weak_image",
+      "features": 249,
+      "excluded_fraction": 0.7791927083333333,
+      "detector_source_age_ms": 465.339328
+    },
+    {
+      "seconds": 31.02,
+      "label": "View-3",
+      "state": "enrolled",
+      "scene_id": 2
+    }
+  ],
+  "metrics": {
+    "compute_ms": {
+      "median": 65.54512,
+      "p95": 190.320179,
+      "max": 220.421005
+    },
+    "scene_thread_cpu_ms": {
+      "median": 51.442567,
+      "p95": 149.342438,
+      "max": 166.549833
+    },
+    "image_write_ms": {
+      "median": 15.95818,
+      "p95": 27.491884,
+      "max": 53.739528
+    },
+    "queue_wait_ms": {
+      "median": 0.517786,
+      "p95": 3.673983,
+      "max": 6.77868
+    },
+    "records_written": 180,
+    "dropped": 0,
+    "queue_high_water": 1,
+    "imu_gaps_over_200ms": 0,
+    "imu_max_gap_ms": 35.501579
+  },
+  "result": "Left-view occlusion benefit not validated: requested left reference was rejected and never stored. Safe recording/IMU continuity observed. Last20 records unknown, consistent with user report of ending unenrolled.",
+  "limits": [
+    "Not 7/180 recognition accuracy: includes unenrolled scenes, empty memory and occlusions.",
+    "Selected captured images visually reviewed; detector-source images not saved at exact inference timestamps.",
+    "Mask freshness does not establish alignment; large boxes can remove useful background.",
+    "Unknown cause within weak_image includes feature count OR hull/cell coverage; 249 features alone passes count.",
+    "No matched unmasked run, global CPU, RSS, temperature, electrical energy or live latency comparison.",
+    "Git dirty flag prevents assuming an exact clean source state."
+  ]
+}

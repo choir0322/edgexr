@@ -1,11 +1,18 @@
 # Read the EdgeXR code from end to end
 
+New: [ORB scene-recognition explorer](orb-scene-explorer.html). Nine visual stages
+follow recorded Pi imagery through keypoints, actual binary descriptors,
+Hamming/ratio/mutual matching, RANSAC, hull/grid support and known/unknown.
+Shares the Hann/FFT page's minimal stage-rail design. No new private trial images
+are embedded. The browser replays precomputed data rather than running OpenCV.
+
 The [worker/resource learning lab](edgexr-worker-rates.html) now offers **Software**
 and **Software + hardware** modes. CPU dotted links mean execution, not data
 movement or core affinity. Expand the recording/storage nodes and evidence
 disclosure to connect queues, observer file writes, RAM and microSD. The
-[RAM observer protocol](../OBSERVER_RAM_CONTROL.md) is implemented but not yet
-Pi-measured; [DIY computer options](../DIY_COMPUTER_OPTIONS.md) are exploratory.
+[RAM observer protocol](../OBSERVER_RAM_CONTROL.md) now has a
+[single-pair measured result](../OBSERVER_RAM_RESULTS.md), with causal limits;
+[budget FPGA options](../FPGA_PURCHASE_SHORTLIST.md) remain pre-purchase research.
 
 These guides explain the currently inspected implementation, not an idealized
 replacement. Start with the interactive [whole-program flow explorer](program-flow-explorer.html).

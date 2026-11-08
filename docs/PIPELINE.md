@@ -1,5 +1,11 @@
 # Current live pipeline
 
+2026-11-08 learning/trial review: diagram reviewed; runtime flow unchanged.
+[ORB explorer](learning/orb-scene-explorer.html) replays computed feature/match
+arrays; it is not a live worker. [Foreground trial](SPATIAL_FOREGROUND_RESULTS_01.md)
+stored two of three requested views. [3D extension](decisions/2026-11-08-reconstruction-before-fpga.md)
+is a roadmap decision, NOT an implemented depth/position branch.
+
 2026-11-08: opt-in [person exclusion](SPATIAL_FOREGROUND.md) adds this branch:
 
 ```text

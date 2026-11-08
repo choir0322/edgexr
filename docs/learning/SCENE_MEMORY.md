@@ -1,5 +1,11 @@
 # Scene memory: current source map
 
+Visual walkthrough: [ORB scene explorer](orb-scene-explorer.html), patterned
+after the Hann/FFT page but using feature geometry, not Fourier transforms.
+Actual replay data comes from `scripts/build_orb_learning_data.py`; same source
+gates, OpenCV version recorded. See the [first foreground-trial review](../SPATIAL_FOREGROUND_RESULTS_01.md)
+for why clicking Remember did not enroll the left view.
+
 2026-11-08 optional foreground path: `DetectionState.scene_evidence` atomically
 copies detector boxes/source time; `foreground.person_mask` checks relative
 source age (0–0.5 s), scales VOC person boxes from 1280×720 to 640×360 and

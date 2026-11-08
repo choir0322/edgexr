@@ -60,6 +60,12 @@ Bound the spatial integration before later FPGA/AP work; no hardware purchase.
 
 ## Outcomes and retrospective
 
+2026-11-08: [first trial reviewed](../../SPATIAL_FOREGROUND_RESULTS_01.md).
+Three requests, only two references: left/View-2 rejected as weak_image after
+78% person masking. User tested at left; no left reference existed. No occlusion
+accuracy claim. Recording/IMU continuity passed this run. Next bounded change
+is persistent explicit enrollment feedback before retest, not threshold tuning.
+
 Implemented opt-in flag, mask helper, atomic detector evidence copy, scene-worker
 gating, original-image preservation and telemetry diagnostics. Real ORB tests
 check masked enrollment/query and weak evidence. Worker test checks pending

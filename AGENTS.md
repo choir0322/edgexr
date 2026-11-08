@@ -72,6 +72,15 @@ brief; do not obstruct already-approved work with repeated confirmations.
 
 ## How to work here
 
+2026-11-08 user extension: finish the integrated spatial application and add
+3D reconstruction before FPGA implementation. See
+`docs/decisions/2026-11-08-reconstruction-before-fpga.md`: calibrated offline
+sparse reconstruction is the proposed bounded endpoint, not yet a confirmed
+dense/live room-mapping specification. Do not claim it exists or silently
+expand scope. AP learning remains primary; preserve the Pi reference workload.
+Budget FPGA selection must account for the user's Mac-only development host
+(plus Pi); do not assume access to x86 Windows/Linux tools or buy/install silently.
+
 Before changing code, explain in plain language what will change, why it is
 needed, and how the result will be checked. Prefer a small, understandable step
 over a large framework or a copy-pasted application. Do not silently add a
