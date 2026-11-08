@@ -13,6 +13,7 @@ import numpy as np
 from spatial.scene_memory import SceneMemory
 from spatial.scene_recorder import SceneRecorder
 from spatial.view_map import ViewMap
+from spatial.foreground import person_mask
 
 
 class LiveScene:
@@ -87,7 +88,7 @@ class LiveScene:
 
 
 def scene_latest(state: Any, cv: Any, output: Path | None = None,
-                 save_images: bool = False) -> None:
+                 save_images: bool = False, exclude_people: bool = False) -> None:
     """Process at most one newest frame per second, never queue capture frames.
 
     Args:
@@ -95,6 +96,7 @@ def scene_latest(state: Any, cv: Any, output: Path | None = None,
         cv (Any): Existing CPU OpenCV module.
         output (Path | None): New ignored directory for non-image JSONL evidence.
         save_images (bool): Opt-in canonical PNGs; bounded recording may drop queries.
+        exclude_people (bool): Require fresh detector evidence and mask person features.
     Returns:
         None: Failures are isolated to scene status; no motor or gyro correction.
     """
@@ -116,6 +118,8 @@ def scene_latest(state: Any, cv: Any, output: Path | None = None,
                         "imu_poll_sleep_ms": state.imu_sleep_ms,
                         "camera_axis_basis": state.imu.camera_axis_basis,
                         "detection_enabled": state.detector.enabled,
+                        "foreground_policy": "person_boxes_v1" if exclude_people else "off",
+                        "foreground_max_source_lag_s": 0.5 if exclude_people else None,
                         "input_shape": "1280x720 grayscale; host receipts, not exposure time",
                         "save_images": save_images,
                         "timing_schema": 2,
@@ -144,10 +148,19 @@ def scene_latest(state: Any, cv: Any, output: Path | None = None,
             process_started = time.process_time()
             # Leave explicit enrollment pending if its evidence cannot be admitted.
             # Only this worker produces records: capacity cannot shrink meanwhile.
+            mask, foreground = (person_mask(state.detector.scene_evidence(), captured)
+                                if exclude_people else (None, {"status": "off"}))
+            usable = not exclude_people or mask is not None
             label = (state.scene.take_request(captured)
-                     if recorder is None or recorder.can_enroll() else None)
+                     if usable and (recorder is None or recorder.can_enroll()) else None)
             gray = np.frombuffer(pixels, dtype=np.uint8).reshape(720, 1280)
-            decision = memory.process(gray, captured, label)
+            if usable:
+                decision = memory.process(gray, captured, label, feature_mask=mask)
+            else:
+                decision = {"timestamp_s": captured, "state": "unknown", "scene_id": None,
+                            "label": None, "reason": "foreground_evidence_unavailable",
+                            "features": 0, "candidates": [], "stored_views": len(memory.views)}
+            decision["foreground"] = foreground
             if decision["state"] == "enrolled":
                 contexts[decision["scene_id"]] = orientation
                 contexts.pop(decision.get("evicted_id"), None)

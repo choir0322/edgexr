@@ -183,13 +183,16 @@ class SceneMemory:
         self.last_time: float | None = None
 
     def process(self, gray: np.ndarray, timestamp_s: float,
-                enroll_label: str | None = None) -> dict:
+                enroll_label: str | None = None,
+                feature_mask: np.ndarray | None = None) -> dict:
         """Enroll a named reference or query previous views at a later video time.
 
         Args:
             gray (np.ndarray): 16:9 uint8 grayscale frame from a local decoder.
             timestamp_s (float): Finite nonnegative video time, strictly increasing.
             enroll_label (str | None): Explicit unique reference name; None queries memory.
+            feature_mask (np.ndarray | None): Optional 360×640 uint8 mask; zero excludes
+                foreground. Uses canonical pixels, for enrollment and queries alike.
         Returns:
             dict: enrolled/known/unknown state, scene ID, reasons and bounded diagnostics.
         """
@@ -200,7 +203,23 @@ class SceneMemory:
                 any(view.label == enroll_label for view in self.views)):
             raise ValueError("Reference labels must be nonempty, unique and at most 80 characters")
         image = prepare_gray(self.cv, gray)
-        keypoints, descriptors = self.orb.detectAndCompute(image, None)
+        if feature_mask is not None and (feature_mask.shape != image.shape or
+                feature_mask.dtype != np.uint8):
+            raise ValueError("Feature mask must be canonical 360x640 uint8")
+        keypoints, descriptors = self.orb.detectAndCompute(image, feature_mask)
+        # ORB's mask excludes centers. Also discard descriptor neighborhoods that
+        # overlap excluded pixels; size is scale-dependent, with conservative padding.
+        if feature_mask is not None and descriptors is not None and np.any(feature_mask == 0):
+            keep = []
+            for index, point in enumerate(keypoints):
+                x, y = point.pt
+                radius = math.ceil(point.size)
+                region = feature_mask[max(0, int(y) - radius):min(HEIGHT, int(y) + radius + 1),
+                                      max(0, int(x) - radius):min(WIDTH, int(x) + radius + 1)]
+                if region.size and np.all(region):
+                    keep.append(index)
+            keypoints = [keypoints[index] for index in keep]
+            descriptors = descriptors[keep]
         points = np.float32([point.pt for point in keypoints]).reshape(-1, 2)
         self.last_time = timestamp_s
         coverage, cells = spatial_support(self.cv, points)

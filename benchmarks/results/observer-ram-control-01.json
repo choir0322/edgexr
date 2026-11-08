@@ -1,0 +1,111 @@
+{
+  "stage": "observer-ram-control-01",
+  "status": "measured_single_pair",
+  "revision": "5f6cf572ad824a8bd75c1acc25db826e7b56c0fd",
+  "device": "Raspberry Pi 4",
+  "os": "Linux 6.12.47+rpt-rpi-v8",
+  "python": "3.11.2",
+  "workload": {
+    "camera_request": "1280x720 MJPEG 30 fps",
+    "negotiated_mode": "not measured in this pair",
+    "scene": "three remembered views and revisits; fixed base; kernel I/O tracing",
+    "scene_target_hz": 1,
+    "detector": false,
+    "imu_pause_ms": 10,
+    "seconds": 180,
+    "observer_interval_s": 0.25,
+    "warmup": "no separate controlled warm-up",
+    "power": "unknown",
+    "cooling": "passive metal heatsink; no fan"
+  },
+  "controlled_variable": "Only observer samples.jsonl goes to file during collection or bounded RAM with deferred export; application images/JSON stay on microSD.",
+  "trials": [
+    {
+      "mode": "file",
+      "folder": "spatial-observer-file-01",
+      "samples": 717,
+      "elapsed_s": 183.21582157,
+      "observer_cpu_s": 18.199476874,
+      "observer_cpu_pct_one_core": 9.9333544003,
+      "observer_gap_max_ms": 2016.621744,
+      "observer_write_max_ms": 1989.568592,
+      "image_write_max_ms": 2109.887301,
+      "queue_wait_max_ms": 1109.892795,
+      "queue_high_water": 2,
+      "observer_rss_max_kib": 20388,
+      "preview_cpu_median_pct_one_core": 107.914368,
+      "temperature_median_c": 53.556,
+      "records_written": 180,
+      "records_dropped": 0,
+      "imu_gaps_over_200ms": 0,
+      "imu_gap_max_ms": 35.5607545,
+      "known": 150,
+      "unknown": 27,
+      "enrolled": 3,
+      "collection_host_s": [
+        567.365499024,
+        750.581320594
+      ],
+      "trace_host_s": [
+        549.615443748,
+        759.616214749
+      ]
+    },
+    {
+      "mode": "ram",
+      "folder": "spatial-observer-ram-01",
+      "samples": 737,
+      "elapsed_s": 184.510239095,
+      "observer_cpu_s": 18.304327266,
+      "observer_cpu_pct_one_core": 9.9204940364,
+      "observer_gap_max_ms": 253.895656,
+      "observer_buffer_admission_max_ms": 0.750436,
+      "image_write_max_ms": 39.211877,
+      "queue_wait_max_ms": 6.112382,
+      "queue_high_water": 1,
+      "observer_rss_max_kib": 69680,
+      "preview_cpu_median_pct_one_core": 103.92289,
+      "temperature_median_c": 56.478,
+      "records_written": 180,
+      "records_dropped": 0,
+      "imu_gaps_over_200ms": 0,
+      "imu_gap_max_ms": 35.8686565,
+      "known": 101,
+      "unknown": 76,
+      "enrolled": 3,
+      "payload_bytes": 50700725,
+      "payload_limit_bytes": 67108864,
+      "overflow": false,
+      "collection_host_s": [
+        952.800928026,
+        1137.311167121
+      ],
+      "trace_host_s": [
+        947.915404916,
+        1157.916144051
+      ],
+      "export_host_s": [
+        1182.311918914,
+        1182.461041911
+      ],
+      "export_wall_s": 0.149122997
+    }
+  ],
+  "both_trials": {
+    "trace_loss_detected": false,
+    "trace_export_truncated": false,
+    "swap_in_pages_delta": 0,
+    "swap_out_pages_delta": 0,
+    "sampled_observer_swap_kib": 0,
+    "orientation_ready": 179,
+    "orientation_unknown": 1
+  },
+  "decision": "Close bounded diagnostic milestone: RAM buffering improved observed latency tails at memory cost in this pair; no universal fix or sole-cause claim.",
+  "limits": [
+    "Different manual scenes and temperatures; known counts are not accuracy scores.",
+    "RAM admission timing is not storage persistence; deferred export is buffered without fsync.",
+    "No card-defect diagnosis, event-by-event causal attribution, measured electrical energy or full end-to-end latency.",
+    "Peak RSS is sampled; payload cap is not a total process memory cap.",
+    "Reverse-order replication deferred unless stronger causal/performance claim is needed."
+  ]
+}

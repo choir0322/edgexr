@@ -281,6 +281,8 @@ function render(data) {
     `Scene: ${row.decision.state} ${row.decision.label || ''}; ${row.decision.reason}. ` +
     `${row.decision.stored_views}/12 views; age ${scene.source_age_ms.toFixed(0)} ms; compute ${row.compute_ms.toFixed(1)} ms. ` +
     `Frame ${row.frame_sequence}; orientation context ${row.orientation_at_frame.status}. ` +
+    (row.decision.foreground?.policy ?
+      `Person exclusion: ${row.decision.foreground.reason}; detector lag ${Number.isFinite(row.decision.foreground.source_age_ms) ? row.decision.foreground.source_age_ms.toFixed(0) + ' ms' : 'unknown'}; ${row.decision.features} usable features. ` : '') +
     'Visual recognition, not camera position or drift correction.' :
     `Scene memory: ${scene.status}. ${scene.error || ''}`);
   // Clear overlays first so stale boxes/arrows cannot survive a new snapshot.

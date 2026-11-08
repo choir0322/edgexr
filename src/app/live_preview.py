@@ -791,6 +791,8 @@ def main() -> None:
     )
     parser.add_argument("--scene-memory", action="store_true",
                         help="explicit visual view memory at target 1 Hz; no gyro correction")
+    parser.add_argument("--scene-exclude-people", action="store_true",
+                        help="experimental person feature exclusion; requires --scene-memory --detect")
     parser.add_argument("--scene-output", type=Path,
                         help="new recordings/ directory for non-image scene decisions")
     parser.add_argument("--scene-save-images", action="store_true",
@@ -798,6 +800,8 @@ def main() -> None:
     parser.add_argument("--scene-seconds", type=float,
                         help="stop preview after 10–600 seconds; requires --scene-output")
     args = parser.parse_args()
+    if args.scene_exclude_people and not (args.scene_memory and args.detect):
+        parser.error("--scene-exclude-people requires --scene-memory and --detect")
 
     # Validate basic startup requirements before allocating worker resources.
     if args.scene_seconds is not None and (args.scene_output is None or
@@ -899,7 +903,8 @@ def main() -> None:
 
         if args.scene_memory:
             worker = threading.Thread(target=scene_latest,
-                                      args=(state, cv, args.scene_output, args.scene_save_images),
+                                      args=(state, cv, args.scene_output, args.scene_save_images,
+                                            args.scene_exclude_people),
                                       name="scene-worker", daemon=True)
             worker.start()
             threads.append(worker)

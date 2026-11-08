@@ -1,6 +1,8 @@
 # Systems architecture and AP experiment register
 
-Updated 2026-11-07. The [interactive worker page](learning/edgexr-worker-rates.html#storage-learning)
+Updated 2026-11-08. Latest [RAM comparison evidence](OBSERVER_RAM_RESULTS.md)
+is recorded for a future visualization update; the existing HTML may still
+label the Pi comparison pending. The [interactive worker page](learning/edgexr-worker-rates.html#storage-learning)
 shows these configurations. Keep future changes here with status, routing,
 controlled variables, provenance, evidence and limits. A proposed diagram is
 not a claim that the corresponding code or experiment exists.
@@ -11,7 +13,7 @@ not a claim that the corresponding code or experiment exists.
 | Bounded writer | Implemented and Pi-observed | Four waiting records in RAM plus one active write; separate writer to microSD | Separate concern | Separate concern | [Implementation and evidence](BOUNDED_SCENE_RECORDING.md); prevents disk wait from directly holding scene worker |
 | kernel-io-02 / spatial-io-02 | Measured, partial trace | Bounded writer to microSD | Buffered JSONL to same microSD | All selected MMC hosts, 2 MiB/CPU RAM, export after stop | [Run 02](KERNEL_IO_RESULTS_02.md); CPU 0 overwrote 88,730 trace entries |
 | kernel-io-03 / spatial-io-03 | Measured, no reported loss | Same bounded writer | Same microSD destination | Only MMC name == mmc0; other groups unfiltered | [Run 03](KERNEL_IO_RESULTS_03.md); improved evidence retention, not a latency fix |
-| RAM-staged observer | Implemented; Pi comparison pending | Keep images/scene JSON on microSD | samples.jsonl in process memory, 64 MiB payload cap; export after collection + 45 s | Keep mmc0 profile | [Paired protocol](OBSERVER_RAM_CONTROL.md); no spill on overflow, sampled RSS/swap plus system swap deltas |
+| RAM-staged observer | Measured single pair; causal limits | Keep images/scene JSON on microSD | samples.jsonl in process memory, 64 MiB payload cap; export after collection + 45 s | Keep mmc0 profile | [Results](OBSERVER_RAM_RESULTS.md): observer max gap 2017→254 ms, app max image write 2110→39 ms; extra RAM, no meaningful CPU savings |
 
 ## What changes and what does not
 

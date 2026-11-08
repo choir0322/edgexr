@@ -1,5 +1,22 @@
 # Scene memory: current source map
 
+2026-11-08 optional foreground path: `DetectionState.scene_evidence` atomically
+copies detector boxes/source time; `foreground.person_mask` checks relative
+source age (0–0.5 s), scales VOC person boxes from 1280×720 to 640×360 and
+constructs an allowed-feature mask. `live_scene.scene_latest` gates enrollment
+and queries; `SceneMemory.process` masks extraction and rejects descriptor
+neighborhoods overlapping excluded pixels. Matching thresholds stay unchanged.
+Unavailable evidence → unknown; insufficient remaining texture → weak_image.
+See [limits and run guide](../SPATIAL_FOREGROUND.md). No accuracy claim yet.
+
+Recognition is not nine independent FFT comparisons: ORB detects up to 600
+distinctive points over the canonical image, describes each with a 32-byte
+binary pattern, matches to stored references by Hamming distance, rejects
+ambiguous/nonmutual pairs, then verifies a homography with RANSAC. It requires
+distributed support (including occupied cells of a 3×3 grid); the grid is a
+coverage test, not nine separate recognition models. See `verify_view` for
+numeric gates. IMU direction is stored context, not proof of visual identity.
+
 Low-level recording investigation: [kernel I/O trace protocol](../KERNEL_IO_TRACE.md)
 uses `profiling.kernel_io_trace.configure_instance` for private event controls,
 `run` for timed collection/cleanup and `export_trace` for capped stopped export.

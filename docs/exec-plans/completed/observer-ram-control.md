@@ -22,8 +22,8 @@ headroom but does not cap total process RSS or guarantee memory availability.
 - [x] Record observer RSS/swap and add comparison tooling for timing/resources.
 - [x] Test bounds, exact export, write failure and schema compatibility.
 - [x] Update PIPELINE, configuration register, learning modes and instructions.
-- [ ] Run fresh file A and RAM B on Pi, inspect trace coverage and swap evidence.
-- [ ] Review results; repeat reverse order before a strong causal claim if needed.
+- [x] Run fresh file A and RAM B on Pi, inspect trace coverage and swap evidence.
+- [x] Review single pair with limits; reverse-order replication deferred unless stronger claims are needed.
 
 ## Plan of work
 
@@ -70,9 +70,13 @@ chunks in order. Export delay is separate from collection CPU/elapsed time.
 
 ## Outcomes and retrospective
 
-Implementation and focused hardware-free checks pass. Comparison reproduces
-run-03's 4.604 s observer gap and 4.630 s image-write maximum. Browser verifies
-software/hardware switch and dotted CPU links. No new Pi measurements or
-improvement claim; measured acceptance remains pending.
+2026-11-08: bounded diagnostic milestone closed. See
+[measured results](../../OBSERVER_RAM_RESULTS.md). Observer maximum gap fell
+2017→254 ms and app image-write maximum 2110→39 ms. Both recorders drained with
+zero drops; no IMU gap over 200 ms. RAM cost increased; CPU essentially unchanged.
+No trace buffer loss or swap activity reported. Manual scene/order/temperature
+confounds remain; no sole-cause or card-health conclusion. Strong causal claims
+would require replication. Earlier implementation tests reproduced run-03's
+4.604 s observer gap and 4.630 s image-write maximum.
 Full hardware-independent suite: 211 tests passed, including local HTTP tests.
 Changed Python documentation/type contracts and JavaScript syntax checks pass.

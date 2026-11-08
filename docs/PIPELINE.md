@@ -1,5 +1,24 @@
 # Current live pipeline
 
+2026-11-08: opt-in [person exclusion](SPATIAL_FOREGROUND.md) adds this branch:
+
+```text
+720p source → existing detector → atomic boxes + source receipt time
+                                          ↓ (lag 0–500 ms, never future)
+720p scene source → 640×360 ORB ← person exclusion mask
+                              → unchanged geometry/ambiguity checks → scene/map
+```
+
+Only `--scene-exclude-people --scene-memory --detect` enables this path.
+Missing/stale detector evidence yields unknown and defers enrollment. Small
+remaining support yields unknown. IMU remains context; no fusion/pose override.
+Source images stay unchanged. Scene diagnostics and browser include mask/source
+age evidence. Target scene 1 Hz/detector 2 Hz remain, achieved rates unmeasured.
+Learning source map updated; expanded learning HTML intentionally deferred.
+
+The [RAM experiment result](OBSERVER_RAM_RESULTS.md) closes the storage
+diagnostic with single-pair limits; architecture/default file mode unchanged.
+
 2026-11-07: [bounded observer RAM control](OBSERVER_RAM_CONTROL.md) adds
 `profiling.spatial_stalls --observer-output ram`. Only profiler sample JSONL
 goes to capped process-memory chunks (default 64 MiB), then exports after

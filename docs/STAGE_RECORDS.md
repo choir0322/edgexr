@@ -1,7 +1,26 @@
 # EdgeXR technique and AP evidence register
 
+2026-11-08 — **Measured single pair: observer RAM control closed with limits.**
+[Results](OBSERVER_RAM_RESULTS.md),
+[structured evidence](../benchmarks/results/observer-ram-control-01.json).
+Observer max gap 2017→254 ms; app max image write 2110→39 ms; both 180 records,
+zero drops, no IMU gaps over 200 ms. Observer CPU ~9.9% of one core in both;
+sampled peak RSS ~19.9→68.0 MiB. No trace loss/swap reported. Shared-path
+interference supported, not proved sole cause; scenes/temperature differed.
+Reverse-order replication deferred; no defective-card or universal-fix claim.
+
+2026-11-08 — **Implemented experimental person exclusion; Pi validation pending.**
+[Protocol/source map](SPATIAL_FOREGROUND.md),
+[plan](exec-plans/active/spatial-foreground.md),
+[mask helper](../src/spatial/foreground.py), [learning guide](learning/SCENE_MEMORY.md).
+Age-gated detector boxes exclude ORB features for enrollment/query. Original
+geometry thresholds unchanged; unknown on unavailable/weak evidence. AP
+question: added CPU/memory/detection latency versus occlusion robustness.
+Real OpenCV synthetic tests pass; no target quality or resource improvement
+measured. Freeze bounded integration before later FPGA/AP extensions.
+
 2026-11-07 — **Implemented; Pi measurement pending: profiler-only RAM control.**
-[Protocol](OBSERVER_RAM_CONTROL.md), [plan](exec-plans/active/observer-ram-control.md),
+[Protocol](OBSERVER_RAM_CONTROL.md), [plan](exec-plans/completed/observer-ram-control.md),
 [sample sink](../src/profiling/sample_sink.py),
 [comparison](../src/profiling/compare_observer_storage.py).
 64 MiB sample-payload cap; explicit overflow/no spill; post-collection export

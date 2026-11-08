@@ -98,6 +98,18 @@ class DetectionState:
         with self.lock:
             self.error = str(error)
 
+    def scene_evidence(self) -> Record | None:
+        """Copy the latest boxes atomically for independent scene-source age checks.
+
+        Args:
+            None.
+        Returns:
+            Record | None: Source sequence/time and copied boxes, or unavailable.
+        """
+        import copy
+        with self.lock:
+            return copy.deepcopy(self.result) if self.enabled and not self.error else None
+
     def snapshot(self, now: float, camera_live: bool = True) -> Record:
         """Report latest detections with source age and hide unavailable predictions.
 

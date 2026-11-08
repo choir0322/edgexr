@@ -20,6 +20,46 @@ from spatial.scene_recorder import SceneRecorder
 
 
 class LiveSceneTests(unittest.TestCase):
+    def test_foreground_worker_defers_missing_evidence_and_masks_fresh(self) -> None:
+        """Exercise real worker enrollment with missing versus fresh person boxes.
+
+        Args: None.
+        Returns: None.
+        """
+        try:
+            import cv2 as cv
+        except ImportError:
+            self.skipTest("OpenCV required")
+        for available in (False, True):
+            with self.subTest(available=available):
+                state = State(scene_memory=True, detection_enabled=True)
+                now = time.monotonic()
+                label = state.scene.enroll(now - 0.1)
+                pixels = np.random.default_rng(7).integers(0, 256, (720, 1280), dtype=np.uint8).tobytes()
+                state.publish_frame(bytes(320 * 180), now, pixels)
+                if available:
+                    state.detector.publish((1, now, pixels), [
+                        {"class_id": 15, "box_xyxy": [560, 280, 720, 440]}], 5, now)
+                worker = threading.Thread(target=scene_latest,
+                                          args=(state, cv, None, False, True))
+                worker.start()
+                try:
+                    deadline = time.monotonic() + 3
+                    while state.scene.result is None and not state.scene.error and time.monotonic() < deadline:
+                        time.sleep(0.01)
+                finally:
+                    state.stop.set()
+                    worker.join(5)
+                self.assertIsNone(state.scene.error)
+                result = state.scene.result["decision"]
+                self.assertEqual(result["state"], "enrolled" if available else "unknown")
+                if available:
+                    self.assertEqual(result["foreground"]["person_boxes"], 1)
+                    self.assertIsNone(state.scene.pending)
+                else:
+                    self.assertEqual(state.scene.pending[0], label)
+                    self.assertEqual(result["reason"], "foreground_evidence_unavailable")
+
     def test_recognition_continues_during_image_write(self) -> None:
         """Publish another real ORB result while the first PNG save is blocked.
 
