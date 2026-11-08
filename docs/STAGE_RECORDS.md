@@ -1,5 +1,15 @@
 # EdgeXR technique and AP evidence register
 
+2026-11-09 — **Foreground regression diagnosed; repair not implemented.**
+[Diagnosis](SPATIAL_FOREGROUND_REGRESSION.md) and
+[structured counts](../benchmarks/results/foreground-regression-2026-11-09.json).
+A hypothetical 1 Hz/2 Hz worker schedule repeatedly misses the 500 ms detector
+source-age gate, leaving requests pending without ORB evaluation. Mac replay:
+19 of 57 identical-image successes become unknown under logged person masks.
+Old left request was received but rejected, not merely missed. Latest failed
+Pi log unavailable; no live accuracy or AP-cost claim. Next: bounded aligned
+evidence handoff and finite enrollment outcomes, retaining geometry safeguards.
+
 2026-11-09 — **Persistent enrollment feedback implemented; Pi retest pending.**
 `LiveScene.record_enrollment` and `preview.html.renderEnrollments` keep a
 bounded 12-attempt request history with pending/stored/rejected outcomes, label,

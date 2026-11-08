@@ -70,6 +70,13 @@ Bound the spatial integration before later FPGA/AP work; no hardware purchase.
 
 ## Outcomes and retrospective
 
+2026-11-09: [regression diagnosis](../../SPATIAL_FOREGROUND_REGRESSION.md)
+reproduces periodic freshness-gate starvation and masking-related loss of
+support. Receipt UI alone is insufficient. Latest failed Pi run not available;
+no runtime changes made during diagnosis. Proposed repair: bounded aligned
+source/result handoff, finite enrollment wait, and explicit evidence-unavailable
+versus recognition-failure outcomes; masking fallback needs separate review.
+
 2026-11-09: persistent receipts implemented in mailbox, HTTP snapshot and UI;
 the existing background evidence row includes the same outcome. Browser checked
 with fabricated localhost outcomes: pending, stored, rejected, explicit retry,

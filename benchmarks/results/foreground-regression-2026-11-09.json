@@ -1,0 +1,33 @@
+{
+  "status": "diagnosis_not_runtime_fix",
+  "date": "2026-11-09",
+  "code_revision": "5306b43",
+  "execution": "Mac offline replay; OpenCV 4.11.0",
+  "source_trial": "spatial-foreground-01",
+  "source_revision": "729b080 (dirty)",
+  "method": "Fresh memory per saved image: unmasked enrollment, identical-pixel unmasked query, then query with logged person mask; separate masked enrollment. Production thresholds unchanged.",
+  "images": 58,
+  "unmasked_enrolled_and_self_known": 57,
+  "masked_self_known": 38,
+  "masked_enrollment_stored": 39,
+  "known_to_unknown_with_mask": 19,
+  "known_to_unknown_reasons": {"weak_image": 18, "concentrated_match_support": 1},
+  "failed_left_support": {
+    "image": "frame-00000663.png",
+    "excluded_fraction": 0.7791927083333333,
+    "centers_only": {"features": 515, "hull_fraction": 0.09301002783199869, "cells": 3},
+    "with_neighborhood_exclusion": {"features": 249, "hull_fraction": 0.06116224116749234, "cells": 3},
+    "minimum_hull_fraction": 0.12,
+    "minimum_cells": 4
+  },
+  "hypothetical_schedule": {
+    "detector_period_ms": 500,
+    "assumed_detector_compute_ms": 250,
+    "scene_period_ms": 1000,
+    "maximum_source_lag_ms": 500,
+    "scene_phase_100ms": {"lag_ms": 600, "accepted_of_10": 0},
+    "scene_phase_400ms": {"lag_ms": 400, "accepted_of_10": 10}
+  },
+  "ap_measurements": null,
+  "limits": "Hypothetical schedule is not a Pi timing measurement. Identical-pixel replay isolates mask effects, not live accuracy. Latest reported failed trial unavailable; no causal attribution to that run. No runtime changes."
+}
