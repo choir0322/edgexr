@@ -30,6 +30,7 @@ class LiveScene:
         self.enabled = enabled
         self.lock = threading.Lock()
         self.pending: tuple[str, float] | None = None
+        self.enrollments: list[dict] = []
         self.next_label = 1
         self.result: dict | None = None
         self.error: str | None = None
@@ -44,11 +45,15 @@ class LiveScene:
             str: Unique session-local label; pending requests cannot accumulate.
         """
         with self.lock:
-            if not self.enabled or self.error or self.pending:
+            busy = self.enrollments and self.enrollments[-1]["status"] in ("pending", "processing")
+            if not self.enabled or self.error or self.pending or busy:
                 raise ValueError("Scene memory off, failed, or enrollment already pending")
             label = f"View-{self.next_label}"
             self.next_label += 1
             self.pending = (label, now)
+            self.enrollments.append({"label": label, "status": "pending",
+                                     "reason": "awaiting_fresh_frame", "requested_host_s": now})
+            self.enrollments = self.enrollments[-12:]
             return label
 
     def take_request(self, captured: float) -> str | None:
@@ -63,8 +68,33 @@ class LiveScene:
             if self.pending and captured > self.pending[1]:
                 label = self.pending[0]
                 self.pending = None
+                self.enrollments[-1].update(status="processing", reason="checking_image")
                 return label
         return None
+
+    def record_enrollment(self, row: dict) -> dict | None:
+        """Retain the latest request outcome independently of ordinary queries.
+
+        Args:
+            row (dict): Worker result with request label, decision and host times.
+        Returns:
+            dict | None: Copied receipt to include in recorded evidence.
+        """
+        with self.lock:
+            if not self.enrollments:
+                return None
+            receipt = self.enrollments[-1]
+            decision = row["decision"]
+            if row["enrollment_requested"] == receipt["label"]:
+                receipt.update(status="stored" if decision["state"] == "enrolled" else "rejected",
+                               reason=decision["reason"], stored_views=decision["stored_views"],
+                               scene_id=decision["scene_id"], features=decision["features"],
+                               frame_sequence=row["frame_sequence"],
+                               completed_host_s=row["completed_host_s"],
+                               excluded_fraction=decision.get("foreground", {}).get("excluded_fraction"))
+            elif receipt["status"] == "pending":
+                receipt["reason"] = row["enrollment_wait_reason"]
+            return copy.deepcopy(receipt)
 
     def snapshot(self, now: float, camera_live: bool) -> dict:
         """Keep aged decisions diagnostic without presenting stale recognition as live.
@@ -81,8 +111,10 @@ class LiveScene:
             status = ("off" if not self.enabled else "error" if self.error else
                       "starting" if result is None else
                       "stale" if not camera_live or age > 2000 else "ready")
+            latest = self.enrollments[-1] if self.enrollments else None
+            busy_label = latest["label"] if latest and latest["status"] in ("pending", "processing") else None
             return {"status": status, "error": self.error, "source_age_ms": age,
-                    "pending_label": self.pending[0] if self.pending else None,
+                    "pending_label": busy_label, "enrollments": copy.deepcopy(self.enrollments),
                     "recording": self.recorder.snapshot() if self.recorder else None,
                     "target_hz": 1, "result": result}
 
@@ -151,8 +183,9 @@ def scene_latest(state: Any, cv: Any, output: Path | None = None,
             mask, foreground = (person_mask(state.detector.scene_evidence(), captured)
                                 if exclude_people else (None, {"status": "off"}))
             usable = not exclude_people or mask is not None
+            recording_available = recorder is None or recorder.can_enroll()
             label = (state.scene.take_request(captured)
-                     if usable and (recorder is None or recorder.can_enroll()) else None)
+                     if usable and recording_available else None)
             gray = np.frombuffer(pixels, dtype=np.uint8).reshape(720, 1280)
             if usable:
                 decision = memory.process(gray, captured, label, feature_mask=mask)
@@ -171,11 +204,15 @@ def scene_latest(state: Any, cv: Any, output: Path | None = None,
                    "scene_thread_cpu_ms": (time.thread_time() - thread_started) * 1000,
                    "process_cpu_during_compute_ms": (time.process_time() - process_started) * 1000,
                    "enrollment_requested": label, "decision": decision,
+                   "enrollment_wait_reason": ("foreground_evidence_unavailable" if not usable else
+                                              "recording_backlog" if not recording_available else
+                                              "awaiting_fresh_frame"),
                    "orientation_at_frame": orientation,
                    "reference_orientation": contexts.get(decision["scene_id"])}
             map_started = time.monotonic()
             row["view_map"] = view_map.update(decision, orientation, captured)
             row["view_map_update_ms"] = (time.monotonic() - map_started) * 1000
+            row["enrollment_status"] = state.scene.record_enrollment(row)
             if recorder is not None:
                 # Queue immutable source bytes, not a future camera frame. The
                 # writer owns resizing/encoding/disk I/O and its own row copy.

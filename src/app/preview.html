@@ -93,6 +93,9 @@ nav a { color: #68d6bb; }
 }
 #session-view-map h2 { margin: 0; font-size: 20px; }
 #view-map { white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.5; }
+#scene-enrollments { white-space: pre-wrap; line-height: 1.5; }
+#scene-enrollments .stored { color: #68d6bb; }
+#scene-enrollments .rejected { color: #ffb59d; }
 </style>
 <main>
 <h1>EdgeXR · Camera motion</h1>
@@ -106,6 +109,7 @@ nav a { color: #68d6bb; }
 <pre id="view-map">Waiting for scene telemetry. Start the Pi preview with --scene-memory.</pre>
 <button id="scene-enroll" type="button" disabled>Remember current view</button>
 <span id="scene-request" role="status"></span>
+<div id="scene-enrollments" role="status" aria-live="polite">No Remember requests yet.</div>
 <p id="scene-recording"></p>
 </section>
 <!-- The 320×180 image and 640×360 overlays share one visual rectangle.
@@ -238,6 +242,36 @@ function detectionLabel(box) {
 }
 
 /**
+ * Keep the last twelve server-confirmed requests visible across query updates.
+ * @param {Object[]} receipts Bounded enrollment history from the scene mailbox.
+ * @returns {void} Updates text nodes safely; recognition never implies enrollment.
+ */
+function renderEnrollments(receipts) {
+  const panel = document.getElementById('scene-enrollments');
+  panel.replaceChildren();
+  if (!receipts.length) {
+    panel.textContent = 'No Remember requests yet.';
+    return;
+  }
+  for (const receipt of receipts) {
+    const line = document.createElement('div');
+    line.className = receipt.status;
+    if (receipt.status === 'stored') {
+      line.textContent = `STORED ${receipt.label} · scene ID ${receipt.scene_id} · ${receipt.stored_views}/12 views at completion.`;
+    } else if (receipt.status === 'rejected') {
+      line.textContent = `NOT STORED ${receipt.label} · ${receipt.reason} · ${receipt.stored_views}/12 views. ` +
+        'Clear the background, hold still, and click Remember again.';
+    } else {
+      const waiting = {awaiting_fresh_frame: 'waiting for a fresh frame',
+        foreground_evidence_unavailable: 'waiting for usable detector evidence',
+        recording_backlog: 'waiting for recording capacity', checking_image: 'checking this image'};
+      line.textContent = `PENDING ${receipt.label} · ${waiting[receipt.reason] || receipt.reason}. Hold this view still.`;
+    }
+    panel.append(line);
+  }
+}
+
+/**
  * Render one snapshot while preserving the distinct image/box/gyro timing scopes.
  * @param {FrameSnapshot} data Snapshot from the existing Pi HTTP route.
  * @returns {void} Updates canvases/text only; no inference or fusion runs here.
@@ -246,6 +280,8 @@ function render(data) {
   const scene = data.scene || {status: 'off'};
   const row = scene.result;
   const recording = scene.recording;
+  renderEnrollments(scene.enrollments || []);
+  if (scene.enrollments?.length) put('scene-request', 'Request history below is confirmed by the Pi.');
   // Map bearings are gyro context, never a navigation command or visual gate.
   const viewMap = row && row.view_map;
   if (viewMap && scene.status === 'ready') {
@@ -453,11 +489,13 @@ async function poll() {
 }
 /** Request one fresh reference; no motor commands or automatic enrollment. */
 document.getElementById('scene-enroll').addEventListener('click', async () => {
+  document.getElementById('scene-enroll').disabled = true;
+  put('scene-request', 'Sending Remember request…');
   try {
     const response = await fetch('/api/scene/enroll', {method: 'POST'});
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const result = await response.json();
-    put('scene-request', `Requested ${result.pending_label}; hold the view still for the next check. Weak images are not enrolled.`);
+    put('scene-request', `PENDING ${result.pending_label}; hold this view still until STORED or NOT STORED appears below.`);
   } catch (error) {
     put('scene-request', `Enrollment failed: ${error.message}`);
   }

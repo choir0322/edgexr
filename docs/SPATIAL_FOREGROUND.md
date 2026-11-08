@@ -1,6 +1,7 @@
 # Experimental person exclusion for scene recognition
 
-Implemented opt-in; Pi quality and AP cost **not measured**. No recognition
+Implemented opt-in; [first Pi trial reviewed](SPATIAL_FOREGROUND_RESULTS_01.md),
+but recognition benefit and incremental AP cost **not validated**. No recognition
 threshold changes. This is a bounded spatial-workload integration, not object
 identity recovery, 3D mapping, a segmentation model or a proven improvement.
 
@@ -21,6 +22,9 @@ ambiguity gates remain identical. Too few/spatially concentrated features return
 unknown. Missing usable detector evidence returns unknown and leaves enrollment
 pending. Weak masked images consume the enrollment attempt without creating a
 view; inspect the reason and click Remember again with adequate background.
+The preview now retains the last 12 request outcomes as PENDING, STORED or
+NOT STORED, and recordings retain `enrollment_status`. Follow the
+[confirmed-left retest](SCENE_ENROLLMENT_RETEST.md) for the current run commands.
 
 An empty fresh detector result permits ordinary recognition; it does not prove
 no person is present. Boxes are coarse and may lag moving people/cameras even
@@ -83,8 +87,10 @@ scp -r pi@ai-fusion.local:/home/pi/projects/edgexr/recordings/spatial-foreground
 
 Person exclusion → semantic labels attached to remembered views → quality-gated
 motion/IMU context → recorded acceptance → freeze reference application. This
-does not commit to full 3D reconstruction or general re-identification. Then
-AP/FPGA work uses that reference: measure one candidate computation, implement
+does not itself implement 3D reconstruction or general re-identification.
+The user's later [roadmap extension](decisions/2026-11-08-reconstruction-before-fpga.md)
+adds a proposed bounded reconstruction milestone before FPGA implementation.
+AP/FPGA work uses the reference: measure one candidate computation, implement
 it in hardware, include transfer/driver overhead in comparison. Real FPGA work
 requires additional FPGA hardware; simulations can begin on the current Mac/Pi.
 No purchase, tools installation or hardware change is authorized by this guide.

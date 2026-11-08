@@ -1,5 +1,12 @@
 # Current live pipeline
 
+2026-11-09 enrollment feedback: `LiveScene.enroll` creates a bounded receipt;
+`take_request` marks processing; `record_enrollment` retains stored/rejected or
+pending reason. The last 12 receipts go through the existing snapshot→HTTP→UI
+route; the selected scene row records `enrollment_status` through the existing
+bounded writer. Diagram reviewed; perception inputs, shapes, rates, freshness
+and geometry thresholds unchanged. See [retest](SCENE_ENROLLMENT_RETEST.md).
+
 2026-11-08 learning/trial review: diagram reviewed; runtime flow unchanged.
 [ORB explorer](learning/orb-scene-explorer.html) replays computed feature/match
 arrays; it is not a live worker. [Foreground trial](SPATIAL_FOREGROUND_RESULTS_01.md)

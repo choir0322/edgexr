@@ -20,7 +20,10 @@ The IMU remains timestamped context, not a visual-match override.
 - [x] Add opt-in source-age-gated masking and diagnostics; defaults unchanged.
 - [x] Test coordinate conversion, stale/future/missing detections, coverage and enrollment.
 - [x] Review/update PIPELINE and learning source map.
-- [ ] Run image-backed Pi trial; no accuracy or AP improvement claim before review.
+- [x] Review first image-backed Pi trial; left enrollment rejected, benefit unvalidated.
+- [x] 2026-11-09: retain bounded enrollment receipts in telemetry/UI/evidence.
+- [x] Check receipt behavior and prepare the short confirmed-left retest.
+- [ ] Run/review confirmed-left Pi trial; no accuracy/AP improvement claim before review.
 
 ## Plan of work
 
@@ -54,11 +57,31 @@ misaligned during motion; this limitation remains explicit.
 
 ## Decision log
 
+2026-11-09: user authorized the enrollment correction and short crossing retest.
+Retain last 12 request receipts independently of scene queries. A request is
+pending/processing until one selected image yields stored/rejected; block a
+second request while processing. Rejection requires a new explicit click.
+Keep existing detector-age and recognition gates. Repeat on left after confirming
+all three stored references, including a clear-background return and unknown control.
+
 2026-11-08: person class only; furniture semantics deferred. One pair of RAM
 measurements closes the storage case with evidence limits, not a causal proof.
 Bound the spatial integration before later FPGA/AP work; no hardware purchase.
 
 ## Outcomes and retrospective
+
+2026-11-09: persistent receipts implemented in mailbox, HTTP snapshot and UI;
+the existing background evidence row includes the same outcome. Browser checked
+with fabricated localhost outcomes: pending, stored, rejected, explicit retry,
+and retained rejection after normal query updates. This is UI verification,
+not Pi recognition evidence. New tests check processing exclusivity, immutable
+snapshots, 12-entry bound, deferral reason, recorded success and failed-retry
+history. 219 unit tests pass with real OpenCV; Node preview test passes.
+Changed-file documentation/type audit and whitespace checks pass. The repository
+wide documentation audit still reports existing violations in unchanged files;
+no unrelated documentation refactor performed. PIPELINE and SCENE_MEMORY source
+map updated. Follow [confirmed-left retest](../../SCENE_ENROLLMENT_RETEST.md).
+Recognition benefit/incremental AP cost remain unmeasured pending the Pi run.
 
 2026-11-08: [first trial reviewed](../../SPATIAL_FOREGROUND_RESULTS_01.md).
 Three requests, only two references: left/View-2 rejected as weak_image after

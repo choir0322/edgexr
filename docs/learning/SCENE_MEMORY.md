@@ -1,5 +1,13 @@
 # Scene memory: current source map
 
+2026-11-09 enrollment feedback: `LiveScene.enroll` creates a pending receipt,
+`take_request` consumes one newer image, and `record_enrollment` records its
+stored/rejected outcome. The snapshot keeps the last 12 attempts independently
+of current recognition; `preview.html.renderEnrollments` displays them.
+Each recorded row also has `enrollment_status`. Neither an HTTP 202 nor a
+request label proves a reference exists. Processing blocks another request;
+weak-image rejection needs an explicit retry. See [current retest guide](../SCENE_ENROLLMENT_RETEST.md).
+
 Visual walkthrough: [ORB scene explorer](orb-scene-explorer.html), patterned
 after the Hann/FFT page but using feature geometry, not Fourier transforms.
 Actual replay data comes from `scripts/build_orb_learning_data.py`; same source

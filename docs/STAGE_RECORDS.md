@@ -1,5 +1,15 @@
 # EdgeXR technique and AP evidence register
 
+2026-11-09 — **Persistent enrollment feedback implemented; Pi retest pending.**
+`LiveScene.record_enrollment` and `preview.html.renderEnrollments` keep a
+bounded 12-attempt request history with pending/stored/rejected outcomes, label,
+reason and completion count. The scene evidence records the same receipt;
+freshness/recognition gates stay fixed. [Retest](SCENE_ENROLLMENT_RETEST.md)
+requires three confirmed stores, fixed-left crossing/recovery and an unenrolled
+control. AP question: preserve bounded telemetry/history and distinguish
+deferred work from completed enrollment. Incremental CPU/memory cost and
+recognition benefit are not Pi-measured. PIPELINE/source map updated.
+
 2026-11-08 — **Reviewed first foreground trial; recognition benefit unvalidated.**
 [Report](SPATIAL_FOREGROUND_RESULTS_01.md),
 [structured evidence](../benchmarks/results/spatial-foreground-01.json).

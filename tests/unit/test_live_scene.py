@@ -56,9 +56,56 @@ class LiveSceneTests(unittest.TestCase):
                 if available:
                     self.assertEqual(result["foreground"]["person_boxes"], 1)
                     self.assertIsNone(state.scene.pending)
+                    self.assertEqual(state.scene.snapshot(time.monotonic(), True)["enrollments"][-1]["status"], "stored")
+                    self.assertEqual(state.scene.result["enrollment_status"]["scene_id"], 1)
                 else:
                     self.assertEqual(state.scene.pending[0], label)
                     self.assertEqual(result["reason"], "foreground_evidence_unavailable")
+                    self.assertEqual(state.scene.snapshot(time.monotonic(), True)["enrollments"][-1]["reason"],
+                                     "foreground_evidence_unavailable")
+
+    def test_enrollment_receipt_survives_queries_and_explicit_retry(self) -> None:
+        """Keep a failed request visible; processing blocks overlap, retry is explicit.
+
+        Args: None.
+        Returns: None.
+        """
+        scene = LiveScene(True)
+        label = scene.enroll(10)
+        self.assertEqual(scene.take_request(11), label)
+        with self.assertRaises(ValueError):
+            scene.enroll(11.1)
+        self.assertEqual(scene.snapshot(11.1, True)["pending_label"], label)
+        row = {"enrollment_requested": label, "completed_host_s": 11.2,
+               "frame_sequence": 3, "enrollment_wait_reason": "awaiting_fresh_frame",
+               "decision": {"state": "unknown", "reason": "weak_image", "scene_id": None,
+                            "stored_views": 0, "features": 249,
+                            "foreground": {"excluded_fraction": 0.78}}}
+        rejected = scene.record_enrollment(row)
+        self.assertEqual(rejected["status"], "rejected")
+        self.assertEqual(rejected["features"], 249)
+        self.assertEqual(rejected["excluded_fraction"], 0.78)
+        self.assertIsNone(scene.snapshot(12, True)["pending_label"])
+        row["enrollment_requested"] = None
+        row["decision"]["reason"] = "empty_memory"
+        self.assertEqual(scene.record_enrollment(row), rejected)
+        # Returned snapshots cannot overwrite the retained request history.
+        scene.snapshot(12, True)["enrollments"][0]["status"] = "stored"
+        self.assertEqual(scene.enrollments[0]["status"], "rejected")
+        retry = scene.enroll(13)
+        self.assertNotEqual(retry, label)
+        scene.take_request(14)
+        row.update(enrollment_requested=retry, completed_host_s=14.1, frame_sequence=4)
+        row["decision"].update(state="enrolled", reason="explicit_reference", scene_id=1, stored_views=1)
+        self.assertEqual(scene.record_enrollment(row)["status"], "stored")
+        self.assertEqual([item["status"] for item in scene.snapshot(15, True)["enrollments"]],
+                         ["rejected", "stored"])
+        for index in range(13):
+            label = scene.enroll(20 + index * 2)
+            scene.take_request(21 + index * 2)
+            row["enrollment_requested"] = label
+            scene.record_enrollment(row)
+        self.assertEqual(len(scene.enrollments), 12)
 
     def test_recognition_continues_during_image_write(self) -> None:
         """Publish another real ORB result while the first PNG save is blocked.
@@ -254,6 +301,7 @@ class LiveSceneTests(unittest.TestCase):
             self.assertIsNone(state.scene.error)
             row = json.loads((output / "updates.jsonl").read_text().splitlines()[0])
             self.assertEqual(row["decision"]["state"], "enrolled")
+            self.assertEqual(row["enrollment_status"]["status"], "stored")
             self.assertEqual(row["frame_host_s"], now)
             self.assertEqual(row["orientation_at_frame"]["status"], "unknown")
             self.assertEqual(set(p.name for p in output.iterdir()), {"metadata.json", "updates.jsonl", "timing-final.json"})
