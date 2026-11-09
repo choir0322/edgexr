@@ -137,6 +137,7 @@ class State:
             reid_retry_seconds, reid_spatial,
         )
         self.detection_frame = None
+        self.detection_orientation = None
         self.scene = LiveScene(scene_memory)
         self.scene_frame = None
         self.full_frames = detection_enabled or scene_memory
@@ -162,11 +163,14 @@ class State:
         with self.condition:
             self.received += 1
             self.latest = (self.received, timestamp, pixels)
+            orientation = (self.imu.orientation_at(timestamp)
+                           if detection_pixels is not None and self.scene.enabled else None)
             if detection_pixels is not None and self.detector.enabled:
                 self.detection_frame = (self.received, timestamp, detection_pixels)
+                self.detection_orientation = orientation
             if detection_pixels is not None and self.scene.enabled:
                 self.scene_frame = (self.received, timestamp, detection_pixels,
-                                    self.imu.orientation_at(timestamp))
+                                    orientation)
             self.capture_times.append(timestamp)
             self.condition.notify_all()
 
@@ -653,7 +657,15 @@ def make_handler(state: State) -> type[BaseHTTPRequestHandler]:
             if path == "/":
                 content, kind = page, "text/html; charset=utf-8"
             elif path == "/api/frame":
-                content = json.dumps(state.snapshot(), allow_nan=False).encode()
+                snapshot = state.snapshot()
+                # Scene evidence has its own exact source and is absent from the
+                # metrics endpoint and JSONL recording unless images are requested.
+                with state.scene.lock:
+                    if (snapshot["scene"]["status"] == "ready" and state.scene.result and
+                            snapshot["scene"]["result"]["frame_sequence"] ==
+                            state.scene.result["frame_sequence"]):
+                        snapshot["scene"]["evidence"] = state.scene.evidence
+                content = json.dumps(snapshot, allow_nan=False).encode()
                 kind = "application/json"
             elif path == "/api/telemetry":
                 snapshot = state.snapshot()

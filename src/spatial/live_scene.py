@@ -14,6 +14,10 @@ from spatial.scene_memory import SceneMemory
 from spatial.scene_recorder import SceneRecorder
 from spatial.view_map import ViewMap
 from spatial.foreground import person_mask
+from spatial.scene_evidence import render_evidence
+
+ENROLL_WAIT_S = 8.0
+PAIRED_MAX_AGE_S = 1.5
 
 
 class LiveScene:
@@ -35,6 +39,21 @@ class LiveScene:
         self.result: dict | None = None
         self.error: str | None = None
         self.recorder: SceneRecorder | None = None
+        self.evidence: dict | None = None
+
+    def expire_request(self, now: float) -> None:
+        """End a waiting request even if no camera or detector frames arrive.
+
+        Args:
+            now (float): Host monotonic seconds.
+        Returns:
+            None: A new click is required after timeout; no automatic late store.
+        """
+        with self.lock:
+            if self.pending and now - self.pending[1] >= ENROLL_WAIT_S:
+                self.pending = None
+                self.enrollments[-1].update(status="expired", reason="enrollment_wait_timeout",
+                                            completed_host_s=now)
 
     def enroll(self, now: float) -> str:
         """Request one reference from the next fresh frame after this click.
@@ -105,6 +124,7 @@ class LiveScene:
         Returns:
             dict: Independently aged scene status and last decision.
         """
+        self.expire_request(now)
         with self.lock:
             result = copy.deepcopy(self.result)
             age = (now - result["frame_host_s"]) * 1000 if result else None
@@ -116,7 +136,7 @@ class LiveScene:
             return {"status": status, "error": self.error, "source_age_ms": age,
                     "pending_label": busy_label, "enrollments": copy.deepcopy(self.enrollments),
                     "recording": self.recorder.snapshot() if self.recorder else None,
-                    "target_hz": 1, "result": result}
+                    "target_hz": 1, "enrollment_wait_seconds": ENROLL_WAIT_S, "result": result}
 
 
 def scene_latest(state: Any, cv: Any, output: Path | None = None,
@@ -150,8 +170,11 @@ def scene_latest(state: Any, cv: Any, output: Path | None = None,
                         "imu_poll_sleep_ms": state.imu_sleep_ms,
                         "camera_axis_basis": state.imu.camera_axis_basis,
                         "detection_enabled": state.detector.enabled,
-                        "foreground_policy": "person_boxes_v1" if exclude_people else "off",
-                        "foreground_max_source_lag_s": 0.5 if exclude_people else None,
+                        "foreground_policy": "paired_person_boxes_v2" if exclude_people else "off",
+                        "foreground_max_source_lag_s": 0.0 if exclude_people else None,
+                        "paired_max_age_s": PAIRED_MAX_AGE_S,
+                        "enrollment_wait_seconds": ENROLL_WAIT_S,
+                        "enrollment_policy": "clear_background_required",
                         "input_shape": "1280x720 grayscale; host receipts, not exposure time",
                         "save_images": save_images,
                         "timing_schema": 2,
@@ -164,24 +187,35 @@ def scene_latest(state: Any, cv: Any, output: Path | None = None,
             recorder = SceneRecorder(output, cv, metadata)
             with state.scene.lock:
                 state.scene.recorder = recorder
-        seen = 0
+        seen = None
         while not state.stop.is_set():
+            state.scene.expire_request(time.monotonic())
             with state.condition:
                 frame = state.scene_frame
-            if frame is None or frame[0] == seen:
+            detection = None
+            if exclude_people:
+                package = state.detector.paired_scene()
+                if package is not None:
+                    source, orientation, detection = package
+                    frame = (*source, orientation or {"status": "unknown", "reason": "no_source_context"})
+            key = (frame[0], detection is not None) if frame is not None else None
+            if frame is None or key == seen:
                 state.stop.wait(0.05)
                 continue
             sequence, captured, pixels, orientation = frame
-            seen = sequence
-            if time.monotonic() - captured > 0.5:
+            seen = key
+            if time.monotonic() - captured > (PAIRED_MAX_AGE_S if exclude_people else 0.5):
+                state.stop.wait(0.05)
                 continue
             started = time.monotonic()
             thread_started = time.thread_time()
             process_started = time.process_time()
             # Leave explicit enrollment pending if its evidence cannot be admitted.
             # Only this worker produces records: capacity cannot shrink meanwhile.
-            mask, foreground = (person_mask(state.detector.scene_evidence(), captured)
+            mask, foreground = (person_mask(detection, captured)
                                 if exclude_people else (None, {"status": "off"}))
+            if exclude_people:
+                foreground["policy"] = "paired_person_boxes_v2"
             usable = not exclude_people or mask is not None
             recording_available = recorder is None or recorder.can_enroll()
             label = (state.scene.take_request(captured)
@@ -194,6 +228,9 @@ def scene_latest(state: Any, cv: Any, output: Path | None = None,
                             "label": None, "reason": "foreground_evidence_unavailable",
                             "features": 0, "candidates": [], "stored_views": len(memory.views)}
             decision["foreground"] = foreground
+            evidence_started = time.monotonic()
+            evidence = render_evidence(cv, memory, gray, decision)
+            evidence_ms = (time.monotonic() - evidence_started) * 1000
             if decision["state"] == "enrolled":
                 contexts[decision["scene_id"]] = orientation
                 contexts.pop(decision.get("evicted_id"), None)
@@ -201,6 +238,7 @@ def scene_latest(state: Any, cv: Any, output: Path | None = None,
                    "completed_host_s": time.monotonic(),
                    "compute_ms": (time.monotonic() - started) * 1000,
                    "compute_started_host_s": started,
+                   "evidence_encode_ms": evidence_ms,
                    "scene_thread_cpu_ms": (time.thread_time() - thread_started) * 1000,
                    "process_cpu_during_compute_ms": (time.process_time() - process_started) * 1000,
                    "enrollment_requested": label, "decision": decision,
@@ -227,14 +265,28 @@ def scene_latest(state: Any, cv: Any, output: Path | None = None,
                 row["recording_accepted"] = recorder.submit(row, pixels if save_images else None)
             with state.scene.lock:
                 state.scene.result = row
+                state.scene.evidence = evidence
             state.stop.wait(max(0, 1 - (time.monotonic() - started)))
     except Exception as error:
         with state.scene.lock:
             state.scene.error = str(error)
+            state.scene.pending = None
+            if state.scene.enrollments and state.scene.enrollments[-1]["status"] in ("pending", "processing"):
+                state.scene.enrollments[-1].update(status="expired", reason="scene_worker_failed",
+                                                   completed_host_s=time.monotonic())
     finally:
+        # A stopped session cannot leave a request looking active in saved evidence.
+        state.scene.expire_request(time.monotonic())
+        with state.scene.lock:
+            if state.scene.pending:
+                state.scene.pending = None
+                state.scene.enrollments[-1].update(status="expired", reason="session_ended",
+                                                   completed_host_s=time.monotonic())
+            receipts = copy.deepcopy(state.scene.enrollments)
         if recorder is not None:
             status = recorder.close({"imu_poll_timing": state.imu.timing_snapshot(),
-                                     "scene_error": state.scene.error})
+                                     "scene_error": state.scene.error,
+                                     "enrollments": receipts})
             print(f"Scene recording: {status['status']}; {status['written']} written, "
                   f"{status['dropped']} dropped, {status['accepted_not_written']} pending/failed. "
                   f"{status['error'] or ''}", flush=True)

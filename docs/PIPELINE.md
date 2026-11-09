@@ -1,5 +1,13 @@
 # Current live pipeline
 
+2026-11-09 paired/partial repair supersedes the original foreground path.
+`DetectionState.paired_scene` retains one completed source image, its boxes and
+capture-associated orientation. Masked queries use that exact image (selection
+age ≤1.5s), not a newer camera image. Remember waits at most 8s for a post-click
+source/recording slot, then expires; clear enrollment rejects any nonempty person
+mask. Recognition uses visible-area support with absolute floors.
+[Current protocol and limits](SCENE_OCCLUSION_RETEST.md).
+
 2026-11-09 enrollment feedback: `LiveScene.enroll` creates a bounded receipt;
 `take_request` marks processing; `record_enrollment` retains stored/rejected or
 pending reason. The last 12 receipts go through the existing snapshot→HTTP→UI
@@ -16,14 +24,17 @@ is a roadmap decision, NOT an implemented depth/position branch.
 2026-11-08: opt-in [person exclusion](SPATIAL_FOREGROUND.md) adds this branch:
 
 ```text
-720p source → existing detector → atomic boxes + source receipt time
-                                          ↓ (lag 0–500 ms, never future)
-720p scene source → 640×360 ORB ← person exclusion mask
-                              → unchanged geometry/ambiguity checks → scene/map
+720p source + preceding IMU context → detector → latest completed package
+                                               (same pixels + boxes + context)
+                                                     ↓ at target 1 Hz
+640×360 ORB ← exact-source person mask → clear enrollment OR partial query
+    → geometry/ambiguity checks + visible/absolute support → scene/map
+    → source-matched JPEG evidence (browser only; metrics remain image-free)
 ```
 
 Only `--scene-exclude-people --scene-memory --detect` enables this path.
-Missing/stale detector evidence yields unknown and defers enrollment. Small
+Missing/stale detector evidence yields unavailable/stale and defers enrollment
+only until its finite waiting deadline. Small
 remaining support yields unknown. IMU remains context; no fusion/pose override.
 Source images stay unchanged. Scene diagnostics and browser include mask/source
 age evidence. Target scene 1 Hz/detector 2 Hz remain, achieved rates unmeasured.
@@ -80,14 +91,18 @@ flowchart LR
     C --> M["320x180 motion worker: unchanged estimator"]
     I["IMU quaternion history: at most 256 samples"] -->|preceding sample within 200 ms| C
     C --> S["One latest full frame + orientation context"]
-    S --> W["Scene worker: target 1 Hz; resize 640x360; unchanged ORB/geometry rules"]
+    S -->|unmasked mode| W["Scene worker: target 1 Hz; resize 640x360; clear enrollment / partial query"]
+    C --> D["Detector source + context → inference → one completed package"]
+    D -->|person exclusion: exact image + boxes + orientation| W
     B["Browser explicit enrollment POST"] --> W
     W --> V["ViewMap: ≤12 enrollment nodes; ≤132 observed label-change edges; gyro direction context"]
     V --> R["Known / unknown / enrolled unchanged; map snapshot + update time"]
     R --> T["State snapshot → browser + telemetry; stale after 2 s"]
     R --> Q["Nonblocking evidence FIFO: 4 waiting + 1 active; counted query drops"]
     Q --> L["Recording worker: optional JSONL + opt-in PNGs; reference-before-query order"]
-    Q -->|full: leave enrollment pending| B
+    Q -->|full: defer until 8s enrollment deadline| B
+    W --> E["Bounded reference/query JPEG + verified dots; /api/frame only"]
+    E --> T
 ```
 
 This association uses host observation times, not exposure synchronization.

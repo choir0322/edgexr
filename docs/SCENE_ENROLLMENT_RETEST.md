@@ -1,5 +1,9 @@
 # Confirmed enrollment and short left-view crossing retest
 
+Superseded on 2026-11-10 by [paired-source partial-background retest](SCENE_OCCLUSION_RETEST.md).
+The historical unchanged-policy description below applies to the receipt-only
+version, not the current paired/partial implementation.
+
 2026-11-09. This closes the evidence gap in
 [the first trial](SPATIAL_FOREGROUND_RESULTS_01.md): the previous click reached
 the worker, but View-2 was rejected as weak_image. This is not evidence of a

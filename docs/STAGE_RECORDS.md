@@ -1,5 +1,17 @@
 # EdgeXR technique and AP evidence register
 
+2026-11-10 — **Paired partial-background recognition implemented; Pi trial pending.**
+[Protocol](SCENE_OCCLUSION_RETEST.md), [plan](exec-plans/active/occlusion-aware-scene.md),
+[source map](learning/SCENE_MEMORY.md). Detector retains one exact source/boxes/
+orientation package; Remember has an 8s waiting deadline and clear-reference
+check. Queries use visible-background geometry with absolute evidence floors.
+Source-matched reference/query overlay shows capped verified points, not newer
+live pixels. Hardware-free suite and browser fixture checked; live quality and
+incremental AP CPU/RSS/transport costs not measured. AP question: bounded
+asynchronous handoff avoids freshness starvation at the cost of source age,
+reference pixels and diagnostic encoding. `evidence_encode_ms` records that work;
+PIPELINE updated. No depth, pose correction or general accuracy claim.
+
 2026-11-09 — **Foreground regression diagnosed; repair not implemented.**
 [Diagnosis](SPATIAL_FOREGROUND_REGRESSION.md) and
 [structured counts](../benchmarks/results/foreground-regression-2026-11-09.json).

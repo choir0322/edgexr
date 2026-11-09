@@ -28,11 +28,14 @@ class MemoryConfig:
     min_cells: int = 4
     reprojection_pixels: float = 3.0
     ambiguity_ratio: float = 0.85
+    partial_min_visible: float = 0.25
+    partial_min_absolute_coverage: float = 0.04
+    partial_min_cells: int = 3
 
 
 @dataclass
 class View:
-    """One explicit reference: bounded ORB coordinates/descriptors, no raw image."""
+    """One reference: bounded ORB features plus a canonical diagnostic grayscale image."""
 
     scene_id: int
     label: str
@@ -40,6 +43,34 @@ class View:
     last_used_s: float
     points: np.ndarray
     descriptors: np.ndarray
+    image: np.ndarray | None = None
+
+
+def visible_support(cv: Any, points: np.ndarray, allowed: np.ndarray,
+                    config: MemoryConfig) -> tuple[bool, dict]:
+    """Assess partial support without counting masked holes as evidence.
+
+    Args:
+        cv (Any): OpenCV module.
+        points (np.ndarray): Inlier or feature coordinates in canonical pixels.
+        allowed (np.ndarray): Canonical uint8 visible-background mask.
+        config (MemoryConfig): Relative and absolute experimental floors.
+    Returns:
+        tuple[bool, dict]: Eligibility and area/cell diagnostics, not probability.
+    """
+    visible = allowed != 0
+    fraction = float(visible.mean())
+    hull = np.zeros_like(allowed)
+    if len(points) >= 3:
+        cv.fillConvexPoly(hull, cv.convexHull(points.astype(np.float32)).astype(np.int32), 255)
+    area = float(np.count_nonzero((hull != 0) & visible)) / allowed.size
+    _, cells = spatial_support(cv, points)
+    relative = area / fraction if fraction else 0.0
+    passed = (fraction >= config.partial_min_visible and
+              area >= config.partial_min_absolute_coverage and
+              relative >= config.min_coverage and cells >= config.partial_min_cells)
+    return passed, {"visible_fraction": fraction, "supported_frame_fraction": area,
+                    "supported_visible_fraction": relative, "cells": cells}
 
 
 def prepare_gray(cv: Any, image: np.ndarray) -> np.ndarray:
@@ -77,7 +108,8 @@ def spatial_support(cv: Any, points: np.ndarray) -> tuple[float, int]:
 
 
 def verify_view(cv: Any, reference: View, points: np.ndarray,
-                descriptors: np.ndarray, config: MemoryConfig) -> dict:
+                descriptors: np.ndarray, config: MemoryConfig,
+                feature_mask: np.ndarray | None = None) -> dict:
     """Compare a query to one reference using descriptor and geometric evidence.
 
     Args:
@@ -86,6 +118,7 @@ def verify_view(cv: Any, reference: View, points: np.ndarray,
         points (np.ndarray): Query feature positions, N×2 float32.
         descriptors (np.ndarray): Query ORB descriptors, N×32 uint8.
         config (MemoryConfig): Experimental matching/geometry thresholds.
+        feature_mask (np.ndarray | None): Visible query background for partial support.
     Returns:
         dict: Candidate diagnostics, accepted flag and rejection reason; no confidence probability.
     """
@@ -134,7 +167,8 @@ def verify_view(cv: Any, reference: View, points: np.ndarray,
     target_coverage, target_cells = spatial_support(cv, target[inliers])
     result.update(reference_coverage=source_coverage, query_coverage=target_coverage,
                   reference_cells=source_cells, query_cells=target_cells)
-    if (min(source_coverage, target_coverage) < config.min_coverage or
+    partial = feature_mask is not None and np.any(feature_mask == 0)
+    if not partial and (min(source_coverage, target_coverage) < config.min_coverage or
             min(source_cells, target_cells) < config.min_cells):
         result["reason"] = "concentrated_support"
         return result
@@ -148,7 +182,26 @@ def verify_view(cv: Any, reference: View, points: np.ndarray,
     area = float(cv.contourArea(footprint, oriented=True)) / (WIDTH * HEIGHT)
     if (not np.isfinite(footprint).all() or not cv.isContourConvex(footprint) or
             not 0.25 <= area <= 4.0):
+        result["reason"] = "invalid_geometry"
         return result
+    if partial:
+        # Project query visibility back to reference coordinates. Unknown/outside
+        # pixels stay zero; never count the hidden part of an inlier hull as support.
+        reference_mask = cv.warpPerspective(feature_mask, homography, (WIDTH, HEIGHT),
+                                            flags=cv.INTER_NEAREST | cv.WARP_INVERSE_MAP,
+                                            borderMode=cv.BORDER_CONSTANT, borderValue=0)
+        source_ok, source_support = visible_support(cv, source[inliers], reference_mask, config)
+        target_ok, target_support = visible_support(cv, target[inliers], feature_mask, config)
+        result.update(reference_visible_support=source_support, query_visible_support=target_support)
+        if not source_ok or not target_ok:
+            result["reason"] = "insufficient_visible_support"
+            return result
+    # Bound display geometry independently of matching: all inliers contribute to
+    # the decision, at most 128 evenly selected pairs go to the diagnostic overlay.
+    indices = np.flatnonzero(inliers)
+    selected = indices[np.linspace(0, len(indices) - 1, min(128, len(indices)), dtype=int)]
+    result["evidence_pairs"] = {"reference_xy": source[selected].tolist(),
+                                "query_xy": target[selected].tolist()}
     result.update(accepted=True, reason="geometry_verified", footprint_area_ratio=area)
     return result
 
@@ -175,6 +228,9 @@ class SceneMemory:
                 not 0 < c.ratio < 1 or not 0 < c.ambiguity_ratio <= 1 or
                 not 0 < c.min_inlier_ratio <= 1 or not 0 < c.min_coverage <= 1 or
                 not 1 <= c.min_cells <= 9 or not 0 < c.max_hamming <= 256 or
+                not 0 < c.partial_min_visible <= 1 or
+                not 0 < c.partial_min_absolute_coverage <= 1 or
+                not 1 <= c.partial_min_cells <= 9 or
                 not math.isfinite(c.reprojection_pixels) or c.reprojection_pixels <= 0):
             raise ValueError("Invalid scene-memory limits or thresholds")
         self.orb = cv.ORB_create(nfeatures=c.max_features)
@@ -192,7 +248,7 @@ class SceneMemory:
             timestamp_s (float): Finite nonnegative video time, strictly increasing.
             enroll_label (str | None): Explicit unique reference name; None queries memory.
             feature_mask (np.ndarray | None): Optional 360×640 uint8 mask; zero excludes
-                foreground. Uses canonical pixels, for enrollment and queries alike.
+                foreground. Enrollment requires no excluded pixels; queries may be partial.
         Returns:
             dict: enrolled/known/unknown state, scene ID, reasons and bounded diagnostics.
         """
@@ -206,6 +262,12 @@ class SceneMemory:
         if feature_mask is not None and (feature_mask.shape != image.shape or
                 feature_mask.dtype != np.uint8):
             raise ValueError("Feature mask must be canonical 360x640 uint8")
+        partial = feature_mask is not None and np.any(feature_mask == 0)
+        if enroll_label is not None and partial:
+            self.last_time = timestamp_s
+            return {"timestamp_s": timestamp_s, "state": "unknown", "scene_id": None,
+                    "label": None, "reason": "clear_background_required", "features": 0,
+                    "candidates": [], "stored_views": len(self.views)}
         keypoints, descriptors = self.orb.detectAndCompute(image, feature_mask)
         # ORB's mask excludes centers. Also discard descriptor neighborhoods that
         # overlap excluded pixels; size is scale-dependent, with conservative padding.
@@ -226,8 +288,12 @@ class SceneMemory:
         result = {"timestamp_s": timestamp_s, "state": "unknown", "scene_id": None,
                   "label": None, "reason": "weak_image", "features": len(points),
                   "candidates": [], "stored_views": len(self.views)}
+        support_ok = coverage >= self.config.min_coverage and cells >= self.config.min_cells
+        if partial:
+            support_ok, result["visible_support"] = visible_support(self.cv, points, feature_mask, self.config)
+            result["reason"] = "insufficient_visible_background"
         if (descriptors is None or len(points) < self.config.min_features or
-                coverage < self.config.min_coverage or cells < self.config.min_cells):
+                not support_ok):
             return result
 
         if enroll_label is not None:
@@ -236,7 +302,7 @@ class SceneMemory:
                 oldest = min(range(len(self.views)), key=self._recency)
                 evicted = self.views.pop(oldest).scene_id
             view = View(self.next_id, enroll_label, timestamp_s, timestamp_s,
-                        points.copy(), descriptors.copy())
+                        points.copy(), descriptors.copy(), image.copy())
             self.views.append(view)
             self.next_id += 1
             result.update(state="enrolled", scene_id=view.scene_id, label=view.label,
@@ -244,7 +310,7 @@ class SceneMemory:
                           stored_views=len(self.views))
             return result
 
-        candidates = [verify_view(self.cv, view, points, descriptors, self.config)
+        candidates = [verify_view(self.cv, view, points, descriptors, self.config, feature_mask)
                       for view in self.views]
         result["candidates"] = candidates
         accepted = sorted((candidate for candidate in candidates if candidate["accepted"]),
@@ -262,6 +328,7 @@ class SceneMemory:
                 view.last_used_s = timestamp_s
         result.update(state="known", scene_id=winner["scene_id"], label=winner["label"],
                       reason="geometry_verified")
+        result["evidence_pairs"] = winner["evidence_pairs"]
         return result
 
     def _recency(self, index: int) -> float:

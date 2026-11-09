@@ -23,7 +23,7 @@ function element(id) {
   if (id === "boxes") return {getContext:() => boxctx};
   if (id === "overlay") return {getContext:() => arrow};
   if (!elements.has(id)) elements.set(id, {textContent:"", className:"", children:[],
-    addEventListener(){}, replaceChildren(){this.children=[];this.textContent="";},
+    addEventListener(){}, removeAttribute(name){delete this[name];}, replaceChildren(){this.children=[];this.textContent="";},
     append(child){this.children.push(child);}});
   return elements.get(id);
 }
@@ -76,5 +76,20 @@ assert(history.children[2].textContent.includes("waiting for usable detector evi
 context.render({...base,scene:{status:"stale",enrollments:receipts}});
 assert.strictEqual(history.children.length,3);
 assert.strictEqual(element("scene-enroll").disabled,true);
+
+// Source evidence is separate from the live canvas and disappears when stale.
+const sceneEvidence = {status:"ready", source_age_ms:600,
+  result:{frame_sequence:40,compute_ms:12,orientation_at_frame:{status:"unknown"},
+    decision:{state:"known",label:"View-1",reason:"geometry_verified",stored_views:1}},
+  evidence:{image_url:"data:image/jpeg;base64,test",reference_label:"View-1",points_shown:24}};
+context.render({...base,scene:sceneEvidence});
+assert.strictEqual(element("scene-evidence").hidden,false);
+assert(element("scene-evidence-caption").textContent.includes("frame 40"));
+context.render({...base,scene:{...sceneEvidence,status:"stale"}});
+assert.strictEqual(element("scene-evidence").hidden,true);
+assert.strictEqual(element("scene-evidence-image").src,undefined);
+context.render({...base,scene:{status:"starting",enrollments:[
+  {label:"View-4",status:"expired",reason:"enrollment_wait_timeout"}]}});
+assert(element("scene-enrollments").children[0].textContent.includes("NOT STORED View-4"));
 
 console.log("live preview ID labels and stale/error gates: passed");

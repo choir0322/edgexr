@@ -55,10 +55,12 @@ class DetectionState:
         self.result = None
         self.error = None
         self.finished = deque(maxlen=20)
+        self.scene_package = None
 
     def publish(
         self, frame: Frame, boxes: list[Record], cost_ms: float, finished: float,
         tracking_stats: Record | None = None,
+        orientation: Record | None = None,
     ) -> None:
         """Store detections together with their source frame time and elapsed compute.
 
@@ -73,6 +75,8 @@ class DetectionState:
                 measurement.
             tracking_stats (Record | None): Counts from the sequential tracker
                 update; no inference time is added to cost_ms.
+            orientation (Record | None): Preceding IMU context captured with this
+                source, not the newest orientation after inference.
 
         Returns:
             None: replaces older detections and records a completion for the rate estimate.
@@ -85,6 +89,23 @@ class DetectionState:
                 tracking_stats=dict(tracking_stats or {}),
             )
             self.finished.append(finished)
+            # Immutable source bytes survive newer camera frames. This single slot
+            # replaces older packages; images never enter detector JSON telemetry.
+            self.scene_package = (frame, orientation, self.result)
+
+    def paired_scene(self) -> tuple | None:
+        """Read one completed source/boxes/context package atomically.
+
+        Args: None.
+        Returns:
+            tuple | None: Frame, copied orientation and copied detection evidence.
+        """
+        import copy
+        with self.lock:
+            if not self.enabled or self.error or self.scene_package is None:
+                return None
+            frame, orientation, result = self.scene_package
+            return frame, copy.deepcopy(orientation), copy.deepcopy(result)
 
     def fail(self, error: Exception | str) -> None:
         """Isolate a detector failure from camera and IMU workers.
@@ -306,6 +327,7 @@ def detect_latest(
                 if state.stop.is_set() or state.error:
                     break
                 frame = state.detection_frame
+                orientation = getattr(state, "detection_orientation", None)
             if frame is None or frame[0] == previous_seq:
                 continue
 
@@ -335,6 +357,7 @@ def detect_latest(
             state.detector.publish(
                 frame, identified, (finished - started) * 1000, finished,
                 tracker.last_stats,
+                orientation=orientation,
             )
             if recorder is not None:
                 recorder.record(frame, identified, tracker.last_stats, finished)

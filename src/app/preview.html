@@ -111,6 +111,10 @@ nav a { color: #68d6bb; }
 <span id="scene-request" role="status"></span>
 <div id="scene-enrollments" role="status" aria-live="polite">No Remember requests yet.</div>
 <p id="scene-recording"></p>
+<figure id="scene-evidence" hidden>
+<img id="scene-evidence-image" alt="Remembered reference on left and analyzed query on right, with verified matching features" style="width:100%;max-width:1280px">
+<figcaption id="scene-evidence-caption"></figcaption>
+</figure>
 </section>
 <!-- The 320×180 image and 640×360 overlays share one visual rectangle.
      Boxes refer to older source frames; the arrow is image shift, not a track. -->
@@ -258,6 +262,8 @@ function renderEnrollments(receipts) {
     line.className = receipt.status;
     if (receipt.status === 'stored') {
       line.textContent = `STORED ${receipt.label} · scene ID ${receipt.scene_id} · ${receipt.stored_views}/12 views at completion.`;
+    } else if (receipt.status === 'expired') {
+      line.textContent = `NOT STORED ${receipt.label} · ${receipt.reason}. Check camera/detector and click Remember again.`;
     } else if (receipt.status === 'rejected') {
       line.textContent = `NOT STORED ${receipt.label} · ${receipt.reason} · ${receipt.stored_views}/12 views. ` +
         'Clear the background, hold still, and click Remember again.';
@@ -280,6 +286,21 @@ function render(data) {
   const scene = data.scene || {status: 'off'};
   const row = scene.result;
   const recording = scene.recording;
+  // Evidence is a separately aged, source-matched image; never draw these points
+  // on the newer live preview. Clear the previous image on unavailable snapshots.
+  const evidencePanel = document.getElementById('scene-evidence');
+  const evidenceImage = document.getElementById('scene-evidence-image');
+  evidencePanel.hidden = scene.status !== 'ready' || !scene.evidence;
+  if (!evidencePanel.hidden) {
+    evidenceImage.src = scene.evidence.image_url;
+    put('scene-evidence-caption', `Analyzed frame ${row.frame_sequence} · age on Pi ${scene.source_age_ms.toFixed(0)} ms (excludes network delay). ` +
+      `Left: ${scene.evidence.reference_label || 'no accepted reference'}; right: exact query. ` +
+      `Amber: excluded person rectangles. Green: ${scene.evidence.points_shown} geometrically verified feature pairs (at most 128 shown), not verified whole regions. ` +
+      `${row.decision.reason}.`);
+  } else {
+    evidenceImage.removeAttribute('src');
+    put('scene-evidence-caption', 'No current geometric evidence.');
+  }
   renderEnrollments(scene.enrollments || []);
   if (scene.enrollments?.length) put('scene-request', 'Request history below is confirmed by the Pi.');
   // Map bearings are gyro context, never a navigation command or visual gate.
@@ -474,6 +495,9 @@ async function poll() {
     }
     put('imu-status', 'Disconnected — IMU readings are unavailable.');
     put('scene-status', 'Disconnected — scene recognition is unavailable.');
+    document.getElementById('scene-evidence').hidden = true;
+    document.getElementById('scene-evidence-image').removeAttribute('src');
+    put('scene-evidence-caption', 'Disconnected — no current geometric evidence.');
     put('scene-recording', 'Recording status unavailable — check the Pi terminal and final record.');
     put('view-map', 'Disconnected — no current view-map observation.');
     document.getElementById('scene-enroll').disabled = true;

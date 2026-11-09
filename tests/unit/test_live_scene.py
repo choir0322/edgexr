@@ -47,22 +47,24 @@ class LiveSceneTests(unittest.TestCase):
                     deadline = time.monotonic() + 3
                     while state.scene.result is None and not state.scene.error and time.monotonic() < deadline:
                         time.sleep(0.01)
+                    running_snapshot = state.scene.snapshot(time.monotonic(), True)
                 finally:
                     state.stop.set()
                     worker.join(5)
                 self.assertIsNone(state.scene.error)
                 result = state.scene.result["decision"]
-                self.assertEqual(result["state"], "enrolled" if available else "unknown")
+                self.assertEqual(result["state"], "unknown")
                 if available:
                     self.assertEqual(result["foreground"]["person_boxes"], 1)
                     self.assertIsNone(state.scene.pending)
-                    self.assertEqual(state.scene.snapshot(time.monotonic(), True)["enrollments"][-1]["status"], "stored")
-                    self.assertEqual(state.scene.result["enrollment_status"]["scene_id"], 1)
+                    self.assertEqual(state.scene.snapshot(time.monotonic(), True)["enrollments"][-1]["status"], "rejected")
+                    self.assertEqual(result["reason"], "clear_background_required")
                 else:
-                    self.assertEqual(state.scene.pending[0], label)
+                    self.assertEqual(running_snapshot["pending_label"], label)
                     self.assertEqual(result["reason"], "foreground_evidence_unavailable")
-                    self.assertEqual(state.scene.snapshot(time.monotonic(), True)["enrollments"][-1]["reason"],
+                    self.assertEqual(running_snapshot["enrollments"][-1]["reason"],
                                      "foreground_evidence_unavailable")
+                    self.assertEqual(state.scene.enrollments[-1]["reason"], "session_ended")
 
     def test_enrollment_receipt_survives_queries_and_explicit_retry(self) -> None:
         """Keep a failed request visible; processing blocks overlap, retry is explicit.

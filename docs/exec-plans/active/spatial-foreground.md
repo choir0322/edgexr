@@ -70,6 +70,12 @@ Bound the spatial integration before later FPGA/AP work; no hardware purchase.
 
 ## Outcomes and retrospective
 
+2026-11-10: the approved paired/partial repair is implemented under
+[occlusion-aware scene plan](occlusion-aware-scene.md). It supersedes v1's
+independent-source freshness policy and full-frame-only support tests. Use the
+[new trial](../../SCENE_OCCLUSION_RETEST.md), not another receipt-only retest.
+Hardware acceptance remains pending; no general recognition benefit claim.
+
 2026-11-09: [regression diagnosis](../../SPATIAL_FOREGROUND_REGRESSION.md)
 reproduces periodic freshness-gate starvation and masking-related loss of
 support. Receipt UI alone is insufficient. Latest failed Pi run not available;

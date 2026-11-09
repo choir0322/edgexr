@@ -1,5 +1,11 @@
 # Experimental person exclusion for scene recognition
 
+**Current 2026-11-10 implementation:** use the
+[paired-source partial-background guide](SCENE_OCCLUSION_RETEST.md). It adds
+exact detector/image/context pairing, 8-second enrollment waiting, clear-reference
+enrollment, partial-support gates and source-matched visual evidence. The v1
+description/commands below are historical, retained for interpreting older runs.
+
 Implemented opt-in; [first Pi trial reviewed](SPATIAL_FOREGROUND_RESULTS_01.md),
 but recognition benefit and incremental AP cost **not validated**. No recognition
 threshold changes. This is a bounded spatial-workload integration, not object

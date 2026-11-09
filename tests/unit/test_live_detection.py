@@ -95,10 +95,10 @@ class LiveDetectionTests(unittest.TestCase):
 
         def publish(frame: tuple[int, float, bytes], boxes: list[Record],
                     cost_ms: float, finished: float,
-                    tracking_stats: Record | None = None) -> None:
+                    tracking_stats: Record | None = None, orientation: Record | None = None) -> None:
             """Record the published IDs and retain the real status update."""
             published.append(boxes)
-            real_publish(frame, boxes, cost_ms, finished, tracking_stats)
+            real_publish(frame, boxes, cost_ms, finished, tracking_stats, orientation)
 
         state.detector.publish = publish
         recorded: list[tuple[int, list[Record], Record]] = []
@@ -479,7 +479,8 @@ class LiveDetectionTests(unittest.TestCase):
 
         def record_publish(
             frame: tuple[int, float, bytes], boxes: list[Record],
-            cost_ms: float, finished: float, tracking_stats: Record | None = None
+            cost_ms: float, finished: float, tracking_stats: Record | None = None,
+            orientation: Record | None = None,
         ) -> None:
             """Observe ID-bearing payloads at the real publication boundary.
 
@@ -489,12 +490,13 @@ class LiveDetectionTests(unittest.TestCase):
                 cost_ms (float): Inference milliseconds.
                 finished (float): Synthetic monotonic completion seconds.
                 tracking_stats (Record | None): Tracker's latest coverage counts.
+                orientation (Record | None): Captured source context.
 
             Returns:
                 None: Records the payload and calls the real publisher.
             """
             published.append(boxes)
-            original_publish(frame, boxes, cost_ms, finished, tracking_stats)
+            original_publish(frame, boxes, cost_ms, finished, tracking_stats, orientation)
 
         state.detector.publish = record_publish
         state.publish_frame(b"", clock[0], b"frame1")

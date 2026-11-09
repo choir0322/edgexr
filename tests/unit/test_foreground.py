@@ -85,11 +85,11 @@ class ForegroundTests(unittest.TestCase):
         mask = np.full_like(image, 255)
         mask[140:220, 280:360] = 0
         memory = SceneMemory(cv=cv)
-        result = memory.process(image, 0, "background", feature_mask=mask)
+        rejected = memory.process(image, 0, "background", feature_mask=mask)
+        self.assertEqual(rejected["reason"], "clear_background_required")
+        result = memory.process(image, 0.1, "background")
         self.assertEqual(result["state"], "enrolled")
         self.assertTrue(np.array_equal(image, original))
-        points = memory.views[0].points
-        self.assertFalse(any(280 <= x < 360 and 140 <= y < 220 for x, y in points))
         self.assertEqual(memory.process(image, 1, feature_mask=mask)["state"], "known")
         self.assertEqual(memory.process(image, 2, feature_mask=np.zeros_like(mask))["state"], "unknown")
         with self.assertRaises(ValueError):

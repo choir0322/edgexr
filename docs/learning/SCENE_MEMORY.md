@@ -1,5 +1,21 @@
 # Scene memory: current source map
 
+2026-11-09 current repair: `DetectionState.paired_scene` returns a single exact
+source/boxes/orientation package. `scene_latest` selects it at target 1Hz with
+age ≤1.5s; unmasked mode still selects the latest camera frame. Requests expire
+after 8s waiting via `LiveScene.expire_request`, even with no arriving frames.
+Person-masked enrollment rejects `clear_background_required`. Full reference
+pixels/features remain intact; `visible_support` normalizes query support to
+visible pixels and also requires ≥25% visible area, ≥4% absolute supported area,
+≥12% supported visible area and ≥3 grid cells on both query and warped reference.
+Feature/match/inlier/ratio/footprint/ambiguity safeguards remain. These partial
+thresholds are experimental, not yet Pi-validated. Unmasked full-frame gates are
+unchanged. `scene_evidence.render_evidence` draws ≤128 verified point pairs and
+amber masks on the exact reference/query pair. `/api/frame` carries its JPEG;
+`/api/telemetry` and ordinary JSONL do not contain image bytes. Up to 12 canonical
+reference images add 2.64 MiB raw payload plus overhead. No AP saving is claimed.
+See [current trial](../SCENE_OCCLUSION_RETEST.md).
+
 2026-11-09 enrollment feedback: `LiveScene.enroll` creates a pending receipt,
 `take_request` consumes one newer image, and `record_enrollment` records its
 stored/rejected outcome. The snapshot keeps the last 12 attempts independently
@@ -14,7 +30,7 @@ Actual replay data comes from `scripts/build_orb_learning_data.py`; same source
 gates, OpenCV version recorded. See the [first foreground-trial review](../SPATIAL_FOREGROUND_RESULTS_01.md)
 for why clicking Remember did not enroll the left view.
 
-2026-11-08 optional foreground path: `DetectionState.scene_evidence` atomically
+Historical 2026-11-08 path (superseded above): `DetectionState.scene_evidence` atomically
 copies detector boxes/source time; `foreground.person_mask` checks relative
 source age (0–0.5 s), scales VOC person boxes from 1280×720 to 640×360 and
 constructs an allowed-feature mask. `live_scene.scene_latest` gates enrollment
