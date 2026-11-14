@@ -62,6 +62,13 @@ is not measured and must not be inferred from correctness tests.
 
 ## Outcomes and retrospective
 
+2026-11-14: [Pi run reviewed](../../SCENE_OCCLUSION_RESULTS_01.md): three stored,
+exact-source detector pairing, partial-background known and unknown cases, and
+zero recording drops. A different-direction interval was unknown. Last samples
+were still obscured/unknown; clear return and complete acceptance remain pending.
+No matched A/B accuracy or isolated AP CPU comparison was performed. Pipeline
+diagram reviewed; unchanged because this is evidence review only.
+
 2026-11-10: implementation complete. All 224 Python tests passed with real
 OpenCV 4.11.0; Node browser checks passed. Actual localhost browser fixture using
 saved Pi pixels plus artificial occlusion displayed green inliers, amber mask,

@@ -1,5 +1,17 @@
 # EdgeXR technique and AP evidence register
 
+2026-11-14 — **Paired partial-background Pi trial reviewed; further validation pending.**
+[Analysis](SCENE_OCCLUSION_RESULTS_01.md),
+[structured evidence](../benchmarks/results/spatial-occlusion-01.json).
+Three clear views stored; 178/178 available detector results paired exactly;
+179 images written, zero drops, no IMU gaps >200ms. In a post-hoc crossing
+window, 49/62 person-box records were known, not an accuracy estimate. Final
+return remained obscured and unknown. Scene wall median/p95 176.62/335.61ms;
+encoding median/p95 23.47/55.12ms included in those times. CPU utilization,
+memory, temperature and electrical energy not measured. Dirty Pi revision and
+absent ground-truth labels limit interpretation. Diagram reviewed; unchanged:
+no runtime change was made during this evidence review.
+
 2026-11-10 — **Paired partial-background recognition implemented; Pi trial pending.**
 [Protocol](SCENE_OCCLUSION_RETEST.md), [plan](exec-plans/active/occlusion-aware-scene.md),
 [source map](learning/SCENE_MEMORY.md). Detector retains one exact source/boxes/
