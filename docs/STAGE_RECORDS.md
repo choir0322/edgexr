@@ -1,5 +1,14 @@
 # EdgeXR technique and AP evidence register
 
+2026-11-15 — **ORB learning explorer updated; runtime unchanged.**
+[Explorer](learning/orb-scene-explorer.html) now explains exact-source person
+exclusion, clear enrollment, partial-background geometry, unknown results and
+the separate live-preview images. The conceptual mask diagram is illustrative;
+the existing nine-stage replay still uses prerecorded unmasked ORB evidence.
+Other detector classes do not feed semantic view memory. Diagram reviewed;
+unchanged because no runtime behavior changed. AP measurement remains as
+recorded in [the trial](SCENE_OCCLUSION_RESULTS_01.md).
+
 2026-11-14 — **Paired partial-background Pi trial reviewed; further validation pending.**
 [Analysis](SCENE_OCCLUSION_RESULTS_01.md),
 [structured evidence](../benchmarks/results/spatial-occlusion-01.json).
