@@ -1,5 +1,10 @@
 # Current live pipeline
 
+2026-11-15: screen-based camera calibration is a **separate offline path**:
+existing 720p combined recorder → video → sampled 9×6 checkerboard detections →
+OpenCV fit and held-out board-pose reprojection report. It does not alter this
+live pipeline or produce 3D mapping. See [calibration guide](SCREEN_CAMERA_CALIBRATION.md).
+
 2026-11-09 paired/partial repair supersedes the original foreground path.
 `DetectionState.paired_scene` retains one completed source image, its boxes and
 capture-associated orientation. Masked queries use that exact image (selection

@@ -1,5 +1,13 @@
 # EdgeXR technique and AP evidence register
 
+2026-11-15 — **Screen camera calibration implemented; Pi capture pending.**
+[Guide](SCREEN_CAMERA_CALIBRATION.md), [plan](exec-plans/active/screen-camera-calibration.md),
+[target](learning/calibration-screen.html), [fit](../src/spatial/camera_calibration.py).
+The offline fit uses full-resolution camera video and checks held-out board
+poses. Synthetic numerical geometry tested; physical calibration and AP runtime
+on Pi not measured. Target-square units do not provide scene metric scale.
+PIPELINE updated with the separate offline branch; live behavior unchanged.
+
 2026-11-15 — **ORB learning explorer updated; runtime unchanged.**
 [Explorer](learning/orb-scene-explorer.html) now explains exact-source person
 exclusion, clear enrollment, partial-background geometry, unknown results and

@@ -1,5 +1,9 @@
 # Scene memory: current source map
 
+The separate [screen-camera calibration](../SCREEN_CAMERA_CALIBRATION.md) fits
+lens intrinsics from checkerboard video; it does not change ORB scene memory,
+the live view map, or estimate 3D position. Sparse reconstruction remains planned.
+
 2026-11-09 current repair: `DetectionState.paired_scene` returns a single exact
 source/boxes/orientation package. `scene_latest` selects it at target 1Hz with
 age ≤1.5s; unmasked mode still selects the latest camera frame. Requests expire
