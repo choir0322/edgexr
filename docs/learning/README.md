@@ -1,7 +1,8 @@
 # Read the EdgeXR code from end to end
 
-New: [Sparse Scene 01 visual walkthrough](sparse-scene-01.html): actual trial
-counts, the concentrated bookshelf points, and the revised coverage check.
+New: [Sparse-scene visual walkthrough](sparse-scene-01.html): switch between
+Scenes 01 and 02, follow real feature matches, inspect triangulation rays and
+magnified reprojection errors, and compare original-cloud image coverage.
 Private trial images are optional local file selections and are not committed.
 
 New: [ORB scene-recognition explorer](orb-scene-explorer.html). Nine visual stages

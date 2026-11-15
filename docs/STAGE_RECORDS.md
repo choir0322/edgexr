@@ -1,5 +1,17 @@
 # EdgeXR technique and AP evidence register
 
+2026-11-15 — **Sparse Scene 02 reviewed; measured geometry learning overlays.**
+[Review and limitations](SPARSE_SCENE_02_RESULTS.md),
+[structured measurements](../benchmarks/results/sparse-scene-02-analysis.json),
+[interactive walkthrough](learning/sparse-scene-01.html),
+[evidence generator](../scripts/build_sparse_learning_data.py).
+323 original Pi points; 0.349px median worst-view residual; image-thirds
+coverage 51/260/12. Coverage passes but bookshelf dominance remains; no
+independent depth validation. Single Pi wall/CPU: 3.062s/1.200s (CPU excludes
+FFmpeg); memory/energy not measured. Browser replays derived evidence with
+private local snapshots, not reconstruction. Diagram reviewed; unchanged
+(offline teaching only). Next: third-view consistency on existing footage.
+
 2026-11-15 — **First sparse reconstruction capture reviewed; coverage gate revised.**
 [Analysis](SPARSE_SCENE_01_RESULTS.md),
 [structured summary](../benchmarks/results/sparse-scene-01-analysis.json),
