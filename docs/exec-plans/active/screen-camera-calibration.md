@@ -20,7 +20,7 @@ not exposure synchronization. The screen target is a 10x7 square board with
 - [x] Implement pattern, offline fit, held-out checks and movement guide.
 - [x] Review/update PIPELINE and learning guide; mark current vs future.
 - [x] Run synthetic and browser checks; document limits.
-- [ ] Capture varied views on Pi and assess a real fit.
+- [x] Capture varied views on Pi and assess a real fit (provisional only).
 
 ## Plan of work
 
@@ -65,6 +65,13 @@ claim metric reconstruction scale. Existing Pi preview and recorder cannot own
 the camera concurrently.
 
 ## Outcomes and retrospective
+
+2026-11-15: [Pi trial review](../../SCREEN_CAMERA_CALIBRATION_RESULTS_01.md)
+detected 138/150 boards; separate video-half estimates agree within about 0.6%
+on focal lengths. Review found reflection/clipping; candidate is suitable for
+the first reconstruction experiment but no independent physical accuracy pass
+or metric scale is claimed. Plan remains active for later reconstruction-based
+validation. PIPELINE reviewed; unchanged, as this stage only records evidence.
 
 HDMI preview implemented. 227 hardware-free unit tests passed. An actual FFmpeg
 run on synthetic camera-like video produced packet-copy video, 60 showinfo

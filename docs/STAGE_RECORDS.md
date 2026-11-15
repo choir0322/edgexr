@@ -1,5 +1,16 @@
 # EdgeXR technique and AP evidence register
 
+2026-11-15 — **Screen-camera calibration recorded; provisional candidate.**
+[Analysis](SCREEN_CAMERA_CALIBRATION_RESULTS_01.md),
+[structured summary](../benchmarks/results/camera-calibration-screen-01.json).
+300s Pi capture, 138/150 boards detected, 0.569px training global RMS,
+held-out per-view median 0.188px. Independently fitted video halves gave focal
+estimates within about 0.6%; same-screen and same-video limitations apply.
+Some reflection/clipping and large-error views observed. Preliminary fit can
+seed the first sparse reconstruction experiment; not an independent accuracy
+pass or metric scale. Calibration analysis reported 129.45s wall time; CPU,
+memory and energy not measured. PIPELINE reviewed: no implementation changes.
+
 2026-11-15 — **Optional HDMI calibration preview implemented; Pi desktop test pending.**
 `recording.combined_capture --hdmi-preview` sends a best-effort 640x360 5fps
 MPEG-2 stream over loopback to local ffplay while preserving 720p camera packet
