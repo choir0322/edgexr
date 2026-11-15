@@ -10,6 +10,30 @@ On 2026-11-15 the user confirmed that View-3 was the intended crossing view and
 that the chair-and-cabinet direction near the end was intended as unenrolled.
 This confirms the broad experimental intent, not an exact label for every frame.
 
+## Correction: clear-view recovery was observed earlier
+
+On 2026-11-15, a further visual inspection of consecutive saved images found
+clear returns after people left. The earlier suggestion that another trial was
+needed to establish any clear-view recovery was too narrow: the last few frames
+remain obscured, but the session contains earlier clear recoveries.
+
+- First sequence: frame 1801 at 59.72s was unknown while a person was present;
+  frame 1831 at 60.72s was known View-3 with the person still partly visible.
+  Frame 2072 at 68.73s still shows a person at the left edge, and the next
+  observation, frame 2102 at 69.73s, shows the clear remembered scene and is
+  known View-3 with 554 inliers. Clear frames 2132 and 2192 also remain known.
+- Second sequence: frames 2584 and 2615 at 85.76–86.78s were unknown with people
+  visible. Recognition returned while people remained, at frame 2645. Frame
+  2765 at 91.77s shows a person at the left edge. Frame 2795 has a small person
+  fragment at the edge despite no detector box, so a zero box count must not be
+  treated as proof of a clear view. Frame 2825 at 93.76s visually shows the clear
+  scene and is known View-3 with 514 inliers; frame 2916 is also clear/known.
+
+These observations demonstrate recovery for this session and make a repeat
+trial unnecessary for that specific check. They do not give the exact departure
+or recovery latency because saved observations are approximately 1Hz. The
+separate final-return sequence remains unverified after the recording ends.
+
 ## Enrollment and timing
 
 Run metadata reports revision `405a6994a9a073b3671f5b96afd9e59f1bea67cb` and
@@ -88,10 +112,9 @@ recording; it is not directly comparable to unrelated earlier baselines.
 
 ## Next bounded step
 
-The user confirmed the intended crossing and control views. Inspect further frames
-if required. The trial establishes several
-successful person-masked recognitions and explicit abstentions, while return
-recovery at the end remains unproven. Prioritize completing the existing spatial
-application; choose a specific quality or AP question before another trial.
+The user confirmed the intended crossing and control views. Clear-view recovery
+is observed earlier in this run; the final return is unobserved after recording
+ends. Proceed with the spatial application rather than repeat this check. Further
+experiments should address a distinct quality or AP question.
 
 Structured summary: [spatial-occlusion-01.json](../benchmarks/results/spatial-occlusion-01.json).

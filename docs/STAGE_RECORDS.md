@@ -13,6 +13,9 @@ absent ground-truth labels limit interpretation. Diagram reviewed; unchanged:
 no runtime change was made during this evidence review.
 On 2026-11-15 the user confirmed View-3 as the crossing view and the chair/cabinet
 direction as the unenrolled control; this does not establish per-frame ground truth.
+Further inspection found clear View-3 recovery in frames 2102 and 2825 after
+person crossings. No repeat is needed to establish recovery in this session;
+the separate last attempted return was still obscured when recording ended.
 
 2026-11-10 — **Paired partial-background recognition implemented; Pi trial pending.**
 [Protocol](SCENE_OCCLUSION_RETEST.md), [plan](exec-plans/active/occlusion-aware-scene.md),

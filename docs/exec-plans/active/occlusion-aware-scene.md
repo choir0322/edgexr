@@ -71,6 +71,9 @@ diagram reviewed; unchanged because this is evidence review only.
 2026-11-15: user confirmed View-3 was the intended crossing view and the
 chair/cabinet direction was the unenrolled control. Clear final return remains
 unverified, and broad intent does not supply per-frame ground truth.
+Further visual review found prior clear-view returns in frames 2102 and 2825
+after crossings. The specific clear-recovery check is satisfied by this session;
+there is no need to repeat it merely because the last return was obscured.
 
 2026-11-10: implementation complete. All 224 Python tests passed with real
 OpenCV 4.11.0; Node browser checks passed. Actual localhost browser fixture using

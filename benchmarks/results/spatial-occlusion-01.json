@@ -14,6 +14,12 @@
   "imu_sleep_ms": 10,
   "scene": "three indoor views; user confirms View-3 was intended for crossings and chair-and-cabinet direction was the unenrolled control",
   "user_confirmation_date": "2026-11-15",
+  "clear_view_recovery_review": {
+    "review_date": "2026-11-15",
+    "first": {"prior_unknown_frame": 1801, "last_visible_person_frame": 2072, "clear_known_frame": 2102, "clear_known_seconds_from_first": 69.73, "inliers": 554},
+    "second": {"prior_unknown_frames": [2584, 2615], "last_clearly_visible_person_frame": 2765, "clear_known_frame": 2825, "clear_known_seconds_from_first": 93.76, "inliers": 514},
+    "note": "Visual inspection of sampled source images; frame 2795 has a person fragment despite zero detector boxes. Exact departure and recovery latency not measured."
+  },
   "power": "not recorded",
   "cooling": "not recorded",
   "warmup": "not recorded",
