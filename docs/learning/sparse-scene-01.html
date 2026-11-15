@@ -4,8 +4,9 @@
 <style>
 .rail button{min-width:150px}.rail strong,.rail small{display:block}.rail small{margin-top:6px}.controls{display:flex;flex-wrap:wrap;gap:18px;align-items:center;margin:16px 0}.controls label{font-size:13px}.controls input{vertical-align:middle}.evidence{width:100%;height:auto;display:block;background:#0b131d;border-radius:8px;border:1px solid var(--line)}.calculation{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin:16px 0}.calculation canvas{width:100%;background:#0b131d;border-radius:8px}.math{white-space:pre-wrap;font:13px/1.8 ui-monospace,monospace;color:#c7d7e4}.legend{line-height:1.7}.green{color:#65d8bb}.amber{color:#efb77b}.muted{overflow-wrap:anywhere}#caption{min-height:50px}.files{display:flex;flex-wrap:wrap;gap:20px}.files input{max-width:240px}.metric{white-space:pre-line}input:focus-visible{outline:2px solid var(--green)}
 @media(max-width:750px){.calculation{grid-template-columns:1fr}.controls{gap:10px}.workspace{padding:15px}.math{font-size:12px}}
+.parallax{margin:26px 0 8px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:22px 26px}.parallax p{max-width:940px}.parallax-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:22px;align-items:start;margin-top:12px}.parallax svg{width:100%;height:auto;display:block;background:#0b131d;border-radius:8px;border:1px solid var(--line)}.mode{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0 12px}.mode button[aria-pressed=true]{background:var(--green);color:#10251e;border-color:var(--green)}.tag{display:inline-block;font-size:10px;font-weight:650;letter-spacing:.1em;text-transform:uppercase;padding:2px 7px;border-radius:4px;border:1px solid #6b5032;color:#efb77b;background:#2b2216;vertical-align:middle}@media(max-width:750px){.parallax-grid{grid-template-columns:1fr}.parallax{padding:18px 16px}}
 </style></head><body><main>
-<header><a href="README.md">EDGEXR / LEARNING</a><span>RECORDED PI FRAMES · DERIVED GEOMETRY</span></header>
+<header><a href="index.html">EDGEXR / LEARNING</a><span>RECORDED PI FRAMES · DERIVED GEOMETRY</span></header>
 <h1>From image matches to 3D points</h1><p class="intro">Follow a detail in your actual recorded images: find it, match it, estimate its depth, then project it back to check the fit.</p>
 <div class="toolbar"><label>Recorded trial <select id="trial"><option value="0">Scene 01 · bookshelf dominates</option><option value="1">Scene 02 · wider image coverage</option></select></label><div><button id="back">← Back</button> <button id="next">Next step →</button></div></div>
 <nav class="rail" aria-label="Reconstruction stages">
@@ -16,11 +17,70 @@
 <div class="controls"><label>Follow a point <input id="point" type="range" min="0" max="47" value="0"></label><span id="point-label"></span><label><input id="overlay" type="checkbox" checked> Show overlays</label></div>
 <p class="muted">Click near a highlighted point in either image, or use the point slider. The same point follows you through the calculation stages.</p>
 <div class="calculation" id="calculation"><canvas id="geometry" width="620" height="380" role="img" aria-label="Top-down camera rays or magnified pixel reprojection error"></canvas><div><h3 id="math-title"></h3><div id="math" class="math"></div></div></div><div id="metric" class="metric" aria-live="polite"></div></section>
+<section class="parallax" aria-labelledby="parallax-title">
+<div class="stage-head"><h2 id="parallax-title">Why a pan/tilt head cannot do this <span class="tag">illustrative</span></h2></div>
+<p>Depth comes from <strong>parallax</strong>: when the camera <em>moves</em>, near things slide across the image more than far things. For these scenes the whole rig was carried sideways by hand. EdgeXR’s head only <em>turns</em>. When a camera turns about its own centre, near and far things slide by the same angle, so the image changes but carries no depth. Below, a near box sits exactly in front of a far box. Compare the two motions:</p>
+<div class="mode" role="group" aria-label="Camera motion"><button type="button" id="mode-rotate" aria-pressed="true">Turn the head</button><button type="button" id="mode-slide" aria-pressed="false">Slide the camera sideways</button></div>
+<label class="muted" for="amount">Amount <input id="amount" type="range" min="0" max="100" value="60"> <output id="amount-out"></output></label>
+<div class="parallax-grid">
+  <svg id="parallax-top" viewBox="0 0 420 300" role="img" aria-label="Top-down view: camera, a near box and a far box"></svg>
+  <div><svg id="parallax-image" viewBox="0 0 420 150" role="img" aria-label="Where the near and far boxes appear in the image, before and after the motion"></svg><div id="parallax-readout" class="math"></div></div>
+</div>
+<p class="muted">Pinhole model with this camera’s 733.6 px focal length; distances are arbitrary units. The real lens sits a few centimetres off the pan axis, so panning moves it slightly and very near objects show a little parallax, too small and uncalibrated to measure depth. That is why the <a href="index.html#plan">spatial-awareness plan</a> gets near/far from a depth network instead (step 4).</p>
+</section>
 <details><summary>Snapshots missing? Load the original files locally</summary><p>The page loads from <code>~/Desktop/sparse-scene-01-pair-05-15/</code> or <code>sparse-scene-02-pair-05-15/</code> alongside your Desktop repository. Private images are not stored in Git. If you moved the folders, select the matching trial's files here. Files stay in your browser.</p><div class="files"><label>view-1.png <input type="file" id="file1" accept="image/png"></label><label>view-2.png <input type="file" id="file2" accept="image/png"></label></div><p id="load-status" role="status"></p></details>
 <details><summary>What is measured, reconstructed, or illustrative?</summary><p>The photos, camera poses and point clouds are from your Pi outputs at video times 5 and 15 seconds. Green crosses show the original cloud projected through its original calibration and pose. ORB keypoints and descriptor matches were regenerated on the Mac from those exact snapshots. They are thinned for readability.</p>
 <p>The Pi export did not save observation IDs. For selectable examples, the generator associates a point with an observed match only when exactly one regenerated paired match lies within 2 pixels of both projections. These associations are recovered evidence, not preserved original IDs. Ambiguous examples are omitted. The visible residual is recomputed for this association and need not reproduce every original statistic.</p>
 <p>The ray diagram is a top-down X–Z projection of sampled original coordinates, with Y omitted; it cannot show full 3D parallax. The residual panel magnifies actual pixel differences. Camera centers and points use arbitrary baseline units, not meters. Scene 01 and Scene 02 have independent coordinate frames.</p>
 <p>The browser draws precomputed data; it does not run reconstruction. Small residuals and broad image coverage do not prove correct depths. The coverage rule cannot distinguish different depths merely by checking top and bottom halves.</p><p><a href="../../scripts/build_sparse_learning_data.py">Evidence generator</a> · <a href="../SPARSE_SCENE_01_RESULTS.md">Scene 01 report</a> · <a href="../SPARSE_SCENE_02_RESULTS.md">Scene 02 review</a></p></details>
-<details><summary>AP measurements and what comes next</summary><p>Scene 01: 2.96 s elapsed, 1.16 s Python CPU. Scene 02: 3.06 s elapsed, 1.20 s Python CPU. Both are single Pi runs; Python CPU excludes FFmpeg. Peak memory, energy, temperature and live latency were not measured. These small differences do not establish a performance change.</p><p>Next: use another viewpoint from the recording to check whether the same 3D points support a consistent third camera pose. Refinement and independent depth checks remain pending.</p></details>
+<details><summary>AP measurements and what comes next</summary><p>Scene 01: 2.96 s elapsed, 1.16 s Python CPU. Scene 02: 3.06 s elapsed, 1.20 s Python CPU. Both are single Pi runs; Python CPU excludes FFmpeg. Peak memory, energy, temperature and live latency were not measured. These small differences do not establish a performance change.</p><p>Status (16 Nov 2026): this two-view experiment is complete. A third-view consistency check was planned and then deferred, because the spatial-awareness plan keeps the head on a fixed base, which turns but does not translate. See the <a href="../decisions/2026-11-16-spatial-awareness-integration.md">decision record</a>. The reconstruction code remains a measured offline workload.</p></details>
 <footer><a href="orb-scene-explorer.html">ORB scene explorer</a> · <a href="../OFFLINE_SPARSE_RECONSTRUCTION.md">Capture instructions</a> · <a href="../PIPELINE.md">Pipeline</a></footer>
-</main><noscript>This walkthrough requires JavaScript. Read <a href="../SPARSE_SCENE_01_RESULTS.md">the written results</a>.</noscript><script src="images/sparse-scene-evidence.js"></script><script src="sparse-scene-explorer.js"></script></body></html>
+</main><noscript>This walkthrough requires JavaScript. Read <a href="../SPARSE_SCENE_01_RESULTS.md">the written results</a>.</noscript><script src="images/sparse-scene-evidence.js"></script><script src="sparse-scene-explorer.js"></script><script>
+/* Rotation versus translation: image positions of a near and a far box (pinhole model). */
+(function () {
+  const F = 733.5631366263186, CX = 640, SCALE = 420 / 1280;
+  // Both boxes start on the same line of sight (one behind the other): x/z = −1/6.
+  const near = { x: -0.2, z: 1.2, name: "near box" }, far = { x: -0.75, z: 4.5, name: "far box" };
+  let mode = "rotate";
+  const $ = (id) => document.getElementById(id);
+  /** Image column of a point for a camera turned by yaw (deg) and slid by t. @param {{x:number,z:number}} p Point. @param {number} yaw Degrees. @param {number} t Slide. @returns {number} Pixel u. */
+  function column(p, yaw, t) {
+    const a = Math.atan2(p.x - t, p.z) - yaw * Math.PI / 180;
+    return CX + F * Math.tan(a);
+  }
+  /** Redraw both views and the readout. @returns {void} */
+  function draw() {
+    const k = Number($("amount").value) / 100;
+    const yaw = mode === "rotate" ? 12 * k : 0, t = mode === "slide" ? 0.35 * k : 0;
+    $("amount-out").textContent = mode === "rotate" ? `${yaw.toFixed(1)}° turn` : `${t.toFixed(2)} units sideways`;
+    const sx = (x) => 210 + x * 110, sz = (z) => 270 - z * 52;
+    let top = `<text x="12" y="20" fill="#98a8bb" font-size="11">top-down view</text>`;
+    for (const [cx, rot, dash] of [[0, 0, "4 4"], [t, yaw, ""]]) {
+      const a = rot * Math.PI / 180, fx = Math.sin(a) * 60, fz = Math.cos(a) * 60;
+      const l = rot - 41, r = rot + 41;
+      top += `<path d="M${sx(cx)},${sz(0)} L${sx(cx) + Math.sin(l * Math.PI / 180) * 230},${sz(0) - Math.cos(l * Math.PI / 180) * 230} M${sx(cx)},${sz(0)} L${sx(cx) + Math.sin(r * Math.PI / 180) * 230},${sz(0) - Math.cos(r * Math.PI / 180) * 230}" stroke="${dash ? "#405269" : "#65d8bb"}" stroke-dasharray="${dash}" fill="none"/>` +
+        `<line x1="${sx(cx)}" y1="${sz(0)}" x2="${sx(cx) + fx}" y2="${sz(0) - fz}" stroke="${dash ? "#405269" : "#e5edf6"}" stroke-width="3" stroke-dasharray="${dash}"/><circle cx="${sx(cx)}" cy="${sz(0)}" r="6" fill="${dash ? "#405269" : "#e5edf6"}"/>`;
+    }
+    for (const [p, c] of [[near, "#efb77b"], [far, "#82bcff"]]) top += `<rect x="${sx(p.x) - 9}" y="${sz(p.z) - 9}" width="18" height="18" rx="3" fill="${c}"/><text x="${sx(p.x) + 14}" y="${sz(p.z) + 4}" fill="#e5edf6" font-size="11">${p.name}</text>`;
+    top += `<text x="${sx(0)}" y="292" fill="#98a8bb" font-size="11" text-anchor="middle">camera (dashed: before)</text>`;
+    $("parallax-top").innerHTML = top;
+    const rows = [[near, "#efb77b", 52], [far, "#82bcff", 104]];
+    let img = `<rect x="0" y="16" width="420" height="120" fill="#121b26" stroke="#2b394a"/><text x="6" y="12" fill="#98a8bb" font-size="11">image columns (hollow: before, filled: after)</text>`;
+    const shifts = rows.map(([p, c, y]) => {
+      const u0 = column(p, 0, 0), u1 = column(p, yaw, t);
+      img += `<rect x="${u0 * SCALE - 7}" y="${y - 14}" width="14" height="28" rx="3" fill="none" stroke="${c}" stroke-width="2"/><rect x="${u1 * SCALE - 7}" y="${y - 14}" width="14" height="28" rx="3" fill="${c}"/>` +
+        `<line x1="${u0 * SCALE}" y1="${y}" x2="${u1 * SCALE}" y2="${y}" stroke="${c}" stroke-dasharray="3 3"/>`;
+      return u1 - u0;
+    });
+    $("parallax-image").innerHTML = img;
+    $("parallax-readout").textContent = `near box moves  ${shifts[0].toFixed(1)} px\nfar box moves   ${shifts[1].toFixed(1)} px\ndifference      ${(shifts[0] - shifts[1]).toFixed(1)} px  ${mode === "rotate" ? "(still lined up: no depth information)" : "(no longer lined up: parallax, the depth signal)"}`;
+  }
+  /** Switch between turning and sliding. @param {string} next Mode name. @returns {void} */
+  function setMode(next) { mode = next; $("mode-rotate").setAttribute("aria-pressed", String(next === "rotate")); $("mode-slide").setAttribute("aria-pressed", String(next === "slide")); draw(); }
+  $("mode-rotate").addEventListener("click", () => setMode("rotate"));
+  $("mode-slide").addEventListener("click", () => setMode("slide"));
+  $("amount").addEventListener("input", draw);
+  draw();
+})();
+</script>
+<script src="learning-nav.js"></script></body></html>

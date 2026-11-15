@@ -1,5 +1,33 @@
 # EdgeXR technique and AP evidence register
 
+2026-11-16 — **Learning site reorganized; calibration fold found (derived).**
+[Start page](learning/index.html), new [head orientation](learning/orientation-explorer.html),
+[pixel → direction](learning/camera-geometry.html) and
+[processor evidence](learning/processor-evidence.html) pages; compute chart,
+tracker worked example, shift-to-angle and rotation-versus-translation sections
+added to existing pages; [plan](exec-plans/active/learning-site-overhaul.md).
+Page arithmetic is checked by `scripts/check_learning_pages.js` against OpenCV
+4.11.0 (`scripts/learning_geometry_fixtures.py`), `BasicTracker` and
+`RelativeCameraOrientation`. Derived findings: the provisional 5-coefficient
+lens model folds at normalized distorted radius 0.973 (47.6° off-axis), so three
+image corners and a left-edge strip have no inverse (converged OpenCV leaves
+44 px round-trip error at the top-left corner); field of view through the centre
+82.5° × 51.5°; MobileNet-SSD layers ≈1.12 GMAC per image (heads excluded), 92%
+pointwise, ≈4.9 GMAC/s lower bound from the measured 226 ms. Not measured:
+per-layer time. Diagram reviewed; unchanged (no runtime code changed).
+AP question carried into step 1: frame/IMU timestamp alignment and which
+bearings to flag as outside the trusted lens region.
+
+2026-11-16 — **Fixed-base spatial awareness planned; third-view registration deferred.**
+[Decision](decisions/2026-11-16-spatial-awareness-integration.md),
+[ExecPlan](exec-plans/active/spatial-awareness-integration.md). The user defined
+spatial awareness as object permanence by direction plus near/far ordering for a
+pan/tilt head on a fixed base, using existing components. Five planned steps:
+bearings, object memory and prediction, drift correction, depth network,
+whole-program profile. Rotation-only motion cannot triangulate depth, so the
+[third-view plan](exec-plans/active/third-view-consistency.md) is deferred.
+Status: planned; nothing implemented or measured for these steps yet.
+
 2026-11-15 — **Sparse Scene 02 reviewed; measured geometry learning overlays.**
 [Review and limitations](SPARSE_SCENE_02_RESULTS.md),
 [structured measurements](../benchmarks/results/sparse-scene-02-analysis.json),

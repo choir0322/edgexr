@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>EdgeXR · How the program works</title>
+<link rel="stylesheet" href="learning-site.css">
+<link rel="stylesheet" href="learning-charts.css">
+<style>
+/* Hub-specific layout; shared tokens live in learning-site.css. */
+.map-wrap{overflow-x:auto}
+#system-map{min-width:900px}
+#system-map a{cursor:pointer}
+#system-map a:hover rect.node,#system-map a:focus rect.node{stroke-width:3}
+#system-map a:focus{outline:none}
+.plan{display:grid;gap:12px;margin:16px 0}
+.plan .step{display:grid;grid-template-columns:54px minmax(0,1fr) minmax(0,1fr);gap:16px;align-items:start;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px 18px}
+.plan .n{font-size:28px;font-weight:600;color:var(--pink);line-height:1}
+.plan h3{margin:0 0 4px}
+.plan p{margin:2px 0;font-size:13px;color:var(--muted)}
+.plan .reads a{display:inline-block;margin:2px 8px 2px 0;font-size:13px}
+.plan .sys{font-size:13px;color:var(--text)}
+.plan .sys b{color:var(--muted);font-weight:500;display:block;font-size:11px;letter-spacing:.1em;text-transform:uppercase}
+.guides{columns:2;column-gap:30px;font-size:14px}.guides li{margin:5px 0;break-inside:avoid}
+@media (max-width:820px){.plan .step{grid-template-columns:40px minmax(0,1fr)}.plan .sys{grid-column:2}.guides{columns:1}}
+</style>
+</head>
+<body>
+<main>
+  <span class="eyebrow">EdgeXR learning · start here</span>
+  <h1>How the program works</h1>
+  <p class="lede">EdgeXR is a camera head on a Raspberry Pi 4 that is learning to know the space around it: what it has seen, in which direction, and what it should expect when it turns back. It is also a deliberately realistic workload for learning how software uses a processor, before moving parts of it onto an FPGA.</p>
+  <div class="stats" id="status-counts"></div>
+
+  <section class="block">
+    <span class="eyebrow">The program in one picture</span>
+    <h2>What is built, what is measured, what comes next</h2>
+    <p>Click a box to open the page that explains it. Solid boxes run today; pink dashed boxes are the planned spatial-awareness steps.</p>
+    <div class="panel map-wrap">
+      <svg id="system-map" class="diagram" viewBox="0 0 1120 560" role="group" aria-label="System map: sensors, processing components, planned spatial-awareness steps and outputs"></svg>
+      <div class="legend" id="map-legend"></div>
+    </div>
+  </section>
+
+  <section class="block">
+    <span class="eyebrow">Study path</span>
+    <h2>Ten pages, in the order the data flows</h2>
+    <p>Each page answers one question with real Pi recordings or measured numbers wherever they exist. The same order is in the bar at the top of every page.</p>
+    <div class="cards" id="study-cards"></div>
+  </section>
+
+  <section class="block" id="plan">
+    <span class="eyebrow">The two-week plan (16 Nov 2026)</span>
+    <h2>Five steps to a spatially aware head <span class="badge planned">planned</span></h2>
+    <p>Goal: the head sees a bottle, looks away, and while turning back says where the bottle should reappear, then reports <em>same object as expected</em>, <em>missing</em> or <em>moved</em>; it also knows which objects are nearer. Each step is chosen for the processor question it adds. See the <a href="../decisions/2026-11-16-spatial-awareness-integration.md">decision</a> and <a href="../exec-plans/active/spatial-awareness-integration.md">plan</a>.</p>
+    <div class="plan" id="plan-steps"></div>
+  </section>
+
+  <section class="block">
+    <span class="eyebrow">How to read the pages</span>
+    <h2>Every number says where it came from</h2>
+    <div class="cards">
+      <div class="card"><h3><span class="badge measured">measured</span></h3><p>Recorded on the Pi in a named run, with a linked result file in <code>benchmarks/results/</code>.</p></div>
+      <div class="card"><h3><span class="badge derived">derived</span></h3><p>Calculated from measured or configured numbers (for example, angles from the calibration). Correct arithmetic, but not itself timed or observed.</p></div>
+      <div class="card"><h3><span class="badge illustrative">illustrative</span></h3><p>A teaching drawing or simulation. Useful for intuition; never evidence.</p></div>
+      <div class="card"><h3><span class="badge planned">planned</span></h3><p>Not built yet. Shown so you can see where each existing piece is going.</p></div>
+    </div>
+  </section>
+
+  <section class="block">
+    <span class="eyebrow">Going deeper</span>
+    <h2>Code guides and tools</h2>
+    <p>The written guides name the exact functions in the source. They read best in VS Code or on GitHub (a browser shows Markdown as plain text).</p>
+    <ul class="guides">
+      <li><a href="IMAGE_MOTION.md">Image motion code guide</a>: camera bytes → arrays → shift</li>
+      <li><a href="HANN_FFT_WALKTHROUGH.md">Hann/FFT numerical walkthrough</a></li>
+      <li><a href="OBJECT_DETECTION.md">Object detection code guide</a>: image → model → boxes</li>
+      <li><a href="MOTION_AWARE_TRACKING.md">Motion-aware ID matching</a></li>
+      <li><a href="IMU.md">IMU code guide</a>: driver read → offset → rates</li>
+      <li><a href="SCENE_MEMORY.md">Scene memory code guide</a>: ORB → verified view</li>
+      <li><a href="AP_BASELINE.md">AP baseline collector walkthrough</a></li>
+      <li><a href="SPATIAL_PROGRESS_AND_SYSTEMS.md">Spatial progress and systems log</a></li>
+      <li><a href="CODE_CONVENTIONS.md">Code comment and type conventions</a></li>
+      <li><a href="../PIPELINE.md">Live pipeline diagram</a> (current implementation only)</li>
+      <li><a href="../STAGE_RECORDS.md">Stage records</a>: every technique and its evidence</li>
+      <li><a href="calibration-screen.html">Calibration checkerboard</a> (a tool, shown full screen)</li>
+    </ul>
+  </section>
+</main>
+<script src="index.js"></script>
+<script src="learning-nav.js"></script>
+</body>
+</html>

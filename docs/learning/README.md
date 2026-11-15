@@ -1,140 +1,106 @@
-# Read the EdgeXR code from end to end
+# EdgeXR learning pages
 
-New: [Sparse-scene visual walkthrough](sparse-scene-01.html): switch between
-Scenes 01 and 02, follow real feature matches, inspect triangulation rays and
-magnified reprojection errors, and compare original-cloud image coverage.
-Private trial images are optional local file selections and are not committed.
+Start with **[index.html](index.html)**: open it in a browser
+(`open docs/learning/index.html` on the Mac). Every page works offline from a
+clone: no server, camera, network or model download. A bar at the top of each
+page follows the study path; previous/next links sit at the bottom.
 
-New: [ORB scene-recognition explorer](orb-scene-explorer.html). Nine visual stages
-follow recorded Pi imagery through keypoints, actual binary descriptors,
-Hamming/ratio/mutual matching, RANSAC, hull/grid support and known/unknown.
-Shares the Hann/FFT page's minimal stage-rail design. No new private trial images
-are embedded. The browser replays precomputed data rather than running OpenCV.
+These pages explain what the program computes, how it runs on the Pi's
+processor and how its models work, using real Pi recordings and committed
+measurements wherever they exist.
 
-The [worker/resource learning lab](edgexr-worker-rates.html) now offers **Software**
-and **Software + hardware** modes. CPU dotted links mean execution, not data
-movement or core affinity. Expand the recording/storage nodes and evidence
-disclosure to connect queues, observer file writes, RAM and microSD. The
-[RAM observer protocol](../OBSERVER_RAM_CONTROL.md) now has a
-[single-pair measured result](../OBSERVER_RAM_RESULTS.md), with causal limits;
-[budget FPGA options](../FPGA_PURCHASE_SHORTLIST.md) remain pre-purchase research.
+| # | Page | Question it answers |
+|---|---|---|
+| — | [Start here](index.html) | What is built, measured and planned; the five-step plan |
+| 1 | [Program map](program-flow-explorer.html) | What runs, and what talks to what? |
+| 2 | [Image motion](hann-fft-explorer.html) | How does the program know the picture shifted (and by how many degrees)? |
+| 3 | [Detector model](detection-architecture.html) | How does MobileNet-SSD find a bottle, and where do its 1.12 billion operations go? |
+| 4 | [Tracker IDs](basic-tracker.html) | How do boxes keep an ID, and why is it lost when the head looks away? |
+| 5 | [Head orientation](orientation-explorer.html) | How does the gyro become a direction, why does it drift, what does polling cost? |
+| 6 | [Pixel → direction](camera-geometry.html) | Which way is a pixel? Calibration, lens distortion, step-1 preview |
+| 7 | [Scene memory](orb-scene-explorer.html) | How does a view become familiar, and what does matching cost? |
+| 8 | [3D from two views](sparse-scene-01.html) | How do two photos give depth, and why can't a pan/tilt head do it? |
+| 9 | [Workers & storage](edgexr-worker-rates.html) | How do threads, queues and the microSD card interact? |
+| 10 | [Processor evidence](processor-evidence.html) | Where do the four cores and the milliseconds go? |
 
-These guides explain the currently inspected implementation, not an idealized
-replacement. Start with the interactive [whole-program flow explorer](program-flow-explorer.html).
-Updated through 2026-11-04: expand **Scene memory + map** or **Read IMU** to follow
-ORB, geometric verification, camera-axis conversion, quaternion integration,
-timestamp association, view directions and bounded evidence recording. Read
-[spatial progress and systems opportunities](SPATIAL_PROGRESS_AND_SYSTEMS.md)
-for the chronological changes, source links, measured results and next milestone.
-It begins with the camera and IMU inputs, then lets you open the motion,
-detection/tracking, timing and browser-delivery branches without showing every
-detail at once. Its execution walkthrough demonstrates why the browser can show
-an image, boxes and an IMU sample from different source times. Use the
-[live diagram](../PIPELINE.md) as the compact reference, then study:
+[calibration-screen.html](calibration-screen.html) is a tool, not a lesson: the
+full-screen checkerboard used for camera calibration.
 
-1. [Image motion](IMAGE_MOTION.md): camera bytes -> image arrays -> displacement -> arrow.
-2. [Object detection](OBJECT_DETECTION.md): newest image -> model -> scored boxes -> overlay.
-3. [IMU](IMU.md): driver reading -> timestamp -> offset -> angular-rate display.
-4. [Scene memory](SCENE_MEMORY.md): recorded/live images -> ORB -> verified
-   reference-view match or unknown -> session view map and optional queued evidence.
+## Evidence labels
 
-After the baseline paths, read [motion-aware ID matching](MOTION_AWARE_TRACKING.md)
-for the optional bridge from image-shift history to the detector's box tracker.
-It is not IMU fusion or long-term object re-identification.
+Pages mark numbers and drawings as **measured** (recorded on the Pi, with a
+linked file in `benchmarks/results/`), **derived** (calculated from measured or
+configured numbers, not timed), **illustrative** (teaching drawing or
+simulation) or **planned** (not built yet).
 
-For the application-processor measurement path, read [the AP baseline code
-walk-through](AP_BASELINE.md) alongside [the Pi run procedure](../AP_BASELINE.md).
-It shows how metrics-only HTTP and Linux counters are sampled without
-changing the camera, detector, IMU or tracker workers.
+## Code guides
 
-For the motion math, open the offline [recorded image-motion website](hann-fft-explorer.html)
-and follow the [written walkthrough](HANN_FFT_WALKTHROUGH.md). Its horizontal
-eight-stage path carries two actual Pi frames through patch sampling, Hann
-weighting, Fourier comparison, consensus and the illustrative browser result.
-The two recorded frame pairs show both a reliable shift and a rejected one.
-No server, camera, model download or internet connection is needed.
+The Markdown guides name the exact functions in the source; read them in VS
+Code or on GitHub. In VS Code, open a linked file and use symbol search
+(`Cmd+Shift+O`). Line numbers are deliberately not hard-coded.
 
-For neural-network architecture, open [Inside MobileNet–SSD](detection-architecture.html).
-Use your recorded image to reveal channel planes, slide convolution windows,
-compare standard and depthwise/pointwise connections, trace MobileNet features
-into SSD, and inspect the actual model's default boxes. The SSD Back/Next
-sequence shows feature maps, priors, scores/offsets, decoding, filtering and
-source-pixel output. A compact Faster R-CNN comparison explains proposals and
-RoI features alongside the measured Pi workload. Illustrative weights and
-predictions are labelled separately from exact model dimensions and saved Pi
-detections. The page works offline with its neighboring CSS, JS and assets.
+1. [Image motion](IMAGE_MOTION.md): camera bytes → image arrays → displacement → arrow.
+   Numerical detail: [Hann/FFT walkthrough](HANN_FFT_WALKTHROUGH.md).
+2. [Object detection](OBJECT_DETECTION.md): newest image → model → scored boxes → overlay.
+3. [Motion-aware ID matching](MOTION_AWARE_TRACKING.md): image shift history → box tracker.
+4. [IMU](IMU.md): driver reading → timestamp → offset → angular-rate display.
+5. [Scene memory](SCENE_MEMORY.md): images → ORB → verified view or unknown → view map.
+6. [AP baseline collector](AP_BASELINE.md): how Linux counters are sampled without
+   changing the workers ([Pi procedure](../AP_BASELINE.md)).
+7. [Spatial progress and systems log](SPATIAL_PROGRESS_AND_SYSTEMS.md): chronological changes.
 
-Each guide names exact functions in linked source files. In VS Code, open the
-linked file and use symbol search (`Cmd+Shift+O` on Mac) or search the function
-name. Relative links work after committing to GitHub and when the repo is
-cloned to the Pi. Line numbers are deliberately not hard-coded because the
-comment/layout revisions can move them.
+[Code conventions](CODE_CONVENTIONS.md) explains the comment, type and docstring
+notation. [The live pipeline diagram](../PIPELINE.md) is the compact reference for
+the current implementation.
 
-## How to study a step
+## Shared files
 
-For each function, write down: caller, input type/shape/units, output, side
-effects, thread, timestamp meaning and failure path. Follow one actual value
-through the next call. Read the named test next: its assertions are concrete
-examples of the contract. Do not start with the entire neural network or all
-Fourier mathematics at once; understand the data crossing each boundary first.
+| File | Role |
+|---|---|
+| `learning-nav.js` | Study-path list; inserts the top bar and previous/next links |
+| `learning-site.css` | Look of the hub and the newer pages (same tokens as the older pages) |
+| `learning-charts.js`, `learning-charts.css` | Offline SVG charts with tooltips and table views; styles scoped to `.chart-frame` |
+| `camera-geometry-math.js`, `orientation-math.js`, `tracker-example.js` | Page arithmetic, loadable in Node for checks |
+| `images/` | Small derived images and precomputed data; no private recordings |
 
-Terms used here:
+## Checks without hardware
 
-- Process: separate running program; FFmpeg is separate from EdgeXR Python.
-- Thread: work running inside that process with shared memory.
-- Worker: a responsibility; our live workers are threads, not independent Python processes.
-- Shape: array dimensions. NumPy uses `(height, width)` for grayscale images;
-  OpenCV resize takes `(width, height)`. Confusing these swaps the dimensions.
-- Hz: updates per second. Milliseconds measure duration or age, not frequency.
-- Monotonic time: a clock for intervals that is not the calendar date/time.
-- Latest slot: replace stale waiting work instead of keeping an unbounded queue.
-- Lock/condition: coordinate shared state; expensive work runs outside its lock.
-
-## What is and is not being refactored
-
-The refactor covers first-party Python source and tests, browser JavaScript
-and shell scripts. It does not rewrite OpenCV, FFmpeg, NumPy, SunFounder's driver
-or the pretrained network. Their internals are dependency boundaries, explicitly
-labelled in the guides. Python functions now include input/return annotations,
-Args/Returns docstrings and task-group explanations. Browser functions use
-JSDoc; shell scripts describe inputs, outputs and grouped operations. Read
-[the code conventions](CODE_CONVENTIONS.md) to understand the notation.
-
-Read [the active learning-refactor plan](../exec-plans/active/learning-refactor.md)
-for code-comment/type/docstring milestones and validation status.
-
-## Testing without hardware
-
-From the repository root, use the existing environment:
+From the repository root:
 
 ```bash
+node scripts/check_learning_pages.js      # page arithmetic vs OpenCV / tracker rules
+node scripts/check_sparse_learning.js     # sparse-scene page data and controls
 PYTHONPATH=src python3 -m unittest discover -s tests/unit -v
 python3 scripts/check_learning_contracts.py
-bash scripts/check_project.sh
 ```
 
-Tests use fake inputs and do not prove physical hardware timing. Some tests need
-NumPy/OpenCV or a loopback socket and can skip without them. Detection report
-tests create temporary files under `recordings/`, so the checkout must be
-writable. Do not run camera programs concurrently against the same device or
-install dependencies simply to make all optional tests run.
+`scripts/learning_geometry_fixtures.py` regenerates the OpenCV reference values
+(needs OpenCV, which is not a project dependency). These checks do not replace
+looking at the pages in a browser, and they say nothing about Pi timing.
+
+## Terms used across the pages
+
+- Process: a separate running program; FFmpeg is separate from EdgeXR Python.
+- Thread: work inside one process sharing memory; live workers are threads.
+- Shape: array dimensions. NumPy uses `(height, width)`; OpenCV resize takes `(width, height)`.
+- Hz: updates per second. Milliseconds measure duration or age, not frequency.
+- Monotonic time: a clock for intervals, not the calendar time.
+- Latest slot: replace stale waiting work instead of keeping an unbounded queue.
+- Bearing: direction from the fixed base (pan/yaw, tilt/pitch), used from step 1 on.
 
 ## Reading the whole repository
 
 | Files | Role and guide |
 |---|---|
-| `src/app/live_preview.py`, `preview.html` | Shared live orchestration and browser; all three guides |
-| `src/recording/visual_motion.py` | Shared motion math plus offline comparisons; image-motion guide |
-| `src/vision/detect_image.py`, `live_detector.py`, `basic_tracker.py`, `motion_history.py` | Saved/live detection and optional matching; object-detection and motion-aware guides |
+| `src/app/live_preview.py`, `preview.html` | Shared live orchestration and browser; all guides |
+| `src/recording/visual_motion.py` | Motion math plus offline comparisons; image-motion guide |
+| `src/vision/detect_image.py`, `live_detector.py`, `basic_tracker.py`, `motion_history.py` | Detection and ID matching; detection and tracking guides |
 | `src/imu/raw_baseline.py`, `rotation_test.py`, `live_reader.py` | Sensor checks and live values; IMU guide |
-| `src/recording/combined_capture.py`, `analyze_capture.py`, `plot_visual_motion.py` | Separate recording/analysis workflow; image-motion and IMU guides |
-| `src/camera/capture_baseline.py` | Initial camera decode/PTS baseline; image-motion guide |
+| `src/spatial/` | Orientation, camera axes, calibration, scene memory, view map, sparse reconstruction |
+| `src/recording/combined_capture.py`, `analyze_capture.py` | Separate recording/analysis workflow |
 | `src/profiling/ap_baseline.py` | Read-only sustained AP collector; AP baseline guide |
 | `tests/unit/` | Fake-data contracts, invalid-input and failure checks |
-| `scripts/hardware_inventory.sh`, `check_project.sh` | Read-only inventory and repository layout checks |
-| `src/*/__init__.py` | Package descriptions; no background service starts here |
-| `src/_contracts.py` | Shared type vocabulary: Frame, MotionShift, sensor vectors and read-only Sensor interface |
-| `scripts/check_learning_contracts.py` | Dependency-free syntax audit of named function annotations and docstring sections |
-| `.codex/config.toml`, `.vscode/extensions.json`, `.gitignore` | Development configuration, not runtime sensor paths |
+| `scripts/` | Read-only inventory, project and learning checks |
 
-Update this map and [the diagram](../PIPELINE.md) when those responsibilities change.
+Update this map, the page list in `learning-nav.js` and [the diagram](../PIPELINE.md)
+when responsibilities change.

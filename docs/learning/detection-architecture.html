@@ -4,9 +4,23 @@
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>EdgeXR · Two ways to build features</title>
 <link rel="stylesheet" href="detection-architecture.css">
+<link rel="stylesheet" href="learning-charts.css">
+<style>
+/* Section 04: compute cost per layer (derived arithmetic, measured total time). */
+.compute-cost{margin-top:55px}
+.compute-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin:18px 0}
+.compute-stats div{background:#101923;border:1px solid #2b3b4c;border-radius:10px;padding:13px 15px}
+.compute-stats strong{display:block;font-size:22px;font-weight:600;letter-spacing:-.02em}
+.compute-stats span{display:block;font-size:12px;color:var(--muted);margin-top:4px}
+.compute-grid{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:26px;align-items:start}
+.compute-grid .chart-frame{background:#101923;border:1px solid #2b3b4c;border-radius:12px;padding:16px 18px}
+.compute-grid p{font-size:14px;line-height:1.6}
+.badge{display:inline-block;font-size:10px;font-weight:650;letter-spacing:.1em;text-transform:uppercase;padding:2px 7px;border-radius:4px;vertical-align:middle;margin-left:6px;border:1px solid #2f4e70;color:#82bcff;background:#14263a}
+@media(max-width:850px){.compute-grid{grid-template-columns:1fr}}
+</style>
 </head>
 <body><main>
-<header><a href="README.md">EDGEXR / LEARNING</a><span>01 · CONVOLUTION → 02 · DETECTION</span></header>
+<header><a href="index.html">EDGEXR / LEARNING</a><span>01 · CONVOLUTION → 02 · DETECTION</span></header>
 <h1>Same input. Two ways to build features.</h1>
 <p class="intro">Follow the channels, then watch where their values combine.</p>
 <div class="source"><img src="images/detection-lesson-scene.png" alt="Your saved Raspberry Pi camera view"><div><b>Your Pi image</b><p>1280×720 grayscale → 300×300 → three identical input channels.</p><p class="muted">Below: a 4×4 teaching sample from the saved chair region, with illustrative weights. Three input channels → two output channels.</p></div></div>
@@ -68,6 +82,21 @@
 <p class="muted">Measured with 720p MJPEG/30 fps, 300×300 MobileNet-SSD input, CPU/OpenCV two threads, basic tracking and IMU on Pi 4. Five-minute static run after two-minute warm-up; passive heatsink, no fan. Temperature rose during the run. See <a href="../../benchmarks/results/ap-baseline-basic-2026-10-18.md">conditions and results</a>. The 2 Hz target is our scheduler choice, not the network’s maximum speed.</p>
 <p class="muted">We have not measured Faster R-CNN or an alternative detector on this setup. Architecture alone cannot establish a speed or accuracy winner. Small objects, missed detections and grayscale scenes still need evaluation; <a href="../AP_OPTIMIZATION.md">model comparisons remain planned</a>.</p></div>
 </section>
+<section class="compute-cost" id="compute" aria-labelledby="compute-title">
+<p class="eyebrow">04 / WHERE THE COMPUTE GOES</p><h2 id="compute-title">Where 1.12 billion multiply-accumulates go. <span class="badge">derived</span></h2>
+<p class="muted ssd-intro">A multiply-accumulate (MAC) is one multiplication added to a running sum, the basic operation of every convolution. Counting them per layer shows where the processor’s work is. These counts are calculated from the layer sizes; individual layers have not been timed on the Pi yet.</p>
+<div class="compute-stats" id="compute-stats"></div>
+<div class="compute-grid">
+  <div id="compute-chart"></div>
+  <div>
+    <h3>What the shape of this chart means</h3>
+    <p><strong>Pointwise layers do almost all the arithmetic.</strong> A 1×1 convolution is a matrix multiplication: every output channel is a weighted sum of all input channels at the same pixel. Each input value is reused by every output channel, the pattern that SIMD instructions (NEON on the Pi’s Cortex-A72 cores) and FPGA multiplier arrays are built for.</p>
+    <p><strong>Depthwise layers are cheap in arithmetic but not free.</strong> They are under 3% of the MACs, yet each reads and writes a whole feature map while doing only nine multiplications per value. Layers like that are typically limited by memory traffic rather than arithmetic, so their share of the <em>time</em> can be larger than their share of the MACs.</p>
+    <p><strong>Early layers move pictures, late layers move weights.</strong> conv1 (46 million MACs) produces a 150×150×64 feature map, 1.44 million values, from only 2,048 weights. conv13 (105 million MACs) produces just 102,400 values but needs 1,048,576 weights. Same kind of arithmetic, opposite memory traffic, which matters for caches and for what an accelerator must keep on-chip.</p>
+    <p class="muted">Step 5 of the plan will time layers on the Pi (for example with OpenCV’s per-layer profile or Linux <code>perf</code>) to test these expectations before choosing what to put on the FPGA. <a href="processor-evidence.html">Processor evidence</a> collects what has been measured so far.</p>
+  </div>
+</div>
+</section>
 <details><summary>Source code, model details and further reading</summary><p><a href="../../src/vision/detect_image.py">infer_once() in detect_image.py</a> prepares the input and calls OpenCV’s <code>net.forward()</code>. The graph executes MobileNet and SSD together, including decoding and NMS. <code>parse_detections()</code> applies EdgeXR’s score cutoff and maps accepted predictions into source-image coordinates.</p><p>Grid sizes and thresholds follow the <a href="https://github.com/chuanqi305/MobileNet-SSD/blob/bb17b6c3eef36d80be441ae8e5339be66e8e3b7a/deploy.prototxt">pinned model graph</a>, not every SSD variant. Architecture references: <a href="https://arxiv.org/abs/1512.02325">SSD paper</a>, <a href="https://arxiv.org/abs/1506.01497">Faster R-CNN paper</a>, <a href="https://arxiv.org/abs/1704.04861">MobileNet paper</a>.</p><p><a href="OBJECT_DETECTION.md">Full object detection code guide</a> · <a href="../PIPELINE.md">Live pipeline</a></p></details>
 <footer>Sliding windows and channel stacks illustrate tensor operations. Pixel samples and final detections come from your saved Pi trial; teaching weights are illustrative. Playback speed is unrelated to inference speed.</footer>
-</main><script src="images/detection-lesson-data.js"></script><script src="detection-architecture.js"></script><script src="detection-math.js"></script><script src="detection-ssd.js"></script></body></html>
+</main><script src="images/detection-lesson-data.js"></script><script src="detection-architecture.js"></script><script src="detection-math.js"></script><script src="detection-ssd.js"></script><script src="learning-charts.js"></script><script src="detection-compute.js"></script><script src="learning-nav.js"></script></body></html>

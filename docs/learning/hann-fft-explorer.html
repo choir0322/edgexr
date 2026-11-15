@@ -1,8 +1,19 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>EdgeXR · From image shift to motion</title><link rel="stylesheet" href="hann-fft-explorer.css"></head>
+<title>EdgeXR · From image shift to motion</title><link rel="stylesheet" href="hann-fft-explorer.css">
+<style>
+/* Bridge section: image shift → rotation angle (derived from the calibration). */
+.bridge{margin-top:34px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:22px 28px}
+.bridge p{max-width:920px}
+.bridge-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,360px);gap:24px;align-items:center;margin:12px 0}
+.bridge label{font-size:13px;color:var(--muted);display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.bridge input{accent-color:var(--green);width:220px}
+.bridge svg{width:100%;height:auto}
+.tag{display:inline-block;font-size:10px;font-weight:650;letter-spacing:.1em;text-transform:uppercase;padding:2px 7px;border-radius:4px;border:1px solid #2f4e70;color:#82bcff;background:#14263a;vertical-align:middle}
+@media(max-width:750px){.bridge{padding:18px 16px}.bridge-grid{grid-template-columns:1fr}}
+</style></head>
 <body><main>
-<header><a href="README.md">EDGEXR / LEARNING</a><span>RECORDED PI IMAGES · OFFLINE REPLAY</span></header>
+<header><a href="index.html">EDGEXR / LEARNING</a><span>RECORDED PI IMAGES · OFFLINE REPLAY</span></header>
 <h1>Follow a pattern from pixels to displacement.</h1>
 <p class="intro">The same two images travel through every stage. Select a stage to inspect what changes.</p>
 <div class="toolbar"><div><button id="play" type="button">Play</button> <button id="next" type="button">Next step →</button> <button id="reset" type="button">Restart</button></div><label for="pair-choice">Recorded example <select id="pair-choice"><option value="adjacent">313 → 314 · accepted</option><option value="walkthrough">313 → 316 · rejected</option></select></label></div>
@@ -35,7 +46,44 @@
 <section class="stage" data-panel="6" hidden><div class="stage-head"><div><div class="stage-num">7 / 8 · scene consensus</div><h2>One strong patch is only one vote</h2></div><div class="source"><a href="../../src/recording/visual_motion.py">image_shift()</a></div></div><figure><div class="frame"><img id="consensus-frame" src="images/hann-frame-314.png" alt="Later Pi camera frame with nine patch votes"><svg id="consensus-overlay" viewBox="0 0 320 180" aria-hidden="true"></svg></div><figcaption>Green boxes agree within 1.5 px of the nine-match median; orange boxes differ too much.</figcaption></figure><details><summary>All nine measured patch votes</summary><div id="consensus-votes" class="patch-list"></div></details><div id="consensus-readout" class="metric"></div><p class="muted">All nine regions are tried independently. The code first needs four valid patch estimates, then at least four close to the median. If fewer than four remain, it returns <code>None</code>.</p></section>
 <section class="stage" data-panel="7" hidden><div class="stage-head"><div><div class="stage-num">8 / 8 · shared state and display</div><h2>publish_result() stores a reliable shift—or an unreliable status</h2></div><div class="source"><a href="../../src/app/live_preview.py">State.publish_result() / snapshot()</a><a href="../../src/app/preview.html">render()</a></div></div><div class="visual-grid"><figure><div class="browser"><div class="browser-head">EdgeXR · illustrative browser replay</div><div class="browser-view"><img id="browser-frame" src="images/hann-frame-314.png" alt="Later recorded Pi camera frame in browser-like view"><svg id="browser-arrow" viewBox="0 0 320 180" aria-label="Motion arrow if consensus is reliable"></svg></div><div id="browser-message" class="browser-footer"></div></div><figcaption>Uses this recorded frame. This is a replay of code behavior, not a saved live web response.</figcaption></figure><div><h3>What State would store</h3><pre id="state-fields" class="mini-equation"></pre><p>When <code>snapshot()</code> is requested while the camera result is fresh, the browser receives the latest image and status. It draws an exaggerated direction arrow only for <code>motion="reliable"</code>.</p><p class="muted">Detector boxes and IMU rates are separate independently timed fields in the real snapshot; this recording does not supply synchronized values for them.</p></div></div></section></div>
 <div id="overview-outcome" class="outcome"></div>
+<section class="bridge" aria-labelledby="bridge-title">
+<div class="stage-num">After the eight stages · bridge to step 3</div>
+<h2 id="bridge-title">From pixels of shift to degrees of head turn</h2>
+<p>The estimator reports how far the picture moved, in pixels of the 320×180 analysis image. If the camera only <em>rotated</em>, that shift is also an angle: the analysis image is a quarter of the 1280×720 frame, so its focal length is 733.6 ÷ 4 ≈ 183.4 px, and near the centre one analysis pixel is about <strong>0.31°</strong> <span class="tag">derived from the calibration</span>. Step 3 will compare this with the gyro’s turn over the same two frames, a second opinion that does not drift the way integration does.</p>
+<div class="bridge-grid">
+  <div><label for="shift-px">Shift in the analysis image <input id="shift-px" type="range" min="0" max="20" step="0.1" value="3.6"> <output id="shift-out"></output></label>
+  <div id="shift-math" class="equation"></div></div>
+  <svg id="shift-svg" viewBox="0 0 360 170" role="img" aria-label="Pinhole triangle: shift on the image plane and the matching rotation angle"></svg>
+</div>
+<p class="muted">Limits: the conversion assumes pure rotation. If the camera also moves sideways, near objects shift more than far ones (that difference is depth information, see <a href="sparse-scene-01.html">3D from two views</a>), so one shift no longer equals one angle. Pixels away from the centre span slightly less angle (<a href="camera-geometry.html">Pixel → direction</a>). Measured cost on the Pi: about 31 ms per estimate, 26 estimates per second, during the full live workload (<a href="processor-evidence.html">processor evidence</a>).</p>
+</section>
 <details><summary>What these images and calculations represent</summary><p>Frames from your <code>combined-motion-02/camera.mkv</code>. 313→314 are adjacent; 313→316 span three camera intervals. The recorded arrays were computed using the estimator. The browser displays those arrays; it does not run a live camera or recompute FFTs.</p><p>The sampled patches cover nine selected regions, not every pixel. Positive dx is rightward image-content motion; positive dy is downward. Displacement is pixels per analyzed pair, not camera angle or velocity. The IMU and detector have independent timing in the live application.</p></details>
 <footer><a href="HANN_FFT_WALKTHROUGH.md">Numerical walkthrough</a> · <a href="IMAGE_MOTION.md">Code tour</a> · <a href="../PIPELINE.md">Live pipeline</a><p>Small derived images are stored in the repository; the source video remains outside Git.</p></footer>
 </main><noscript>Enable JavaScript to follow the stages, or open the numerical walkthrough.</noscript>
-<script src="images/hann-fft-data.js"></script><script src="hann-fft-explorer.js"></script></body></html>
+<script src="images/hann-fft-data.js"></script><script src="hann-fft-explorer.js"></script>
+<script>
+/* Bridge figure: convert an analysis-image shift to a rotation angle (pinhole model). */
+(function () {
+  const F = 733.5631366263186 / 4;   // focal length of the 320×180 analysis image, px
+  const $ = (id) => document.getElementById(id);
+  /** Redraw the triangle and the arithmetic for the slider value. @returns {void} */
+  function draw() {
+    const px = Number($("shift-px").value), deg = Math.atan(px / F) * 180 / Math.PI;
+    $("shift-out").textContent = `${px.toFixed(1)} px`;
+    $("shift-math").textContent = `analysis focal length  f = 733.6 / 4 = ${F.toFixed(1)} px\nrotation               θ = atan(${px.toFixed(1)} / ${F.toFixed(1)}) = ${deg.toFixed(2)}°\nin full-frame pixels   ${(px * 4).toFixed(1)} px at 1280×720`;
+    const scale = 120 / F, x = 180 + px * scale * 6;   // horizontal exaggeration ×6 for visibility
+    $("shift-svg").innerHTML = `<line x1="40" y1="30" x2="320" y2="30" stroke="#e5edf6" stroke-width="2.5"/>` +
+      `<text x="40" y="20" fill="#98a8bb" font-size="11">image plane (shift drawn ×6)</text>` +
+      `<line x1="180" y1="150" x2="180" y2="30" stroke="#98a8bb" stroke-dasharray="4 4"/>` +
+      `<line x1="180" y1="150" x2="${x}" y2="30" stroke="#65d8bb" stroke-width="2.5"/>` +
+      `<circle cx="180" cy="30" r="4" fill="#98a8bb"/><circle cx="${x}" cy="30" r="5" fill="#65d8bb"/>` +
+      `<circle cx="180" cy="150" r="6" fill="#e5edf6"/><text x="192" y="160" fill="#98a8bb" font-size="11">lens</text>` +
+      `<text x="${(180 + x) / 2}" y="48" fill="#efb77b" font-size="12" text-anchor="middle">${px.toFixed(1)} px</text>` +
+      `<text x="120" y="100" fill="#82bcff" font-size="11" text-anchor="end">f = ${F.toFixed(1)} px</text>` +
+      `<text x="${x + 10}" y="96" fill="#65d8bb" font-size="12">θ = ${deg.toFixed(2)}°</text>`;
+  }
+  $("shift-px").addEventListener("input", draw);
+  draw();
+})();
+</script>
+<script src="learning-nav.js"></script></body></html>

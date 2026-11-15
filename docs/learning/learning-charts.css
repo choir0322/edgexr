@@ -1,0 +1,30 @@
+/* Chart styles shared by every learning page, scoped to .chart-frame so pages
+   with their own stylesheets (and their own .legend/.tooltip classes) are not
+   restyled. Series colours were validated for colour-vision separation and 3:1
+   contrast on the dark panels (dataviz validator, dark mode, all pairs). */
+.chart-frame{--s1:#3987e5;--s2:#d95926;--s3:#199e70;--grid:#223042;--axis:#3a4b5e;--panel:#121b26;--line:#2b394a;--text:#e5edf6;--muted:#98a8bb;--faint:#6f8196;
+  color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",sans-serif}
+.chart-frame .chart{position:relative;margin:8px 0 4px}
+.chart-frame .chart svg{display:block;width:100%;height:auto;overflow:visible}
+.chart-frame .chart svg text{font-family:system-ui,-apple-system,"Segoe UI",sans-serif}
+.chart-frame .grid line{stroke:var(--grid);stroke-width:1}
+.chart-frame .tick{fill:var(--faint);font-size:11px;font-variant-numeric:tabular-nums}
+.chart-frame .label{fill:var(--text);font-size:12px}
+.chart-frame .sub{fill:var(--muted);font-size:11px}
+.chart-frame .value{fill:var(--muted);font-size:11px;font-variant-numeric:tabular-nums}
+.chart-frame .hit{fill:transparent;cursor:default;outline:none}
+.chart-frame .hit:focus-visible{stroke:var(--text);stroke-width:1}
+.chart-frame .mark.hover{filter:brightness(1.25)}
+.chart-frame .chart-title{font-size:14px;font-weight:600;margin:0;color:var(--text)}
+.chart-frame .chart-note{font-size:12px;color:var(--muted);margin:2px 0 6px}
+.chart-frame .legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;color:var(--muted);margin:6px 0}
+.chart-frame .legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;vertical-align:-1px}
+.chart-frame .tooltip{position:absolute;pointer-events:none;background:#0b131d;border:1px solid #3a4b5e;border-radius:6px;padding:7px 10px;font-size:12px;line-height:1.45;color:var(--text);box-shadow:0 6px 18px rgba(0,0,0,.45);max-width:280px;z-index:5;opacity:0;transition:opacity .08s}
+.chart-frame .tooltip.show{opacity:1}
+.chart-frame .tooltip b{font-weight:600}
+.chart-frame details.table-view{margin:4px 0 0;font-size:12px;color:var(--muted);border:0;padding:0}
+.chart-frame details.table-view summary{cursor:pointer;color:var(--muted)}
+.chart-frame table.data{border-collapse:collapse;width:100%;margin:8px 0;font-size:12px;font-variant-numeric:tabular-nums}
+.chart-frame table.data th,.chart-frame table.data td{border-bottom:1px solid var(--line);padding:5px 8px;text-align:left;color:var(--text)}
+.chart-frame table.data th{color:var(--muted);font-weight:600}
+.chart-frame table.data td.n,.chart-frame table.data th.n{text-align:right}

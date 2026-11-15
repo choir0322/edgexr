@@ -1,8 +1,20 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>EdgeXR · How a view becomes familiar</title><link rel="stylesheet" href="hann-fft-explorer.css"><link rel="stylesheet" href="orb-scene-explorer.css"></head>
+<title>EdgeXR · How a view becomes familiar</title><link rel="stylesheet" href="hann-fft-explorer.css"><link rel="stylesheet" href="orb-scene-explorer.css"><style>
+/* On-the-processor section: configuration-derived matching cost. */
+.cost-lesson{margin-top:32px;padding:24px;border:1px solid #324653;border-radius:12px;background:#121f28}
+.cost-lesson p{max-width:940px;line-height:1.6}
+.cost-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin:18px 0}
+.cost-grid div{background:#0c1820;border:1px solid #304550;border-radius:8px;padding:13px 15px}
+.cost-grid strong{display:block;font-size:22px;font-weight:600}
+.cost-grid span{display:block;font-size:12px;color:var(--muted);margin-top:4px;line-height:1.45}
+.xor-demo{display:grid;gap:6px;background:#0c1820;border:1px solid #304550;border-radius:8px;padding:14px 16px;margin:12px 0;font:13px ui-monospace,SFMono-Regular,monospace}
+.xor-demo code{display:inline-block;min-width:130px;color:var(--muted)}
+.xor-demo .bits{color:#c6d9eb;letter-spacing:.06em}.xor-demo b{color:#efb77b}
+</style>
+</head>
 <body><main>
-<header><a href="README.md">EDGEXR / LEARNING</a><span>ACTUAL ORB DATA · RECORDED PI IMAGES</span></header>
+<header><a href="index.html">EDGEXR / LEARNING</a><span>ACTUAL ORB DATA · RECORDED PI IMAGES</span></header>
 <h1>How does this view become familiar?</h1>
 <p class="intro">Follow the same reference and query through nine stages. A match needs appearance <em>and</em> consistent geometry.</p>
 <div class="toolbar"><div><button id="play">Play</button> <button id="next">Next step →</button> <button id="reset">Restart</button></div>
@@ -46,10 +58,32 @@
 <p><a href="../SCENE_OCCLUSION_RESULTS_01.md">Pi trial: person crossing and clear-view recovery</a> · <a href="../SCENE_OCCLUSION_RETEST.md">Current policy and thresholds</a> · <a href="../../src/spatial/live_scene.py">live_scene.py</a> · <a href="../../src/spatial/foreground.py">foreground.py</a> · <a href="../../src/spatial/scene_memory.py">scene_memory.py</a> · <a href="../../src/vision/live_detector.py">live_detector.py</a></p>
 </details>
 </section>
+<section class="cost-lesson" aria-labelledby="cost-title">
+<span class="stage-num">On the processor · derived from the configuration</span>
+<h2 id="cost-title">What one recognition costs</h2>
+<p>Every query image is compared with <em>every</em> stored view, in both directions (best two matches from the view to the query, then the reverse check). With the configured limits that is a lot of tiny, identical operations:</p>
+<div class="cost-grid">
+  <div><strong>600</strong><span>ORB features kept per 640×360 image (configured maximum)</span></div>
+  <div><strong>32 bytes</strong><span>one descriptor: 256 yes/no brightness comparisons</span></div>
+  <div><strong>720,000</strong><span>Hamming distances per stored view (600 × 600, two directions)</span></div>
+  <div><strong>8.6 million</strong><span>per query when all 12 view slots are full</span></div>
+  <div><strong>≈19 KB</strong><span>descriptors per view; ≈230 KB for 12, small enough to stay in on-chip cache</span></div>
+  <div><strong>116 ms</strong><span>median measured time for one whole recognition on the Pi (ORB + matching + geometry)</span></div>
+</div>
+<div class="xor-demo" aria-label="Hamming distance as XOR then count">
+  <div><code>descriptor A</code> <span class="bits">1011 0010 1110 0001 …</span></div>
+  <div><code>descriptor B</code> <span class="bits">1001 0110 1110 0101 …</span></div>
+  <div><code>A XOR B</code> <span class="bits">00<b>1</b>0 0<b>1</b>00 0000 0<b>1</b>00 …</span></div>
+  <div><code>popcount</code> <span class="bits">count the 1s → 3 differing bits so far (Hamming distance)</span></div>
+</div>
+<p>On the Cortex-A72 a 256-bit distance is four 64-bit XORs and four bit counts (NEON can count bits in parallel). In an FPGA, a whole row of comparators can XOR and count many descriptor pairs every clock cycle, and the descriptors are small enough to keep in on-chip memory: a classic first offload. Whether matching is actually the expensive part of the measured 116 ms has not been measured per stage yet; that is step 5.</p>
+<p class="muted">Sources: <a href="../../src/spatial/scene_memory.py">MemoryConfig and verify() in scene_memory.py</a>; timing from the <a href="../../benchmarks/results/scheduling-ab-2026-11-02.json">scheduling A/B run</a> (detector off, 1 Hz, run A median). Counts are configuration limits; real images may yield fewer features. <a href="processor-evidence.html">Processor evidence</a> collects all measured timings.</p>
+</section>
 <section class="context"><details><summary>Where do the IMU, motion worker and person detector fit?</summary>
 <p>The nine-patch Hann/FFT motion worker measures image displacement separately. It does not supply ORB descriptors. The IMU attaches host-timestamped relative orientation to the recognized view; it does not override a failed visual match.</p>
 <p>With <code>--scene-exclude-people</code>, the detector's completed source frame and person boxes are paired. Enrollment requests need a clear detected view; queries use a mask. This nine-stage teaching replay has foreground exclusion <strong>off</strong>; the live extension is explained above.</p>
 <p>Scene worker: latest eligible detector/image pair, target 1 Hz → result mailbox → view map → HTTP/browser. Selected evidence goes to a bounded background writer. “Known” is visual overlap, not a measured physical position.</p></details>
 <details><summary>What this teaching replay does—and does not—measure</summary><p>Images are existing small derived frames from your Pi, already stored in this repository. The 320×180 reference is enlarged to canonical 640×360 for this example; the real live scene branch starts with 1280×720 and reduces it. Enlargement does not restore detail. No private images from the person trial are embedded.</p><p>The browser draws precomputed OpenCV results. It does not run ORB, RANSAC, an IMU or a live camera. Lines are thinned for readability; the counts use every match. The animation advances stages, not hardware time. Stage 4 enrolls the reference once; later stages query it, rather than re-enrolling every frame.</p><p><a href="../../scripts/build_orb_learning_data.py">Reproducible data generator</a> · <a href="../SCENE_OCCLUSION_RESULTS_01.md">Person-crossing trial</a></p></details></section>
 <footer><a href="SCENE_MEMORY.md">Source map</a> · <a href="hann-fft-explorer.html">Compare the Hann/FFT pipeline</a> · <a href="../PIPELINE.md">Current live architecture</a></footer>
-</main><noscript>This replay requires JavaScript. Read <a href="SCENE_MEMORY.md">the source map</a> instead.</noscript><script src="images/orb-scene-data.js"></script><script src="orb-scene-explorer.js"></script></body></html>
+</main><noscript>This replay requires JavaScript. Read <a href="SCENE_MEMORY.md">the source map</a> instead.</noscript><script src="images/orb-scene-data.js"></script><script src="orb-scene-explorer.js"></script><script src="learning-nav.js"></script>
+</body></html>

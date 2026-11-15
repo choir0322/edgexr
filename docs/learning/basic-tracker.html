@@ -64,6 +64,27 @@
     footer { max-width:930px; color:var(--muted); font-size:.85rem; margin-top:21px; }
     @media (max-width:600px) { main { padding:20px 12px 42px; } #position { width:100%; margin-left:0; } }
     @media (prefers-reduced-motion:reduce) { #object-token { transition:none; } }
+    /* Worked example and look-away timeline (tracker-example.js). */
+    .lesson { max-width:1180px; margin:34px 0 0; }
+    .lesson h2 { font-size:1.35rem; margin:4px 0 8px; }
+    .lesson p { max-width:900px; color:var(--muted); }
+    .lesson-grid { display:grid; grid-template-columns:minmax(0,1.15fr) minmax(0,1fr); gap:20px; align-items:start; margin-top:14px; }
+    .lesson-panel { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:16px 18px; }
+    .lesson svg { display:block; width:100%; height:auto; }
+    .lesson label { color:var(--muted); font-size:.9rem; display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+    .lesson input[type=range] { accent-color:var(--cyan); width:220px; }
+    table.iou { border-collapse:collapse; width:100%; font-size:.85rem; margin:6px 0 12px; }
+    table.iou th, table.iou td { border-bottom:1px solid var(--line); padding:6px 8px; text-align:left; }
+    table.iou th { color:var(--muted); font-weight:600; }
+    table.iou td { font-family:ui-monospace,SFMono-Regular,monospace; }
+    table.iou td.won { color:var(--mint); font-weight:700; }
+    table.iou td.low { color:#ffd0c3; }
+    table.iou td.na { color:#6d8794; font-family:inherit; }
+    pre.steps { margin:0; white-space:pre-wrap; font:.82rem/1.6 ui-monospace,SFMono-Regular,monospace; color:#b8e4ee; background:#0d1b25; border:1px solid var(--line); border-radius:8px; padding:10px 12px; }
+    .formula { font:.9rem/1.6 ui-monospace,SFMono-Regular,monospace; color:#b8e4ee; }
+    .tag { display:inline-block; font-size:.66rem; font-weight:700; letter-spacing:.1em; text-transform:uppercase; padding:2px 7px; border-radius:4px; border:1px solid #6b5032; color:#efb77b; background:#2b2216; vertical-align:middle; margin-left:6px; }
+    .tag.plan { border-color:#5d4a70; color:#d6b0f3; background:#241c2e; }
+    @media (max-width:900px) { .lesson-grid { grid-template-columns:1fr; } }
   </style>
 </head>
 <body>
@@ -103,11 +124,41 @@
     <p class="code">Code: <a id="detail-link" href="../../src/vision/live_detector.py"></a></p>
   </section>
 
+  <section class="lesson" aria-labelledby="worked-title">
+    <div class="eyebrow">Worked example · one detector update</div>
+    <h2 id="worked-title">Which old box is this new box? <span class="tag">illustrative boxes</span></h2>
+    <p>The tracker never sees pixels. It compares rectangles. <strong>IoU</strong> (intersection over union) is the overlap area divided by the area the two boxes cover together: 1 means identical, 0 means no overlap. Pairs of the same class with IoU ≥ 0.30 are candidates; the strongest pair is claimed first, and a box or ID can be claimed only once. Drag the slider to move the bottle and watch it lose its ID.</p>
+    <div class="lesson-grid">
+      <div class="lesson-panel">
+        <svg id="example-frame" viewBox="0 0 640 380" role="img" aria-label="Earlier boxes dashed, current detections solid, with the IDs they receive"></svg>
+        <label for="bottle-shift">Bottle B moves right by <input id="bottle-shift" type="range" min="0" max="120" value="0" step="5"><output id="bottle-shift-out"></output></label>
+        <p class="formula">IoU = overlap area ÷ (area A + area B − overlap area)</p>
+      </div>
+      <div class="lesson-panel">
+        <table class="iou" id="iou-table" aria-label="IoU between each remembered track and each current detection"></table>
+        <pre class="steps" id="match-steps" aria-live="polite"></pre>
+        <p>Chair #3 had already missed one update; missing a second makes the tracker forget it. Detection C is a second bottle that overlaps nothing, so it gets the next unused ID.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="lesson" aria-labelledby="away-title">
+    <div class="eyebrow">Why the ID is lost when the head looks away</div>
+    <h2 id="away-title">A tracker remembers about one second; object memory must remember a direction <span class="tag plan">planned · step 2</span></h2>
+    <p>Detection runs about twice per second. When the head pans away from a bottle, its box simply stops appearing. After two missed updates (about one second) the tracker forgets the ID, so when the head returns the same bottle gets a new number. The tracker also works in image coordinates: when the head turns, every box slides across the image even though nothing in the room moved (the optional <a href="MOTION_AWARE_TRACKING.md">motion-aware matching</a> compensates for small shifts using image motion).</p>
+    <div class="lesson-panel">
+      <svg id="lookaway" viewBox="0 0 860 172" role="img" aria-label="Timeline: the tracker forgets the bottle and gives it a new ID; planned object memory keeps it by direction and confirms it on return"></svg>
+    </div>
+    <p>Step 2 stores each object by its <strong>bearing</strong> (direction from the fixed base, see <a href="camera-geometry.html">Pixel → direction</a>) instead of its pixel box, for minutes rather than one second. Before the bottle comes back into view, the program can say where it should appear, then confirm it, report it missing or report it moved.</p>
+  </section>
+
   <footer>This is an offline teaching simulation, not live inference. The example boxes and IDs are illustrative.
     The real tracker processes the whole detection list even though the token follows one detection in its expanded path.
     An empty detector result still runs <code>update([])</code> and ages old tracks. The live API carries
     <code>track_id</code>; the browser now shows provisional <code>#ID</code> labels only for ready boxes with a live camera.</footer>
 </main>
 <script src="basic-tracker.js"></script>
+<script src="tracker-example.js"></script>
+<script src="learning-nav.js"></script>
 </body>
 </html>

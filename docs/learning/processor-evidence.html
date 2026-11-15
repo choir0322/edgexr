@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>EdgeXR · Processor evidence</title>
+<link rel="stylesheet" href="learning-site.css">
+<link rel="stylesheet" href="learning-charts.css">
+<style>
+/* Page-specific helpers; shared tokens live in learning-site.css. */
+.defs{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px;margin:14px 0}
+.defs div{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 14px;font-size:13px;color:var(--muted)}
+.defs b{display:block;color:var(--text);font-size:14px;margin-bottom:3px}
+ul.todo{margin:10px 0;padding-left:20px}ul.todo li{margin:6px 0}
+</style>
+</head>
+<body>
+<main>
+  <span class="eyebrow">Processor evidence · what step 5 will extend</span>
+  <h1>What the Pi’s processor is doing</h1>
+  <p class="lede">A Raspberry Pi 4 has four CPU cores and no neural accelerator. Camera decoding, image motion, the detector, the IMU thread, scene memory and file writing all share them. This page gathers what has actually been measured, so you can see where time and cores go before deciding what to optimize or move to the FPGA.</p>
+
+  <section class="block">
+    <span class="eyebrow">How to read these numbers</span>
+    <div class="defs">
+      <div><b>CPU %</b>100% = one core fully busy. The Pi has four, so a process can show up to 400%. “System busy” uses the whole chip as 100%.</div>
+      <div><b>Median, p95, max</b>Half the samples are below the median; 95% are below p95. The max is the single worst case, often the one users notice.</div>
+      <div><b>Rate versus time</b>Hz is updates per second. Milliseconds measure how long one step takes or how old a result is.</div>
+      <div><b>One run, one scene</b>Each value comes from a specific run with written conditions. Different runs are not interchangeable and are labelled.</div>
+    </div>
+  </section>
+
+  <section class="block">
+    <span class="eyebrow">1 · The full live workload</span>
+    <h2>Where the four cores go <span class="badge measured">measured</span></h2>
+    <p>Five-minute run on 18 Oct 2026: live preview with detector and IMU, camera 1280×720 MJPEG at 30 fps, stationary desk scene, passive heatsink, after 120 s warm-up (<a href="../../benchmarks/results/ap-baseline-basic-2026-10-18.md">result</a>).</p>
+    <div class="panel"><div id="cores-chart"></div></div>
+    <div class="stats" id="baseline-stats"></div>
+    <p class="small muted">Medians of separately sampled metrics, so the parts need not add up exactly. Process memory (RSS) can double-count shared pages.</p>
+  </section>
+
+  <section class="block">
+    <span class="eyebrow">2 · How often each part runs</span>
+    <h2>Each worker runs at its own rate <span class="badge measured">measured</span></h2>
+    <div class="grid-2">
+      <div class="panel"><div id="rates-chart"></div></div>
+      <div class="panel">
+        <h3>Why the rates differ</h3>
+        <p class="small">The workers are independent threads. Each takes the <em>newest</em> camera frame when it is ready instead of queueing every frame. Motion analysis needs about 31 ms per frame and finished 26 of every 30 frames; the 1,203 it skipped in 300 s are frames it never looked at, not failed estimates. The detector is deliberately throttled to 2 Hz because one inference takes about 226 ms of compute. The camera itself can do more: a 1280×720 MJPEG stream ran at about 118.7 fps in a separate capture test.</p>
+        <p class="small"><a href="edgexr-worker-rates.html">Workers & storage</a> animates these hand-offs.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="block">
+    <span class="eyebrow">3 · How long each step takes</span>
+    <h2>From 2.6 ms to more than half a second <span class="badge measured">measured</span></h2>
+    <div class="panel"><div id="latency-chart"></div></div>
+    <p class="small muted">Logarithmic axis: each grid line is ten times the previous one. <strong>Box age</strong> is the time from a frame’s arrival until the once-per-second profiler first saw that frame’s boxes: about 226 ms of compute plus however long the result waited for the next poll. It is not camera-to-screen latency, which has not been measured.</p>
+  </section>
+
+  <section class="block">
+    <span class="eyebrow">4 · Heat</span>
+    <h2>Still warming up after seven minutes <span class="badge measured">measured</span></h2>
+    <div class="stats">
+      <div class="stat"><strong>67.7 → 72.1 °C</strong><span>median in the first versus last measured minute (full workload)</span></div>
+      <div class="stat"><strong>72.6 °C</strong><span>95th percentile, thermal zone 0</span></div>
+      <div class="stat"><strong>0x0</strong><span>firmware throttle flags in all 297 polls</span></div>
+      <div class="stat"><strong>passive</strong><span>metal heatsink, no fan; power supply not recorded</span></div>
+    </div>
+    <p class="small">The temperature was still rising at the end, so this run was not at thermal steady state. A later comparison must either wait for a flat temperature or report it, because a hotter chip can lower its clock and change every timing on this page.</p>
+  </section>
+
+  <section class="block">
+    <span class="eyebrow">5 · Medians hide stalls</span>
+    <h2>A 14 ms write that sometimes takes 3.6 s <span class="badge measured">measured</span></h2>
+    <div class="grid-2">
+      <div class="panel"><div id="tail-chart"></div></div>
+      <div class="panel"><div id="ram-chart"></div></div>
+    </div>
+    <p>Saving evidence images to the microSD card usually took about 14 ms, but rare writes took seconds. When the scene worker did that saving itself, recognition stopped while it waited. The fix was structural: a separate writer thread with a small bounded queue, so recognition never waits for the card. A later single-pair experiment moved only the <em>profiler’s</em> own log from the card into RAM: the worst stalls in the application’s writes fell sharply, at the cost of about 48 MiB more profiler memory (20 MiB → 68 MiB RSS).</p>
+    <div class="callout warn">What this does <strong>not</strong> show: that the microSD card is defective, or that application writes are solved. One pair supports “less competition for the same storage”; causes inside the kernel and card remain unproven. See the <a href="../OBSERVER_RAM_RESULTS.md">RAM observer result</a> and <a href="../KERNEL_IO_RESULTS_03.md">kernel I/O trace</a>.</div>
+  </section>
+
+  <section class="block">
+    <span class="eyebrow">6 · Compute intensity</span>
+    <h2>How hard the detector works the cores <span class="badge derived">derived</span></h2>
+    <div class="stats">
+      <div class="stat"><strong>1.12 billion</strong><span>multiply-accumulates per detection (layer arithmetic, heads excluded)</span></div>
+      <div class="stat"><strong>226 ms</strong><span>median detector compute on the Pi (measured)</span></div>
+      <div class="stat"><strong>≈4.9 billion/s</strong><span>multiply-accumulates per second achieved, a lower bound</span></div>
+    </div>
+    <p class="small">Dividing the operation count by the measured time gives the throughput the CPU actually reached with two OpenCV threads. It is a lower bound because the 226 ms also includes resizing, normalization and decoding the boxes. The <a href="detection-architecture.html#compute">detector model page</a> shows which layers this work comes from: 92% is in 1×1 “pointwise” convolutions, which are matrix multiplications, the classic target for SIMD and FPGA multiply arrays.</p>
+  </section>
+
+  <section class="block">
+    <span class="eyebrow">7 · Not measured yet</span>
+    <h2>The gaps step 5 must fill</h2>
+    <ul class="todo">
+      <li><strong>Per-stage CPU inside the integrated program</strong>: the numbers above come from different runs and configurations.</li>
+      <li><strong>Hardware counters</strong>: instructions per cycle, cache misses and memory bandwidth (Linux <code>perf</code>), which show whether a stage is limited by arithmetic or by memory.</li>
+      <li><strong>Energy</strong>: needs a power meter; CPU time is not energy.</li>
+      <li><strong>Camera-to-screen latency</strong>, including SSH and browser delay.</li>
+      <li><strong>Thermal steady state</strong> with a recorded power supply and ambient temperature.</li>
+      <li><strong>Depth-network cost</strong> (step 4), in float and int8.</li>
+    </ul>
+  </section>
+
+  <footer class="page">Sources: <a href="../../benchmarks/results/ap-baseline-basic-2026-10-18.md">AP baseline</a> · <a href="../../benchmarks/results/scheduling-ab-2026-11-02.json">scheduling A/B</a> · <a href="../../benchmarks/results/spatial-stalls-02.json">spatial stalls 02</a> · <a href="../../benchmarks/results/observer-ram-control-01.json">observer RAM control</a> · <a href="../../benchmarks/results/imu-resource-three-policy-2026-10-24.json">IMU policies</a> · <a href="../HARDWARE.md">hardware record</a> · <a href="../BENCHMARKING.md">benchmark rules</a>.</footer>
+</main>
+<script src="learning-charts.js"></script>
+<script src="processor-evidence.js"></script>
+<script src="learning-nav.js"></script>
+</body>
+</html>

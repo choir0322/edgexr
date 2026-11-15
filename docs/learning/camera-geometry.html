@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>EdgeXR · From a pixel to a direction</title>
+<link rel="stylesheet" href="learning-site.css">
+<link rel="stylesheet" href="learning-charts.css">
+<style>
+/* Page-specific figure sizing; shared tokens live in learning-site.css. */
+.figure-canvas{display:block;width:100%;height:auto;background:#0b131d;border-radius:8px;border:1px solid var(--line);cursor:crosshair}
+.pinhole{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:22px;align-items:start}
+.preview{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:22px;align-items:start}
+.legend-inline span{margin-right:14px;white-space:nowrap}
+.swatch{display:inline-block;width:18px;height:3px;border-radius:2px;vertical-align:middle;margin-right:6px}
+@media (max-width:820px){.pinhole,.preview{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<main>
+  <span class="eyebrow">Camera geometry · foundation for step 1</span>
+  <h1>From a pixel to a direction</h1>
+  <p class="lede">The detector reports “bottle at pixel (900, 300)”. To remember where the bottle is after the head turns away, the program needs a <em>direction</em>, not a pixel. The camera calibration provides the conversion.</p>
+  <div class="stats" id="headline-stats"></div>
+  <p class="small muted">Labels: <span class="badge measured">measured</span> recorded on the Pi · <span class="badge derived">derived</span> calculated from measured or configured numbers, not timed · <span class="badge illustrative">illustrative</span> teaching drawing · <span class="badge planned">planned</span> not built yet.</p>
+
+  <section class="block">
+    <span class="eyebrow">1 · One triangle</span>
+    <h2>A pixel’s distance from the centre is an angle <span class="badge derived">derived</span></h2>
+    <p>Picture the lens as a single point. The sensor sits behind it at a distance called the <strong>focal length</strong>, measured in pixels: about 733.6 px for this camera. A pixel <em>d</em> pixels to the right of the image centre sits on a ray that leaves the lens at angle <code>atan(d / 733.6)</code>. Move the slider to choose a pixel column.</p>
+    <div class="panel pinhole">
+      <figure>
+        <svg id="pinhole" class="diagram" viewBox="0 0 560 330" role="img" aria-label="Top-down pinhole camera: lens point, image plane at the focal length, and the ray through the chosen pixel"></svg>
+        <div class="controls"><label for="column">Pixel column <input id="column" type="range" min="0" max="1279" value="900"><output id="column-out"></output></label></div>
+      </figure>
+      <div>
+        <div id="pinhole-math" class="math"></div>
+        <p class="small muted">Angle per pixel is not constant. Near the centre one pixel spans about 0.078°; near the edges it spans less, because the same pixel width covers a smaller angle further out. The lens adds a second, smaller effect: distortion (section 3).</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="block">
+    <span class="eyebrow">2 · The camera’s angle grid</span>
+    <h2>Every pixel has a direction <span class="badge derived">derived</span></h2>
+    <p>The grid below shows lines of equal direction: vertical curves are 10° steps of <strong>yaw</strong> (left/right), horizontal curves are 10° steps of <strong>pitch</strong> (up/down). They curve slightly because the lens bends light. Hover or click anywhere to read that pixel’s direction; arrow keys move the marker when the image is focused.</p>
+    <div class="panel">
+      <canvas id="angle-grid" class="figure-canvas" width="1280" height="720" tabindex="0" role="img" aria-label="Recorded Pi frame with lines of equal camera yaw and pitch and the shaded region where the lens model is unreliable"></canvas>
+      <div class="controls">
+        <label><input id="show-pinhole" type="checkbox"> Also show straight pinhole lines (no lens correction)</label>
+        <span class="legend-inline small muted"><span><i class="swatch" style="background:#65d8bb"></i>yaw lines</span><span><i class="swatch" style="background:#82bcff"></i>pitch lines</span><span><i class="swatch" style="background:#efb77b"></i>lens model unreliable</span></span>
+      </div>
+      <div id="grid-readout" class="math" aria-live="polite"></div>
+      <figcaption>Background: a recorded Pi frame (640×360 copy of the 1280×720 stream), used only for orientation. Calibration: provisional, fitted on a different session at the same mode and fixed focus.</figcaption>
+    </div>
+  </section>
+
+  <section class="block">
+    <span class="eyebrow">3 · Lens distortion</span>
+    <h2>How much the lens moves a point <span class="badge derived">derived</span></h2>
+    <p>A real lens does not follow the one-triangle model exactly. OpenCV describes the error with five numbers fitted during calibration (k1, k2, k3 bend points toward or away from the centre; p1, p2 account for a slightly tilted lens). The arrows show their effect across the image, magnified; the chart shows the true size along the middle row.</p>
+    <div class="grid-2">
+      <div class="panel">
+        <canvas id="distortion" class="figure-canvas" width="1480" height="860" role="img" aria-label="Regular grid bent by the fitted lens distortion, magnified"></canvas>
+        <div class="controls"><label for="magnify">Magnify arrows <input id="magnify" type="range" min="1" max="20" value="8"><output id="magnify-out"></output></label></div>
+        <figcaption>Grey rectangle: the 1280×720 image. Each arrow starts where a perfect pinhole lens would place a direction (dot) and points to where this lens places it. Orange ring and crosses: beyond the fold, where the fitted model cannot be inverted.</figcaption>
+      </div>
+      <div class="panel"><div id="radial-chart"></div></div>
+    </div>
+    <div class="callout warn" id="fold-callout"></div>
+  </section>
+
+  <section class="block">
+    <span class="eyebrow">4 · Where the numbers came from</span>
+    <h2>Calibration from a checkerboard on a screen <span class="badge measured">measured</span></h2>
+    <p>The camera recorded the <a href="calibration-screen.html">on-screen checkerboard</a> for 300 s while the screen was moved around the view. 150 frames were sampled (every 2 s); OpenCV found all 54 inner corners in 138. It fitted the lens on 111 and held out 27 to test the fit. <strong>Reprojection error</strong> is how far the fitted model puts each corner from where it was actually seen.</p>
+    <div class="grid-2">
+      <div class="panel"><div id="rms-chart"></div></div>
+      <div class="panel">
+        <h3>Is the focal length stable?</h3>
+        <p class="small muted">Fitting the first and second halves of a 50-frame sample separately gave slightly different focal lengths. The spread is a rough guide to how uncertain directions are.</p>
+        <div class="stats" id="focal-stats"></div>
+        <p class="small">Status is <strong>needs_review</strong>: both halves came from the same video and screen, nearby samples are correlated, some frames had clipping and reflections, and no independent real-world check exists.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="block">
+    <span class="eyebrow">5 · Step 1 preview</span>
+    <h2>Same bottle, different head angles <span class="badge planned">planned</span> <span class="badge illustrative">illustrative</span></h2>
+    <p>Step 1 of the <a href="index.html#plan">spatial-awareness plan</a> adds the head’s direction (from the gyro) to the pixel’s direction (from calibration). The bottle’s <strong>bearing</strong>, its direction from the fixed base, should then stay the same while its pixel position changes. Pan the head and watch both.</p>
+    <div class="panel">
+      <div class="controls"><label for="pan">Head pan <input id="pan" type="range" min="-40" max="40" value="0" step="1"><output id="pan-out"></output></label><span class="small muted">Safe commanded range for this rig: ±40°.</span></div>
+      <div class="preview">
+        <svg id="topdown" class="diagram" viewBox="0 0 520 330" role="img" aria-label="Top-down view of the fixed base, head direction, field of view and two remembered objects"></svg>
+        <div>
+          <svg id="camera-view" class="diagram" viewBox="0 0 520 300" role="img" aria-label="What the camera image shows for the chosen head pan"></svg>
+          <div id="preview-readout" class="math" aria-live="polite"></div>
+        </div>
+      </div>
+      <p class="small muted">Simplifications: tilt held at 0°, so bearing = head pan + image yaw exactly; the lens sits a few centimetres off the pan axis, which shifts very near objects slightly and is ignored here; head pan would come from the gyro estimate, which drifts (see <a href="orientation-explorer.html">Head orientation</a>).</p>
+    </div>
+    <div class="callout plan" id="placement-callout"></div>
+  </section>
+
+  <footer class="page">Sources: <a href="../../benchmarks/results/camera-calibration-screen-01.json">calibration result</a> · <a href="../SCREEN_CAMERA_CALIBRATION_RESULTS_01.md">calibration review</a> · <a href="../../src/spatial/camera_calibration.py">camera_calibration.py</a> · <a href="camera-geometry-math.js">page arithmetic</a>, checked against OpenCV 4.11.0 by <code>scripts/check_learning_pages.js</code>.</footer>
+</main>
+<script src="camera-geometry-math.js"></script>
+<script src="learning-charts.js"></script>
+<script src="camera-geometry.js"></script>
+<script src="learning-nav.js"></script>
+</body>
+</html>

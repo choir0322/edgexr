@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>EdgeXR · Where is the head pointing?</title>
+<link rel="stylesheet" href="learning-site.css">
+<link rel="stylesheet" href="learning-charts.css">
+<style>
+/* Page-specific layout; shared tokens live in learning-site.css. */
+.sim{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:20px}
+.axes{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:22px;align-items:center}
+.quat{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
+table.matrix{border-collapse:collapse;font:13px ui-monospace,SFMono-Regular,Menlo,monospace;margin:8px 0}
+table.matrix th,table.matrix td{padding:6px 10px;border-bottom:1px solid var(--line);text-align:right}
+table.matrix th{color:var(--muted);font-weight:600;font-family:system-ui,sans-serif;font-size:12px}
+table.matrix td.big{color:var(--green);font-weight:700}
+.loop{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:12px 0}
+.loop span{background:var(--panel-2);border:1px solid var(--line);border-radius:8px;padding:8px 12px;font-size:13px}
+.loop b{color:var(--muted);font-weight:400}
+@media (max-width:820px){.sim,.axes,.quat{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<main>
+  <span class="eyebrow">Head orientation · foundation for steps 1 and 3</span>
+  <h1>Where is the head pointing?</h1>
+  <p class="lede">The IMU beside the lens never reports an angle. It reports how fast the head is turning, about 78 times per second. Adding up those small turns gives the head’s direction. This page shows how, why the answer drifts, and what it costs the processor.</p>
+  <div class="stats">
+    <div class="stat"><strong>≈78 reads/s</strong><span>gyro polling with a 10 ms pause <span class="badge measured">measured</span></span></div>
+    <div class="stat"><strong>2.6 ms</strong><span>median time of one I2C read <span class="badge measured">measured</span></span></div>
+    <div class="stat"><strong>0.79° vs 10.77°</strong><span>median return error, 10 ms vs 50 ms pause <span class="badge measured">measured</span></span></div>
+    <div class="stat"><strong>+2.2 points</strong><span>of one CPU core for the faster polling <span class="badge measured">measured</span></span></div>
+  </div>
+
+  <section class="block">
+    <span class="eyebrow">1 · Rate, not angle</span>
+    <h2>Turning speed × time = small turn; add them all up</h2>
+    <p>Each gyro read gives three turning speeds in degrees per second. If two reads are 12.9 ms apart and the head turned at an average 30 °/s between them, it turned 0.387° in that interval. The program keeps a running total. That is <strong>integration</strong>, and it is only as good as the samples it adds up.</p>
+    <p>The servo does not turn smoothly: it receives 1° commands every 0.2 s and jumps in short bursts. Below, a model of the real pan test (0 → −20° → +20° → 0) is sampled the way the polling thread samples it. Make the pause longer and watch the estimate stop returning to zero.</p>
+    <div class="panel">
+      <div class="controls">
+        <label for="sleep">Pause after each read <input id="sleep" type="range" min="0" max="60" value="50" step="1"><output id="sleep-out"></output></label>
+        <label for="burst">Servo burst length <input id="burst" type="range" min="10" max="80" value="30" step="1"><output id="burst-out"></output></label>
+        <label for="phase">Sampling start offset <input id="phase" type="range" min="0" max="0.95" value="0.3" step="0.05"><output id="phase-out"></output></label>
+        <label for="bias">Leftover gyro bias <input id="bias" type="range" min="0" max="0.2" value="0" step="0.01"><output id="bias-out"></output></label>
+        <label><input id="noise" type="checkbox"> sensor noise (0.3 °/s)</label>
+      </div>
+      <div class="sim">
+        <div>
+          <div id="angle-chart"></div>
+          <div id="rate-chart"></div>
+        </div>
+        <div>
+          <div id="sim-readout" class="math" aria-live="polite"></div>
+          <div id="phase-chart"></div>
+        </div>
+      </div>
+      <p class="small muted"><span class="badge illustrative">illustrative</span> A model, not recorded data: burst shape, length and noise are assumptions. Read overhead (2.9 ms per loop) is derived from the measured read rates. The model reproduces the <em>pattern</em> of the measurements below, not their exact values.</p>
+    </div>
+  </section>
+
+  <section class="block">
+    <span class="eyebrow">2 · What the Pi measured</span>
+    <h2>Fewer samples, bigger and luckier errors <span class="badge measured">measured</span></h2>
+    <div class="grid-2">
+      <div class="panel"><div id="replay-chart"></div></div>
+      <div class="panel"><div id="policy-chart"></div></div>
+    </div>
+    <p class="small muted">Left: one fast recording (≈80 reads/s) replayed keeping only every 4th read, starting at each of four offsets; the start and end points and the bias were unchanged (<a href="../IMU_POLLING_FINDINGS.md">polling findings</a>). Right: six captures of the same 21.5 s pan test in the order 50 ms, 10 ms, adaptive, adaptive, 10 ms, 50 ms (<a href="../../benchmarks/results/imu-resource-three-policy-2026-10-24.json">result</a>). “Return error” is the gyro-only estimate’s distance from the start after the head physically returned; it is not an independently measured angle.</p>
+  </section>
+
+  <section class="block">
+    <span class="eyebrow">3 · Bias</span>
+    <h2>The error that grows while nothing moves</h2>
+    <p>A still gyro does not read exactly zero. At start-up the program averages the readings over a still window and subtracts that <strong>bias</strong>. Whatever bias remains is added up forever: a leftover 0.05 °/s becomes 3° per minute. In a 60 s still recording the estimate wandered <strong>2.72° in 49.96 s</strong> after a 10 s calibration window <span class="badge measured">measured</span>. Use the “leftover gyro bias” slider above to see the ramp it causes.</p>
+    <div class="callout plan"><strong>Why step 3 exists.</strong> Integration has no anchor, so error only accumulates. Step 3 corrects it with evidence that does not drift: when ORB recognizes a remembered view, the program knows the head points where it did when that view was stored; the phase-correlation image shift gives a second opinion on each turn.</div>
+  </section>
+
+  <section class="block">
+    <span class="eyebrow">4 · Two sets of axes</span>
+    <h2>The IMU is mounted at an angle to the camera <span class="badge measured">measured</span></h2>
+    <div class="axes">
+      <div>
+        <p>The IMU board’s x, y, z axes are not the camera’s right, down and forward. The project fitted the relationship from recorded pan and tilt sweeps and stored it in <a href="../../configs/camera_axes_neutral.json">camera_axes_neutral.json</a>. Each row says which IMU direction is a camera direction:</p>
+        <table class="matrix" aria-label="Camera axes expressed in IMU coordinates">
+          <thead><tr><th>camera axis</th><th>IMU x</th><th>IMU y</th><th>IMU z</th></tr></thead>
+          <tbody>
+            <tr><th>right</th><td>−0.055</td><td>0.043</td><td class="big">0.998</td></tr>
+            <tr><th>down</th><td>0.188</td><td class="big">0.982</td><td>−0.032</td></tr>
+            <tr><th>forward</th><td class="big">−0.981</td><td>0.186</td><td>−0.062</td></tr>
+          </tbody>
+        </table>
+        <p class="small">So camera right ≈ IMU +z, down ≈ IMU +y, forward ≈ IMU −x. The 0.19 entries mean the board is rotated about <strong id="tilt-deg"></strong> relative to the lens <span class="badge derived">derived</span>. Each gyro sample is converted with three dot products, <code>camera rate = M · IMU rate</code>, before integration (<a href="../../src/spatial/camera_axes.py">camera_components()</a>).</p>
+      </div>
+      <figure>
+        <svg id="axes-svg" class="diagram" viewBox="0 0 470 330" role="img" aria-label="IMU axes and fitted camera axes drawn from one origin"></svg>
+        <figcaption>Grey: IMU board axes. Colour: camera axes from the fitted matrix. Isometric drawing; valid for the current mounting only (revalidate after remounting).</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section class="block">
+    <span class="eyebrow">5 · Why a quaternion?</span>
+    <h2>In 3D, the order of turns matters <span class="badge illustrative">illustrative</span></h2>
+    <p>You cannot keep separate running totals for pan and tilt and add them: a turn about one axis changes the direction of the others. The same two 90° turns in a different order point the camera somewhere else:</p>
+    <div class="quat">
+      <figure class="panel"><svg id="order-a" class="diagram" viewBox="0 0 320 250" role="img" aria-label="Turn right 90 degrees then tilt up 90 degrees"></svg><figcaption id="order-a-cap"></figcaption></figure>
+      <figure class="panel"><svg id="order-b" class="diagram" viewBox="0 0 320 250" role="img" aria-label="Tilt up 90 degrees then turn right 90 degrees"></svg><figcaption id="order-b-cap"></figcaption></figure>
+    </div>
+    <p>A <strong>quaternion</strong> is four numbers (w, x, y, z) that store a whole 3D orientation and compose turns in the right order. <a href="../../src/spatial/live_orientation.py">RelativeCameraOrientation.add()</a> does this for every gyro read:</p>
+    <div class="math" id="quat-math"></div>
+    <p class="small muted">If two reads are more than 0.2 s apart the estimate is marked unknown instead of guessing across the gap. The quaternion is an orientation relative to the still start, not a position or a compass heading.</p>
+  </section>
+
+  <section class="block">
+    <span class="eyebrow">6 · On the processor</span>
+    <h2>A thread that wakes, reads and sleeps</h2>
+    <div class="loop" aria-label="Polling loop"><span>wake</span>→<span>I2C read <b>≈2.6 ms</b></span>→<span>convert axes + integrate</span>→<span>sleep <b>10 or 50 ms</b></span>→<span>repeat</span></div>
+    <p>The loop is one Python thread. A shorter pause means more reads, more conversions and more Python work. Measured on the Pi (median of two runs each): reads went from 407 to 1,671.5 per 21.5 s window and recorder CPU from 1.96% to 4.04% of one core <span class="badge measured">measured</span>. An adaptive policy (50 ms when still, 10 ms while the servo moves) cut reads by 16%, but the measured recorder CPU did not fall: per-read cost is small next to the fixed overhead of the thread and logging. Fewer operations did not mean less CPU time here.</p>
+    <p class="small muted">CPU seconds are processor time spent running the recorder’s instructions, not wall time or energy. Sleeping and waiting on I2C take wall time without necessarily using a core.</p>
+  </section>
+
+  <footer class="page">Sources: <a href="../../src/imu/live_reader.py">live_reader.py</a> · <a href="../../src/spatial/live_orientation.py">live_orientation.py</a> · <a href="../../src/spatial/camera_axes.py">camera_axes.py</a> · <a href="../IMU_POLLING_FINDINGS.md">IMU polling findings</a> · <a href="../RELATIVE_ORIENTATION.md">relative orientation</a> · <a href="IMU.md">IMU code guide</a> · <a href="orientation-math.js">page arithmetic</a>.</footer>
+</main>
+<script src="orientation-math.js"></script>
+<script src="learning-charts.js"></script>
+<script src="orientation-explorer.js"></script>
+<script src="learning-nav.js"></script>
+</body>
+</html>

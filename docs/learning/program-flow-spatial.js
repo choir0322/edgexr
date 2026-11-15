@@ -42,7 +42,7 @@
   add('orientation','Integrate orientation','Optional gyro quaternion','Adjacent corrected camera-axis rates + host midpoint dt','Unit quaternion mapping camera axes into startup reference',
     'Average adjacent rates, multiply by dt to form an incremental rotation, compose with the previous quaternion and normalize. w is cos(angle/2), not time or speed; xyz = axis × sin(angle/2).',
     'No accelerometer/vision drift correction. Non-increasing timestamps or >200 ms gaps invalidate continuity; stale samples are not silently integrated. This is rotation, not XYZ position.',
-    'spatial/live_orientation.py','LiveOrientation.add()',[],'quaternionMath');
+    'spatial/live_orientation.py','RelativeCameraOrientation.add()',[],'quaternionMath');
   add('association','Attach timed context','256-sample history','Frame host receipt + preceding orientation history','Ready context within 200 ms, or unknown',
     'Choose a preceding orientation from a bounded history. Recognition can continue if orientation is unknown; it must not invent a current angle.',
     'Host receipt/read midpoint is not camera exposure synchronization. A shared JSON response does not make different workers simultaneous.',
