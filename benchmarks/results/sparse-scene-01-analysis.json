@@ -1,0 +1,51 @@
+{
+  "stage": "offline_sparse_reconstruction_first_pair",
+  "status": "diagnostic_only_insufficient_scene_coverage",
+  "recording": "sparse-scene-01",
+  "device": "Raspberry Pi 4",
+  "capture_host": "Linux-6.12.47+rpt-rpi-v8-aarch64-with-glibc2.36",
+  "capture_software_commit": "not recorded in capture metadata; Mac repository was 218f160",
+  "camera_mode": "1280x720 MJPEG 30 fps requested; file is 1280x720 MJPEG at nominal 30 fps",
+  "scene": "static tabletop with textured bookshelf behind smooth boxes and largely textureless desk; whole rig shifted right twice and returned partway",
+  "capture_duration_s": 60.0,
+  "hdmi_preview": "640x360 target 5 fps, enabled",
+  "captured_frame_records": 1807,
+  "imu_samples": 1168,
+  "frame_pair_video_s": [5, 15],
+  "calibration_sha256": "b891cbb59a3c6d02ce4f136afdc911ef18fe0412fbd0d3c2db9bdc233f8a38a2",
+  "pi_first_pair_original_report": {
+    "status": "candidate_needs_review",
+    "descriptor_matches": 375,
+    "essential_inliers": 309,
+    "accepted_points": 309,
+    "median_parallax_deg": 14.345758769694074,
+    "median_max_reprojection_px": 0.4021402881904616,
+    "p95_max_reprojection_px": 0.9394744906014324,
+    "elapsed_wall_s": 2.9622973000005004,
+    "python_process_cpu_s": 1.162359205,
+    "python_cpu_scope": "Excludes FFmpeg subprocess; one run, no warmup or repeats"
+  },
+  "independent_review_on_mac": {
+    "point_cloud_count": 309,
+    "first_view_projected_points_y_lt_240": 307,
+    "first_view_projected_points_y_240_to_480": 2,
+    "first_view_projected_points_y_ge_480": 0,
+    "depth_unit": "arbitrary camera-baseline units, not meters",
+    "original_cloud_depth_z_quantiles_5_50_95": [3.17992112, 3.4391231, 3.62133456],
+    "new_vertical_coverage_gate_on_same_5_15_pair": {
+      "status": "rejected",
+      "accepted_points_before_coverage_gate": 299,
+      "above_below_first_view": [298, 1],
+      "above_below_second_view": [298, 1],
+      "minimum_each_half": 60,
+      "note": "Mac/OpenCV rerun had a different RANSAC result from the Pi; this does not change the bookshelf concentration conclusion"
+    },
+    "other_pair_checks": {
+      "15_27_s": "279 geometry points but only two occupied quadrants in both views; rejected",
+      "27_45_s": "399 geometry points and 3/4 occupied quadrants under the revised gate; not a shared multi-view map"
+    }
+  },
+  "interpretation": "The two-view estimator found parallax and low residuals, but almost all accepted features lie on the distant textured bookshelf. The foreground box and tabletop supplied almost no accepted points. The resulting cloud is not yet convincing scene-depth reconstruction.",
+  "next_decision": "Require a meaningful fraction of triangulated features in both image halves; repeat with textured foreground at a distinct depth, then register a third view and test consistency.",
+  "limits": "No verified metric scale, independent 3D ground truth, multi-view bundle adjustment, electrical power, peak RAM or temperature. One Pi timing is not a stable benchmark. Private capture and point cloud are not committed."
+}

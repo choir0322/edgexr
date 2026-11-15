@@ -1,5 +1,17 @@
 # EdgeXR technique and AP evidence register
 
+2026-11-15 — **First sparse reconstruction capture reviewed; coverage gate revised.**
+[Analysis](SPARSE_SCENE_01_RESULTS.md),
+[structured summary](../benchmarks/results/sparse-scene-01-analysis.json),
+[repeat instructions](OFFLINE_SPARSE_RECONSTRUCTION.md). Pi 60s scene produced
+1,807 frame records; 5/15s pair originally yielded 309 points, 0.40px median
+worst-view residual and 2.96s single-run wall time. Visual and PLY review found
+307/309 points in upper 240 rows and none on the desk, so not a representative
+multi-depth scene. New gate requires ≥20% and ≥10 points in each vertical half
+of both views; same scene rejects. Mac six synthetic/unit tests pass. Pi CPU
+excluding FFmpeg was 1.16s in one run; memory, temperature and energy not
+measured. Next: textured foreground and third-view consistency.
+
 2026-11-15 — **Offline sparse reconstruction: two-view implementation.**
 [Procedure](OFFLINE_SPARSE_RECONSTRUCTION.md),
 [plan](exec-plans/active/offline-sparse-reconstruction.md),

@@ -54,6 +54,21 @@ class SparseReconstructionTests(unittest.TestCase):
         np.testing.assert_allclose(cloud, points / 0.3, atol=0.01)
         np.testing.assert_allclose(report["camera_2_center"], [1, 0, 0], atol=0.001)
 
+    def test_rejects_background_only_support(self) -> None:
+        """A scene with all features above the optical center lacks broad coverage.
+
+        Args: None.
+        Returns: None.
+        """
+        rng = np.random.default_rng(23)
+        points = rng.uniform([-1, -1.5, 3], [1, -0.7, 7], (180, 3))
+        matrix = np.array([[733., 0, 670], [0, 733, 331], [0, 0, 1]])
+        a, _ = cv.projectPoints(points, np.zeros(3), np.zeros(3), matrix, None)
+        b, _ = cv.projectPoints(points, np.zeros(3), np.array([-0.3, 0., 0.]), matrix, None)
+        _, report = reconstruct(a.reshape(-1, 2), b.reshape(-1, 2), matrix, np.zeros(5))
+        self.assertEqual(report["status"], "rejected")
+        self.assertEqual(report["reason"], "Insufficient vertical point coverage in the scene")
+
     def test_identical_views_do_not_make_a_cloud(self) -> None:
         """A stationary pair must not become an accepted 3D map.
 

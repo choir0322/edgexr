@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import math
 from pathlib import Path
 import platform
 import subprocess
@@ -70,9 +71,14 @@ def reconstruct(a: np.ndarray, b: np.ndarray, matrix: np.ndarray,
     count = int(np.count_nonzero(keep))
     # A tiny cluster of matches is poor evidence for reconstructing the scene.
     support = []
+    vertical_support = []
     for pixels in (aa[keep], bb[keep]):
         quadrants = set((int(x >= matrix[0, 2]), int(y >= matrix[1, 2])) for x, y in pixels)
         support.append(len(quadrants))
+        vertical_support.append({"above": int(np.count_nonzero(pixels[:, 1] < matrix[1, 2])),
+                                 "below": int(np.count_nonzero(pixels[:, 1] >= matrix[1, 2]))})
+    minimum_per_half = max(10, math.ceil(0.2 * count))
+    vertical_ok = all(min(item.values()) >= minimum_per_half for item in vertical_support)
     report = {"correspondences": len(a), "essential_inliers": essential_count,
               "pose_inliers": int(np.count_nonzero(selected)), "accepted_points": count,
               "rejected_after_triangulation": int(np.count_nonzero(selected)) - count,
@@ -80,6 +86,9 @@ def reconstruct(a: np.ndarray, b: np.ndarray, matrix: np.ndarray,
               "minimum_accepted_points": 30,
               "occupied_principal_point_quadrants": support,
               "minimum_occupied_quadrants_each_view": 3,
+              "vertical_half_support": vertical_support,
+              "minimum_vertical_half_points": minimum_per_half,
+              "minimum_vertical_half_fraction": 0.2,
               "median_parallax_deg": float(np.median(angles[keep])) if count else None,
               "median_max_reprojection_px": float(np.median(error[keep])) if count else None,
               "p95_max_reprojection_px": float(np.percentile(error[keep], 95)) if count else None,
@@ -87,9 +96,11 @@ def reconstruct(a: np.ndarray, b: np.ndarray, matrix: np.ndarray,
               "camera_2_world_to_camera": np.vstack((np.column_stack((rotation, translation)),
                                                      [0, 0, 0, 1])).tolist(),
               "camera_2_center": center.tolist(),
-              "status": "candidate_needs_review" if count >= 30 and min(support) >= 3 else "rejected"}
+              "status": "candidate_needs_review" if count >= 30 and min(support) >= 3 and vertical_ok else "rejected"}
     if report["status"] == "rejected":
-        report["reason"] = "Too few triangulated points or insufficient spatial distribution"
+        report["reason"] = ("Insufficient vertical point coverage in the scene"
+                            if not vertical_ok else
+                            "Too few triangulated points or insufficient spatial distribution")
     return points[keep], report
 
 

@@ -6,7 +6,10 @@ ORB/mutual descriptor matches → undistorted rays → essential matrix and rela
 pose → triangulated points → depth/parallax/reprojection/distribution gates →
 report and candidate PLY. `spatial.sparse_reconstruction` uses arbitrary scale,
 no IMU fusion or live scheduling; video times are not exposure timestamps.
-Synthetic checks pass; real-scene and multi-view validation are pending.
+The first real scene exposed insufficient foreground point coverage; the current
+distribution gate now also requires 20% of points in each vertical image half.
+Synthetic checks pass; a representative multi-depth scene and multi-view
+validation are pending.
 See [capture and analysis](OFFLINE_SPARSE_RECONSTRUCTION.md).
 
 2026-11-15: screen-based camera calibration is a **separate offline path**:

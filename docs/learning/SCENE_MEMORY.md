@@ -13,6 +13,9 @@ UDP to a separate local player; it is not part of the scene-memory worker.
 essential geometry, camera pose and triangulation. Unlike scene recognition's
 homography check, this estimates point depth from translated viewpoints.
 Depth/parallax/reprojection and spatial-distribution gates limit weak estimates.
+The first scene showed that 3 occupied quadrants can still mean 307/309 points
+on one distant bookshelf. The current gate also checks meaningful support above
+and below the calibrated principal-point line in both views.
 The cloud's unit is arbitrary; camera one defines X right/Y down/Z forward.
 The existing scene labels, orientation timestamps and foreground paths are
 unchanged. This separate offline path does not improve live map position yet.

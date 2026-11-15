@@ -14,6 +14,13 @@ checkerboard, screens, mirrors, shiny surfaces and moving people. Switch off the
 checkerboard display. Keep focus, lens and 1280x720 mode unchanged. Aim initially
 from roughly 0.7–1.2 m away, adjusted for sharpness and a broad view.
 
+The first trial reconstructed almost exclusively the textured bookshelf while
+the smooth boxes and desk supplied no usable points. For the next trial, place
+an existing illustrated book, printed page, patterned keyboard or another
+richly textured **static foreground object** on the near desk in the lower
+half of the image. Keep the far bookshelf visible in the upper half. The
+foreground texture must remain visible from both selected positions.
+
 Leave the pan/tilt head fixed. Move the **whole rig sideways** to move the camera
 center; a servo sweep alone cannot supply the required translation. Support the
 rig securely with slack cables. Most of the same scene should remain visible
@@ -105,8 +112,11 @@ intersects corresponding viewing rays to estimate point coordinates.
 The output gates require at least 30 positive-depth pose matches and 30 final
 points with at least 1 degree of parallax and at most 2 pixels reprojection error
 in each image. Accepted points must occupy at least three quadrants relative to
-the calibrated principal point in each image. These are initial fixed diagnostic
-thresholds, not experimentally established accuracy limits. Do not lower them
+the calibrated principal point in each image. After the first scene revealed
+that nearly every point belonged to the upper bookshelf, a further gate requires
+at least 20% and at least 10 accepted points **above and below** the calibrated
+principal-point line in each image. These are provisional diagnostic thresholds,
+not experimentally established accuracy limits. Do not lower them
 to force success. Planar scenes, repetitive texture, blur and calibration error
 can still fool two-view estimation; `candidate_needs_review` requires inspection.
 
