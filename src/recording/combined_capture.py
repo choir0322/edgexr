@@ -94,7 +94,7 @@ def read_row(
     ]
 
 
-def camera_command(device: str, video: Path) -> list[str]:
+def camera_command(device: str, video: Path, hdmi_preview: bool = False) -> list[str]:
     """Build dual FFmpeg outputs: compressed video copy and decoded-frame timing logs.
 
     Args:
@@ -102,13 +102,14 @@ def camera_command(device: str, video: Path) -> list[str]:
             it.
         video (Path): New local video output path passed to FFmpeg with no-overwrite
             enabled.
+        hdmi_preview (bool): Send a small preview to a local Pi player over loopback.
 
     Returns:
         list[str]: Argument list with no overwrite and 720p MJPEG/30 fps request.
     """
     # Request 720p MJPEG at 30 fps. Copy compressed video to disk while a second
     # output decodes solely for showinfo timestamps; those PTS are not host receipts.
-    return [
+    command = [
         "ffmpeg",
         "-hide_banner",
         "-nostdin",
@@ -141,6 +142,13 @@ def camera_command(device: str, video: Path) -> list[str]:
         "null",
         "-",
     ]
+    if hdmi_preview:
+        # One camera input feeds an independent low-rate encoded preview. UDP is
+        # loopback-only and may drop frames: display is not the calibration record.
+        command += ["-map", "0:v:0", "-vf", "fps=5,scale=640:360",
+                    "-c:v", "mpeg2video", "-q:v", "5", "-g", "5",
+                    "-f", "mpegts", "udp://127.0.0.1:18765?pkt_size=1316"]
+    return command
 
 
 def stop_camera(process: subprocess.Popen[str]) -> None:
@@ -188,7 +196,7 @@ def record(sensor: Sensor, args: argparse.Namespace) -> int:
         from imu.command_polling import CommandPolling
 
         policy = CommandPolling(args.interval, args.active_interval)
-    command = camera_command(args.device, output / "camera.mkv")
+    command = camera_command(args.device, output / "camera.mkv", getattr(args, "hdmi_preview", False))
     metadata = {
         "status": "incomplete",
         "host": platform.platform(),
@@ -200,6 +208,8 @@ def record(sensor: Sensor, args: argparse.Namespace) -> int:
         "imu_policy": getattr(args, "imu_policy", "fixed"),
         "imu_active_sleep_seconds": args.active_interval if policy else None,
         "measure_resources": getattr(args, "measure_resources", False),
+        "hdmi_preview": getattr(args, "hdmi_preview", False),
+        "hdmi_preview_scope": "640x360 at target 5 fps over localhost UDP; not saved video" if getattr(args, "hdmi_preview", False) else None,
         "origin_monotonic_ns": origin,
         "started_unix_seconds": time.time(),
         "command": command,
@@ -398,6 +408,8 @@ def main(argv: Sequence[str] | None = None) -> int:
                         help="active sleep for command-driven policy; controlled via stdin pipe")
     parser.add_argument("--measure-resources", action="store_true",
                         help="observe recorder and FFmpeg CPU/RSS during recording (Linux)")
+    parser.add_argument("--hdmi-preview", action="store_true",
+                        help="send 640x360, 5 fps preview to local UDP port 18765 for ffplay")
     parser.add_argument(
         "--output", type=Path, required=True, help="new directory under recordings/"
     )

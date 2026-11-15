@@ -3,6 +3,8 @@
 The separate [screen-camera calibration](../SCREEN_CAMERA_CALIBRATION.md) fits
 lens intrinsics from checkerboard video; it does not change ORB scene memory,
 the live view map, or estimate 3D position. Sparse reconstruction remains planned.
+Its optional HDMI preview shares the recorder's camera input and uses loopback
+UDP to a separate local player; it is not part of the scene-memory worker.
 
 2026-11-09 current repair: `DetectionState.paired_scene` returns a single exact
 source/boxes/orientation package. `scene_latest` selects it at target 1Hz with

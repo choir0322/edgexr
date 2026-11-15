@@ -1,5 +1,64 @@
 # Calibrate the Pi camera using the MacBook display
 
+## HDMI preview while recording (current recommended workflow)
+
+The Pi must have an HDMI monitor showing its graphical desktop, with a keyboard
+or another way to launch a terminal **in that desktop session**. An ordinary SSH
+terminal alone does not open a window on the Pi monitor. The existing `ffplay`
+program and an FFmpeg build with MPEG-2 encoding are needed; no package is
+installed by these commands. Preview transport is localhost UDP, not Wi-Fi.
+
+On the Mac, open the target and leave its displayed size unchanged:
+
+```bash
+open /Users/ryanchoi/Desktop/edgexr/docs/learning/calibration-screen.html
+```
+
+On the Pi's HDMI desktop, open a terminal and pull this version:
+
+```bash
+cd ~/projects/edgexr
+git pull --ff-only
+command -v ffplay
+```
+
+If `ffplay` prints nothing, stop and report that result. Stop any existing camera
+preview or recorder with Ctrl+C. Then, in the same **Pi desktop terminal**, start
+the local preview player. It waits for the recording; the window may not appear
+until frames arrive:
+
+```bash
+ffplay -hide_banner -loglevel warning -fflags nobuffer -flags low_delay \
+  -framedrop -window_title "EdgeXR calibration preview" \
+  'udp://127.0.0.1:18765?fifo_size=1000000&overrun_nonfatal=1' &
+```
+
+In that terminal start the recorder:
+
+```bash
+sudo env PYTHONPATH=src python3 -m recording.combined_capture \
+  --device /dev/video0 --seconds 120 --hdmi-preview \
+  --output recordings/camera-calibration-screen-01 \
+  --notes "Mac screen checkerboard; HDMI local preview; fixed focus; varied poses"
+```
+
+Use a new output suffix if that directory already exists. FFmpeg reads the camera
+once, writes the original 1280x720 MJPEG video and sends a separate 640x360,
+target-5fps preview to the player. The preview may lag or drop frames; it is
+only for framing. Wait for `RECORDING` and the player window, then follow the
+movement sequence under **Record 120 seconds on the Pi** below. Keep the board
+and white border visible. This is still a 120-second recording, not 120 seconds
+after the preview window opens. If no window appears or preview fails, stop the
+recording with Ctrl+C and report both terminal outputs; use a new folder on retry.
+The recorder does not monitor whether ffplay is showing frames; if the window
+closes or freezes, stop and inspect the recording status instead of assuming the
+preview succeeded. `hdmi_preview` in metadata records the extra workload.
+
+When recording stops, close the preview window (or press `q` while it is focused).
+Then use the **Analyze on the Pi** and **Transfer results to Mac** sections below.
+The prior preflight-only instructions remain below as a fallback; do not start
+the old preview and the recorder at the same time.
+
 This is the first step toward offline sparse 3D reconstruction. The Pi records
 your screen, then OpenCV fits the camera's lens parameters. This process does not
 build a 3D map, operate the servos or change camera controls. Synthetic geometry

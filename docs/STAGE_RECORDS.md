@@ -1,5 +1,14 @@
 # EdgeXR technique and AP evidence register
 
+2026-11-15 — **Optional HDMI calibration preview implemented; Pi desktop test pending.**
+`recording.combined_capture --hdmi-preview` sends a best-effort 640x360 5fps
+MPEG-2 stream over loopback to local ffplay while preserving 720p camera packet
+copy, IMU and frame logs. [Procedure](SCREEN_CAMERA_CALIBRATION.md),
+[plan](exec-plans/active/screen-camera-calibration.md). Desktop/ffplay, actual
+Pi performance and image quality remain unverified. AP question: preview encode
+and display cost versus no-preview; no savings or performance claim. PIPELINE
+and scene-memory guide reviewed/updated; no live scene changes.
+
 2026-11-15 — **Screen camera calibration implemented; Pi capture pending.**
 [Guide](SCREEN_CAMERA_CALIBRATION.md), [plan](exec-plans/active/screen-camera-calibration.md),
 [target](learning/calibration-screen.html), [fit](../src/spatial/camera_calibration.py).

@@ -54,12 +54,23 @@ Potential glare, screen flicker and moiré require image review.
 
 ## Decision log
 
+2026-11-15: user selected a Pi HDMI monitor. Add an optional loopback UDP
+low-rate FFmpeg output and local-user ffplay window, retaining the single V4L2
+input and original full-resolution video. Preview is best-effort, not recording
+or timing ground truth. Pi graphical session and ffplay availability unverified.
+
 2026-11-15: screen target selected by user, paired with existing recording
 infrastructure. Keep patterns fully visible; no use of display dimensions to
 claim metric reconstruction scale. Existing Pi preview and recorder cannot own
 the camera concurrently.
 
 ## Outcomes and retrospective
+
+HDMI preview implemented. 227 hardware-free unit tests passed. An actual FFmpeg
+run on synthetic camera-like video produced packet-copy video, 60 showinfo
+frames and 79 local UDP packets; a separate headless ffplay test recognized the
+MPEG-2 stream. This is not a test of the Pi's GUI, camera or physical display.
+Preview encoding adds unmeasured AP load. PIPELINE and learning guide updated.
 
 2026-11-15: implemented full-screen fixed-ratio target, existing Pi video
 recording workflow, offline OpenCV fitting and review-needed report. Synthetic

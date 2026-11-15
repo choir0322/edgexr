@@ -4,6 +4,9 @@
 existing 720p combined recorder → video → sampled 9×6 checkerboard detections →
 OpenCV fit and held-out board-pose reprojection report. It does not alter this
 live pipeline or produce 3D mapping. See [calibration guide](SCREEN_CAMERA_CALIBRATION.md).
+An opt-in recorder output now encodes a 640x360 target-5fps preview to loopback
+UDP for local HDMI ffplay while retaining the original 720p MJPEG video. Preview
+loss, delay and AP overhead are not measured; the live scene pipeline is unchanged.
 
 2026-11-09 paired/partial repair supersedes the original foreground path.
 `DetectionState.paired_scene` retains one completed source image, its boxes and

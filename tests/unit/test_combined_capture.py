@@ -217,6 +217,20 @@ class CombinedCaptureTests(unittest.TestCase):
         )
         self.assertIn("-n", command)
 
+    def test_hdmi_preview_uses_same_camera_and_loopback(self) -> None:
+        """Preview is opt-in and the full-resolution recording stays packet copy.
+
+        Args: None.
+        Returns: None.
+        """
+        baseline = camera_command('/dev/video9', Path('recordings/run/camera.mkv'))
+        preview = camera_command('/dev/video9', Path('recordings/run/camera.mkv'), True)
+        self.assertEqual(preview[:len(baseline)], baseline)
+        self.assertEqual(preview.count('-i'), 1)
+        self.assertEqual(preview[preview.index('-c:v') + 1], 'copy')
+        self.assertIn('fps=5,scale=640:360', preview)
+        self.assertEqual(preview[-1], 'udp://127.0.0.1:18765?pkt_size=1316')
+
     def run_fake(
         self, sensor: Sensor, directory: str, measure_resources: bool = False
     ) -> tuple[int, Record, argparse.Namespace]:
