@@ -11,6 +11,8 @@ encoding median/p95 23.47/55.12ms included in those times. CPU utilization,
 memory, temperature and electrical energy not measured. Dirty Pi revision and
 absent ground-truth labels limit interpretation. Diagram reviewed; unchanged:
 no runtime change was made during this evidence review.
+On 2026-11-15 the user confirmed View-3 as the crossing view and the chair/cabinet
+direction as the unenrolled control; this does not establish per-frame ground truth.
 
 2026-11-10 — **Paired partial-background recognition implemented; Pi trial pending.**
 [Protocol](SCENE_OCCLUSION_RETEST.md), [plan](exec-plans/active/occlusion-aware-scene.md),

@@ -6,6 +6,10 @@ not time since the shell command or exact exposure time. Original PNGs and logs
 remain private outside Git. Review sampled source images with recorded boxes,
 not reconstructed continuous video; 179/179 linked images are present.
 
+On 2026-11-15 the user confirmed that View-3 was the intended crossing view and
+that the chair-and-cabinet direction near the end was intended as unenrolled.
+This confirms the broad experimental intent, not an exact label for every frame.
+
 ## Enrollment and timing
 
 Run metadata reports revision `405a6994a9a073b3671f5b96afd9e59f1bea67cb` and
@@ -49,8 +53,7 @@ Examples from the saved image and corresponding decision:
   experimental requirement. At 126.4s frame 3805, View-3 is accepted.
 - From 139.9–158.4s, 20 saved observations are unknown with no person boxes.
   Inspected frame 4212 shows a different direction dominated by a chair/cabinet;
-  this is consistent with the requested unenrolled-direction control, but the
-  user's exact intended sequence has not been confirmed.
+  the user confirmed this was the intended unenrolled-direction control.
 - At 166.9s (5025) and 174.9s (5266), View-3 is known with a person present.
   The final three samples are unknown; frame 5341 still has a person box and
   View-3 inliers, but their geometry occupies too little area to pass support.
@@ -85,8 +88,8 @@ recording; it is not directly comparable to unrelated earlier baselines.
 
 ## Next bounded step
 
-Confirm the user's intended movement sequence and whether View-3 was the planned
-crossing view. Inspect further frames if required. The trial establishes several
+The user confirmed the intended crossing and control views. Inspect further frames
+if required. The trial establishes several
 successful person-masked recognitions and explicit abstentions, while return
 recovery at the end remains unproven. Prioritize completing the existing spatial
 application; choose a specific quality or AP question before another trial.

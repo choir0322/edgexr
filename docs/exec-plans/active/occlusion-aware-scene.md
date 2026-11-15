@@ -68,6 +68,9 @@ zero recording drops. A different-direction interval was unknown. Last samples
 were still obscured/unknown; clear return and complete acceptance remain pending.
 No matched A/B accuracy or isolated AP CPU comparison was performed. Pipeline
 diagram reviewed; unchanged because this is evidence review only.
+2026-11-15: user confirmed View-3 was the intended crossing view and the
+chair/cabinet direction was the unenrolled control. Clear final return remains
+unverified, and broad intent does not supply per-frame ground truth.
 
 2026-11-10: implementation complete. All 224 Python tests passed with real
 OpenCV 4.11.0; Node browser checks passed. Actual localhost browser fixture using
