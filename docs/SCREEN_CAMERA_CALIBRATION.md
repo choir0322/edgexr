@@ -187,12 +187,14 @@ After the recorder stops, run:
 
 ```bash
 cd ~/projects/edgexr
-PYTHONPATH=src python3 -m spatial.camera_calibration \
+sudo env PYTHONPATH=src python3 -m spatial.camera_calibration \
   recordings/camera-calibration-screen-01/camera.mkv \
   --output recordings/camera-calibration-screen-01/calibration.json
 ```
 
-The program extracts temporary samples every 2 seconds, finds the 9×6 internal
+The recorder ran with sudo and creates its output directory as root, so this
+analysis command also uses sudo to write the new report there. The program
+extracts temporary samples every 2 seconds, finds the 9×6 internal
 corners and fits intrinsics on four out of five detected samples. Every fifth
 detected sample is held out from fitting; each held-out board pose is then
 estimated using the fixed intrinsics. At least 15 detected samples are required.
