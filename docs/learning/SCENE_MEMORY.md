@@ -2,9 +2,20 @@
 
 The separate [screen-camera calibration](../SCREEN_CAMERA_CALIBRATION.md) fits
 lens intrinsics from checkerboard video; it does not change ORB scene memory,
-the live view map, or estimate 3D position. Sparse reconstruction remains planned.
+the live view map, or estimate 3D position. A first offline two-view reconstruction
+is now implemented; real-scene validation and multi-view refinement remain pending.
 Its optional HDMI preview shares the recorder's camera input and uses loopback
 UDP to a separate local player; it is not part of the scene-memory worker.
+
+[Offline sparse reconstruction](../OFFLINE_SPARSE_RECONSTRUCTION.md) uses
+`spatial.sparse_reconstruction.extract_frame` for two 1280x720 grayscale views,
+`run` for ORB matching and output, and `reconstruct` for calibrated rays,
+essential geometry, camera pose and triangulation. Unlike scene recognition's
+homography check, this estimates point depth from translated viewpoints.
+Depth/parallax/reprojection and spatial-distribution gates limit weak estimates.
+The cloud's unit is arbitrary; camera one defines X right/Y down/Z forward.
+The existing scene labels, orientation timestamps and foreground paths are
+unchanged. This separate offline path does not improve live map position yet.
 
 2026-11-09 current repair: `DetectionState.paired_scene` returns a single exact
 source/boxes/orientation package. `scene_latest` selects it at target 1Hz with

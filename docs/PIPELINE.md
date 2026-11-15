@@ -1,5 +1,14 @@
 # Current live pipeline
 
+2026-11-15: a separate **offline two-view reconstruction** path is implemented:
+720p video + candidate calibration → two explicitly selected grayscale frames →
+ORB/mutual descriptor matches → undistorted rays → essential matrix and relative
+pose → triangulated points → depth/parallax/reprojection/distribution gates →
+report and candidate PLY. `spatial.sparse_reconstruction` uses arbitrary scale,
+no IMU fusion or live scheduling; video times are not exposure timestamps.
+Synthetic checks pass; real-scene and multi-view validation are pending.
+See [capture and analysis](OFFLINE_SPARSE_RECONSTRUCTION.md).
+
 2026-11-15: screen-based camera calibration is a **separate offline path**:
 existing 720p combined recorder → video → sampled 9×6 checkerboard detections →
 OpenCV fit and held-out board-pose reprojection report. It does not alter this

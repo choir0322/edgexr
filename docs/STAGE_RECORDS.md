@@ -1,5 +1,17 @@
 # EdgeXR technique and AP evidence register
 
+2026-11-15 — **Offline sparse reconstruction: two-view implementation.**
+[Procedure](OFFLINE_SPARSE_RECONSTRUCTION.md),
+[plan](exec-plans/active/offline-sparse-reconstruction.md),
+source `spatial/sparse_reconstruction.py`, tests `test_sparse_reconstruction.py`.
+Uses candidate calibration, ORB matches, essential geometry and triangulation;
+exports arbitrary-scale points/poses only after depth/parallax/error/support
+gates. Known synthetic shape/pose recovery and rotation/stationary rejection
+checked on Mac. Real-scene trial, multi-view refinement and independent accuracy
+validation pending. AP question: feature/matching/geometry cost for bounded
+offline inputs. Tool records host, OpenCV, wall and Python CPU times; Pi cost,
+peak memory, temperature and energy not measured. Pipeline and source guide updated.
+
 2026-11-15 — **Screen-camera calibration recorded; provisional candidate.**
 [Analysis](SCREEN_CAMERA_CALIBRATION_RESULTS_01.md),
 [structured summary](../benchmarks/results/camera-calibration-screen-01.json).
