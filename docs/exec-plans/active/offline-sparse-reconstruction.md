@@ -23,8 +23,10 @@ See [capture/analysis instructions](../../OFFLINE_SPARSE_RECONSTRUCTION.md).
 - [x] Capture translated static scene on Pi, inspect candidate and record quality/runtime.
 - [x] Capture first Pi scene and inspect 5/15-second pair; reject for concentrated upper-bookcase points.
 - [x] Add and test vertical-half point-coverage gate after identifying first-scene failure.
-- [ ] Repeat with textured foreground supplying points in both image halves.
-- [ ] Add third-view registration/refinement and independent geometry checks.
+- [x] Repeat with textured foreground supplying points in both image halves (Scene 02).
+- [ ] Deferred 2026-11-16: third-view registration/refinement and independent
+  geometry checks. The fixed-base spatial-awareness decision replaced this
+  endpoint; see [the decision](../../decisions/2026-11-16-spatial-awareness-integration.md).
 
 ## Plan of work
 
