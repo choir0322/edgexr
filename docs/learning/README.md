@@ -1,5 +1,9 @@
 # Read the EdgeXR code from end to end
 
+New: [Sparse Scene 01 visual walkthrough](sparse-scene-01.html): actual trial
+counts, the concentrated bookshelf points, and the revised coverage check.
+Private trial images are optional local file selections and are not committed.
+
 New: [ORB scene-recognition explorer](orb-scene-explorer.html). Nine visual stages
 follow recorded Pi imagery through keypoints, actual binary descriptors,
 Hamming/ratio/mutual matching, RANSAC, hull/grid support and known/unknown.
