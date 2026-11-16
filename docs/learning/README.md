@@ -49,6 +49,9 @@ Code or on GitHub. In VS Code, open a linked file and use symbol search
    changing the workers ([Pi procedure](../AP_BASELINE.md)).
 7. [Spatial progress and systems log](SPATIAL_PROGRESS_AND_SYSTEMS.md): chronological changes.
 
+For background reading, the [CS:APP reading plan](CSAPP_READING_PLAN.md) maps
+book chapters to EdgeXR measurements from mid-November to April/May.
+
 [Code conventions](CODE_CONVENTIONS.md) explains the comment, type and docstring
 notation. [The live pipeline diagram](../PIPELINE.md) is the compact reference for
 the current implementation.
