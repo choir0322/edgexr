@@ -42,3 +42,8 @@ After each chapter, write one sentence linking it to a measured EdgeXR number.
 For example: "Chapter 6: descriptors per view ≈ 19 KB, smaller than the cache,
 so matching should be compute-limited. Test this in step 5." Those notes become
 the systems section of your project write-up.
+
+## Related roadmap
+
+Weeks 16–21 (Chapters 8–10 and 12) are the background for the user-written
+[Pi ↔ Tang Primer 20K link driver](../SYSTEMS_AND_AP_EXTENSIONS.md#user-written-pi--tang-primer-20k-link-driver).

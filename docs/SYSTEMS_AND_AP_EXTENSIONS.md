@@ -28,6 +28,8 @@ application is perfect. See [priority decision](decisions/2026-11-05-ap-first-pr
    implement and test a relevant sensor-driver or kernel change after auditing
    existing support. Keep before/after timing and resource evidence. Accelerator
    integration/scheduling remains optional and hardware-dependent.
+   The concrete driver target is the user-written
+   [Pi ↔ Tang Primer 20K link driver](#user-written-pi--tang-primer-20k-link-driver) below.
 
 Each experiment has a fixed input/configuration, an AP hypothesis, a quality
 constraint and a reproducible result. New models or features must earn their
@@ -46,6 +48,43 @@ driver support, sensor documentation and accessible wiring. Building a kernel
 alone does not demonstrate a driver or scheduler implementation. Real-time work
 begins with measured deadline misses; hard guarantees require bounded behavior
 throughout the chosen path. Full OS design remains a separate substantial branch.
+
+## User-written Pi ↔ Tang Primer 20K link driver
+
+**User direction, 2026-11-17:** once the Tang Primer 20K (core + Dock) arrives,
+the user will personally write a Linux kernel driver for the link between the
+Raspberry Pi 4 and the FPGA. The assistant explains concepts, reviews code,
+designs tests and measures; it does not write the driver for the user. Status:
+**planned**; nothing is built, wired or measured.
+
+**First interface: SPI** (to confirm before wiring). The Pi is the SPI controller
+(in-tree `spi-bcm2835` driver); the FPGA implements an SPI target with an ID
+register, a small register map and a FIFO. SPI is simple to debug with a logic
+analyzer and fast enough for the first offload: one image's ORB descriptors are
+600 × 32 B ≈ 19 KB, about 8 ms at an assumed 20 MHz clock (derived, unmeasured).
+Faster links (parallel GPIO, Ethernet on the Dock) wait until SPI is measured.
+
+Must be verified before any wiring (hardware change → reviewed procedure first):
+which header pins the Fusion HAT already uses (SPI0 is GPIO 8–11, physical pins
+19/21/23/24); the Dock pins' I/O bank voltage (assumed 3.3 V LVCMOS, matching the
+Pi); a common ground; short wires; and which pin carries an FPGA-to-Pi interrupt.
+
+| Milestone | What the user builds | Evidence / AP question |
+|---|---|---|
+| D0 Audit | Check existing support: `spidev`, `spi-bcm2835`, SPI device-tree overlays, kernel `6.12.47+rpt-rpi-v8`, availability of matching kernel headers (installing them needs approval). | Written audit; no custom driver before a baseline exists |
+| D1 First module | Out-of-tree "hello" module built on the Pi against the running kernel; load, unload, `dmesg`; recovery plan (not loaded at boot, SD backup). | Build/load log; module lifecycle understood |
+| D2 User-space baseline | FPGA SPI echo + ID register (open toolchain on the Mac); Pi talks to it through `spidev`. | Throughput, per-transfer latency, CPU: the baseline the driver must match or beat |
+| D3 Driver v1 | `spi_driver` bound by a custom device-tree overlay (e.g. `compatible = "edgexr,tang-link"`); `probe`/`remove`; character device `/dev/edgexr-link` with read/write/ioctl for registers; error paths; debugfs counters. | Same tests as D2; correctness under unload/reload and malformed requests |
+| D4 Driver v2 | Batched transfers for descriptor matching; DMA-capable buffers; `mmap` to avoid copies; FPGA "done" interrupt on a GPIO waking the waiting reader instead of polling. | Copies avoided, interrupt-to-wakeup latency distribution, CPU while waiting |
+| D5 Matcher offload | User code sends query/reference descriptors; FPGA returns distances or best matches; integrate behind the existing matcher interface. | End-to-end time including transfers versus the C/NEON CPU matcher (CS:APP Ch 5 baseline); identical match results |
+| D6 Tracing and stress | Tracepoints in the driver; ftrace of syscall → SPI → IRQ path; long stress and fault tests. | Latency tails and failure behaviour, recorded in `docs/STAGE_RECORDS.md` |
+
+Background: [CS:APP reading plan](learning/CSAPP_READING_PLAN.md) Chapters 8–10
+(exceptional control flow, virtual memory and `mmap`, system-level I/O) and the
+Linux kernel documentation on SPI protocol drivers and device-tree overlays.
+Development stays Mac + Pi only: modules are built natively on the Pi; FPGA
+bitstreams use the open Gowin toolchain on the Mac (to be validated, see
+[FPGA shortlist](FPGA_PURCHASE_SHORTLIST.md)).
 
 ## Application processor performance engineering
 
