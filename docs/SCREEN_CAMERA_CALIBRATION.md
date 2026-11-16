@@ -1,5 +1,9 @@
 # Calibrate the Pi camera using the MacBook display
 
+**2026-11-16:** calibration 01 did not cover the image corners. Use
+[recalibration 02](CAMERA_RECALIBRATION_02.md) for the current procedure; the
+sections below record how calibration 01 was made.
+
 ## HDMI preview while recording (current recommended workflow)
 
 The Pi must have an HDMI monitor showing its graphical desktop, with a keyboard

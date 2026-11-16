@@ -30,6 +30,7 @@ AP/systems learning; each step names the processor question it adds. See
 
 - [x] 2026-11-16 User approved the specification; bottle as first test object.
 - [x] 2026-11-16 Decision record written; third-view plan deferred.
+- [ ] Recalibrate with corner coverage: [procedure and acceptance checks](../../CAMERA_RECALIBRATION_02.md).
 - [ ] Step 1: detections become bearings (head orientation + calibrated pixel ray).
 - [ ] Step 2: object memory keyed by bearing, prediction and matched/missing/moved.
 - [ ] Step 3: drift correction from phase-correlation shift and ORB view anchors.
@@ -60,6 +61,13 @@ AP/systems learning; each step names the processor question it adds. See
    percentiles, memory and temperature; rank kernels for NEON/FPGA work.
 
 ## Concrete steps
+
+Step-1 scene (fixed before implementation, 2026-11-17): base on a table, head at
+neutral; one bottle upright about 1–2 m away at bearing −30° (left of straight
+ahead): place it a forward distance F from the lens and 0.58 × F to the left
+(1.0 m → 0.58 m, 1.5 m → 0.87 m, 2.0 m → 1.15 m), roughly at lens height. With the
+existing ±20° servo sweep it is visible for pan below about +13° and out of view
+beyond, so the sweep both keeps it in view and takes it out. Mark positions with tape.
 
 Each step adds tests under `tests/unit/` first (hardware-free), then a Pi trial
 with a written protocol that includes the Mac SSH-tunnel/browser commands for the
