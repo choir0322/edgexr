@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>EdgeXR calibration corner tour</title>
+<style>
+/* Self-running calibration target (recalibration 03). One click starts it; a
+   smaller board then visits every corner, edge and the centre of the screen,
+   and on-screen text says when to change the laptop's angle. No keys needed. */
+html,body{margin:0;height:100%;background:#fff;color:#111;font:16px system-ui;overflow:hidden;cursor:default}
+#board{position:absolute;display:block}
+#msg{position:absolute;left:0;right:0;text-align:center;font-size:clamp(18px,2.6vw,34px);font-weight:600;color:#222;padding:0 4vw;line-height:1.3}
+#msg small{display:block;font-size:.55em;font-weight:400;color:#555;margin-top:.3em}
+</style></head><body>
+<svg id="board" viewBox="-1 -1 12 9" role="img" aria-label="10 by 7 checkerboard squares, 9 by 6 inside corners, with a white border" xmlns="http://www.w3.org/2000/svg">
+<defs><pattern id="checker" width="2" height="2" patternUnits="userSpaceOnUse"><rect width="2" height="2" fill="white"/><rect width="1" height="1" fill="black"/><rect x="1" y="1" width="1" height="1" fill="black"/></pattern></defs>
+<rect x="-1" y="-1" width="12" height="9" fill="white"/><rect width="10" height="7" fill="url(#checker)"/>
+</svg>
+<div id="msg"></div>
+<script>
+/* Schedule (seconds after the click): 30 s line-up with the board in the centre,
+   then four rounds of nine 8-second positions, with a 10-second "change the
+   laptop angle" pause (board in the centre) between rounds. Total 348 s. */
+(function () {
+  const board = document.getElementById("board"), msg = document.getElementById("msg");
+  const SCALE = 0.42, MARGIN = 0.01, HOLD = 8, LINEUP = 30, CHANGE = 10;
+  const TOUR = ["TL", "T", "TR", "R", "BR", "B", "BL", "L", "C"];
+  const ROUNDS = [
+    "Round 1 of 4: laptop facing the camera. Hold still.",
+    "Round 2 of 4: laptop turned. Hold still.",
+    "Round 3 of 4: laptop turned the other way. Hold still.",
+    "Round 4 of 4: lid tilted back. Hold still.",
+  ];
+  const CHANGES = [
+    "Now turn the laptop about 20° on the table, then hold still.",
+    "Now turn the laptop about 20° the other way, then hold still.",
+    "Now face the camera again and tilt the lid back about 20°, then hold still.",
+  ];
+  // Build the timeline once: [start s, end s, position, message].
+  const steps = [];
+  let t = 0;
+  steps.push([t, t += LINEUP, "C", "Line up now: move the laptop until this screen fills the camera preview.", true]);
+  ROUNDS.forEach((text, r) => {
+    TOUR.forEach((p) => steps.push([t, t += HOLD, p, text, false]));
+    if (r < CHANGES.length) steps.push([t, t += CHANGE, "C", CHANGES[r], true]);
+  });
+  const END = t;
+
+  /** Put the board at a named screen position and the message on the other half. @param {string} p Position. @param {string} text Message. @param {string} [sub] Second line. @returns {void} */
+  function show(p, text, sub) {
+    const W = innerWidth, H = innerHeight, w = SCALE * W, h = w * 9 / 12;
+    const col = p.includes("L") ? 0 : p.includes("R") ? 2 : 1;
+    const row = p.startsWith("T") ? 0 : p.startsWith("B") ? 2 : 1;
+    const xs = [MARGIN * W, (W - w) / 2, W - w - MARGIN * W], ys = [MARGIN * H, (H - h) / 2, H - h - MARGIN * H];
+    Object.assign(board.style, { width: `${w}px`, height: `${h}px`, left: `${xs[col]}px`, top: `${ys[row]}px` });
+    msg.innerHTML = `${text}${sub ? `<small>${sub}</small>` : ""}`;
+    // Text goes in the half of the screen the board is not using.
+    if (row === 0) { msg.style.top = ""; msg.style.bottom = "6vh"; } else { msg.style.bottom = ""; msg.style.top = "6vh"; }
+  }
+
+  let started = null;
+  /** Show the step for the current elapsed time. @returns {void} */
+  function tick() {
+    const s = (performance.now() - started) / 1000 + Number(location.hash.replace("#t=", "") || 0);
+    if (s >= END) { show("C", "Finished. Leave everything; the Pi recording stops on its own."); return; }
+    const [a, b, p, text, countdown] = steps.find((x) => s >= x[0] && s < x[1]);
+    show(p, text, countdown ? `${Math.ceil(b - s)} s` : `${Math.ceil(END - s)} s left in total`);
+    requestAnimationFrame(tick);
+  }
+  show("C", "Click anywhere to start.", "Start the Pi recording first. After the click, nothing else needs a key or click.");
+  document.addEventListener("click", () => { if (started === null) { started = performance.now(); tick(); } });
+  addEventListener("resize", () => { if (started === null) show("C", "Click anywhere to start.", "Start the Pi recording first. After the click, nothing else needs a key or click."); });
+})();
+</script>
+</body></html>

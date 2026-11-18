@@ -15,80 +15,60 @@ image and could not fit into a corner. A 2–3 s moment showing a work window
 
 ## The change
 
-Keep the MacBook **close**, so its screen fills the camera view, and let the
-calibration page **move a smaller board** through the four corners, four edges and
-centre. The camera and laptop stay still within each round; only the laptop's
-tilt changes between rounds. Press **T** on the page to start or stop the tour
-(9 positions × 8 s = 72 s per round, starting at the top-left). Keys 1–9 jump to a
-position (keypad layout: 7 top-left … 3 bottom-right); `+`/`-` resize the board.
-Without pressing T the page is unchanged from calibrations 01–02.
+Keep the MacBook **close**, so its screen fills the camera view, and let a
+self-running page move a **smaller board** through the four corners, four edges and
+centre of the screen. Page: [calibration-tour.html](learning/calibration-tour.html).
+One click starts it; it shows on screen when to change the laptop's angle. No keys.
+Schedule after the click: 30 s line-up (board in the centre), then four rounds of
+nine 8-second positions with a 10-second "change angle" pause between rounds
+(348 s). The original [calibration-screen.html](learning/calibration-screen.html)
+is unchanged.
 
 ## Steps
 
-**Mac:** open the page and enter full screen (View → Enter Full Screen, or ⌃⌘F):
+1. **Mac:** open the tour page, then make the browser full screen (⌃⌘F):
 
-```bash
-open /Users/ryanchoi/Desktop/edgexr/docs/learning/calibration-screen.html
-```
+   ```bash
+   open /Users/ryanchoi/Desktop/edgexr/docs/learning/calibration-tour.html
+   ```
 
-**Pi desktop terminal** (HDMI monitor), same as 02:
+2. **Pi desktop terminal** (HDMI monitor): start the preview and the 380 s recording:
 
-```bash
-cd ~/projects/edgexr
-git pull --ff-only
-v4l2-ctl --list-devices
-command -v ffplay
-ffplay -hide_banner -loglevel warning -fflags nobuffer -flags low_delay \
-  -framedrop -window_title "EdgeXR calibration preview" \
-  'udp://127.0.0.1:18765?fifo_size=1000000&overrun_nonfatal=1' &
-```
+   ```bash
+   cd ~/projects/edgexr
+   git pull --ff-only
+   ffplay -hide_banner -loglevel warning -fflags nobuffer -flags low_delay \
+     -framedrop -window_title "EdgeXR calibration preview" \
+     'udp://127.0.0.1:18765?fifo_size=1000000&overrun_nonfatal=1' &
+   sudo env PYTHONPATH=src python3 -m recording.combined_capture \
+     --device /dev/video0 --seconds 380 --hdmi-preview \
+     --output recordings/camera-calibration-screen-03 \
+     --notes "Recalibration 03: close screen fills view, self-running corner tour"
+   ```
 
-**Record 320 s** (new folder):
+3. When `RECORDING` appears, **click once anywhere on the Mac page**.
+4. **Line-up (30 s, countdown on screen):** looking at the Pi preview, move the
+   laptop until the screen fills the preview almost edge to edge (thin strip of
+   bezel on every side; roughly 20–35 cm away), the small squares look sharp, and
+   there are no reflections. Then leave the laptop still.
+5. **Follow the screen text.** Hold still while it says "Hold still". When it says
+   "Now turn the laptop…", do that within the 10 seconds, turning the laptop about
+   its own centre. Three changes in total: turn ~20°, turn ~20° the other way, face
+   the camera and tilt the lid back ~20°.
+6. When it says **Finished**, wait for the recording to stop by itself, then close
+   the preview (`q`).
+7. **Analyze on the Pi, then copy to the Mac:**
 
-```bash
-sudo env PYTHONPATH=src python3 -m recording.combined_capture \
-  --device /dev/video0 --seconds 320 --hdmi-preview \
-  --output recordings/camera-calibration-screen-03 \
-  --notes "Recalibration 03: close screen fills view, on-screen corner tour, 4 tilt rounds"
-```
+   ```bash
+   sudo env PYTHONPATH=src python3 -m spatial.camera_calibration \
+     recordings/camera-calibration-screen-03/camera.mkv \
+     --output recordings/camera-calibration-screen-03/calibration.json
+   ```
 
-**Framing (first ~30 s of the recording).** When `RECORDING` appears the preview
-shows the camera view. On the Mac press **T**, then **5**: the small board pauses
-at the screen centre. Rig still on its book stack, lens level with the middle of
-the screen. Move the laptop until:
-
-- the screen's display area fills the preview **almost edge to edge**, with a thin
-  strip of bezel visible on all four sides (expect roughly 20–35 cm away);
-- the small board's squares look crisp (if they blur, move back until sharp; a
-  slightly larger gap at the edges is acceptable);
-- there are no lamp reflections on the screen.
-
-Then press **T** once: the tour restarts at the top-left and runs by itself. Do not
-touch the keyboard again. Rounds:
-
-| Round | During it | Change while the board sits in the **centre** (end of the round) |
-|---|---|---|
-| 1 | screen facing the camera squarely | turn the laptop ~20° on the table (right side farther) |
-| 2 | turned ~20° | turn it ~20° the other way |
-| 3 | turned ~20° the other way | face the camera again and tilt the lid back ~20° |
-| 4 | lid tilted back | — (recording ends) |
-
-Turn the laptop about its own centre so the screen keeps filling the view; some
-corner positions may leave the view in turned rounds, which is fine. Close the
-preview (`q`) after the recorder stops.
-
-**Analyze on the Pi and copy to the Mac:**
-
-```bash
-sudo env PYTHONPATH=src python3 -m spatial.camera_calibration \
-  recordings/camera-calibration-screen-03/camera.mkv \
-  --output recordings/camera-calibration-screen-03/calibration.json
-```
-
-```bash
-scp -r pi@ai-fusion.local:/home/pi/projects/edgexr/recordings/camera-calibration-screen-03 \
-  /Users/ryanchoi/Desktop/
-```
+   ```bash
+   scp -r pi@ai-fusion.local:/home/pi/projects/edgexr/recordings/camera-calibration-screen-03 \
+     /Users/ryanchoi/Desktop/
+   ```
 
 ## Acceptance
 

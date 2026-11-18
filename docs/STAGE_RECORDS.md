@@ -6,8 +6,8 @@
 per-view error median/p95 0.17/0.42 px (01: 0.19/1.11). Failed preset checks:
 centre span 0.40 (≥0.6), only one image corner reached (36 px; others 139–161),
 lens polynomial still folds (distorted radius 0.956; corner round trips 27–69 px).
-Cause from frames: board drawn near full-screen with the laptop close. Fix: on-screen
-corner tour added to `calibration-screen.html` (default view unchanged). A 2–3 s
+Cause from frames: board drawn near full-screen with the laptop close. Fix: self-running
+`calibration-tour.html` moves a smaller board through every corner and edge. A 2–3 s
 non-board interval was excluded automatically. Analysis CPU/energy not measured.
 
 2026-11-16 — **Learning site reorganized; calibration fold found (derived).**
