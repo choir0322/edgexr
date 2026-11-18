@@ -3,7 +3,7 @@
 2026-11-19 — **Recalibration 03 reviewed; joint 02+03 calibration adopted provisionally.**
 [03 summary](../benchmarks/results/camera-calibration-screen-03.json),
 [joint review](../benchmarks/results/camera-calibration-joint-02-03.json),
-script . 03: 188/190 boards, held-out
+script `scripts/review_camera_calibration.py`. 03: 188/190 boards, held-out
 0.12/0.30 px, but corners unreached and focal halves 841 vs 735 px (coplanar views
 per tour round; browser toolbar visible). Joint 363 views, k3 fixed at zero:
 held-out 0.16/0.44 px, halves within 0.10%, inverts at three corners (bottom-left

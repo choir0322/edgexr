@@ -32,7 +32,7 @@ AP/systems learning; each step names the processor question it adds. See
 - [x] 2026-11-16 Decision record written; third-view plan deferred.
 - [x] 2026-11-19 Recalibration 02 reviewed: centre fit improved, corners still uncovered and model still folds ([summary](../../../benchmarks/results/camera-calibration-screen-02.json)).
 - [x] 2026-11-19 Recalibration 03 reviewed; joint 02+03 fit with k3 = 0 adopted as the
-  working calibration, status  ([review](../../../benchmarks/results/camera-calibration-joint-02-03.json)).
+  working calibration, status `needs_review` ([review](../../../benchmarks/results/camera-calibration-joint-02-03.json)).
   Preset coverage checks still fail; step 1 must flag directions outside the region
   covered by detected board points as extrapolated.
 - [ ] Step 1: detections become bearings (head orientation + calibrated pixel ray).
