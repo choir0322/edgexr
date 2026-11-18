@@ -1,5 +1,9 @@
 # Camera recalibration 02: cover the image corners
 
+**Result (2026-11-19):** better centre fit, but corner coverage and whole-image
+invertibility failed; see [recalibration 03](CAMERA_RECALIBRATION_03.md) and the
+[summary](../benchmarks/results/camera-calibration-screen-02.json).
+
 ## Why repeat calibration
 
 Calibration 01 (`camera-calibration-screen-01`) fitted well where the board was

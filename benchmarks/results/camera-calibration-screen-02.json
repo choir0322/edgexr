@@ -1,0 +1,88 @@
+{
+ "trial": "camera-calibration-screen-02",
+ "review_date": "2026-11-19",
+ "decision": "rejected_for_whole_image_use: fit quality improved but corner coverage and lens-model invertibility checks failed; repeat with on-screen corner tour (recalibration 03)",
+ "host": "Linux-6.12.47+rpt-rpi-v8-aarch64-with-glibc2.36",
+ "camera": "USB OV9281; requested 1280x720 MJPEG 30 fps",
+ "capture_seconds_requested": 360.0,
+ "hdmi_preview": true,
+ "opencv": "4.11.0",
+ "sampled_frames": 180,
+ "detected_frames": 175,
+ "training_count": 140,
+ "heldout_count": 35,
+ "camera_matrix": [
+  [
+   737.7161550424254,
+   0.0,
+   670.5827464329059
+  ],
+  [
+   0.0,
+   737.2733637118042,
+   331.54980390182527
+  ],
+  [
+   0.0,
+   0.0,
+   1.0
+  ]
+ ],
+ "distortion_k1_k2_p1_p2_k3": [
+  0.08952358098547725,
+  -0.05562043417477328,
+  0.00023772979859905806,
+  -0.00023677352483343335,
+  -0.09070737112852129
+ ],
+ "training_global_rms_px": 0.27503986645375067,
+ "training_per_view_rms_px": {
+  "median": 0.181,
+  "p95_empirical": 0.542,
+  "max": 0.955
+ },
+ "heldout_per_view_rms_px": {
+  "median": 0.174,
+  "p95_empirical": 0.419,
+  "max": 1.854
+ },
+ "center_span_fraction_xy": [
+  0.40030679702758787,
+  0.4004335191514757
+ ],
+ "closest_detected_corner_to_image_corner_px": {
+  "top_left": 155,
+  "top_right": 139,
+  "bottom_left": 36,
+  "bottom_right": 161
+ },
+ "board_inner_width_px": {
+  "median": 574,
+  "min": 372,
+  "max": 819
+ },
+ "lens_fold": {
+  "ideal_radius": 1.0684,
+  "off_axis_deg": 46.9,
+  "distorted_radius": 0.956
+ },
+ "image_corner_roundtrip_px_opencv_default": {
+  "top_left": 48.7,
+  "top_right": 0.78,
+  "bottom_left": 69.3,
+  "bottom_right": 27.4
+ },
+ "acceptance": {
+  "detections_ge_100": true,
+  "center_span_ge_0_6": false,
+  "corners_within_80px": false,
+  "heldout_median_le_0_3_p95_le_1_2": true,
+  "invertible_whole_image": false,
+  "split_half_focal": "not evaluated (earlier checks failed)",
+  "visual": "partial: interruption frames inspected"
+ },
+ "operator_note": "About 2-3 s near 177-179 s the MacBook showed a work window instead of the board; samples 88-89 had no detected board and were excluded automatically. Frames reviewed on the Mac.",
+ "analysis_wall_seconds_reported": 215.83309443900004,
+ "analysis_cpu_rss_temperature_energy": "not measured",
+ "limits": "Same screen-target method as 01; held-out poses are from the same video; no independent metric check."
+}

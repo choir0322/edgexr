@@ -1,7 +1,8 @@
 # Calibrate the Pi camera using the MacBook display
 
 **2026-11-16:** calibration 01 did not cover the image corners. Use
-[recalibration 02](CAMERA_RECALIBRATION_02.md) for the current procedure; the
+[recalibration 03](CAMERA_RECALIBRATION_03.md) for the current procedure (02 also
+missed the corners); the
 sections below record how calibration 01 was made.
 
 ## HDMI preview while recording (current recommended workflow)

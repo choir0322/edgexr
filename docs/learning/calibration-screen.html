@@ -2,12 +2,63 @@
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>EdgeXR camera calibration target</title>
 <style>
-html,body{margin:0;background:#fff;color:#111;font:16px system-ui}main{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;box-sizing:border-box;padding:1vh 1vw}svg{display:block;width:min(96vw,120vh);height:auto;max-height:90vh}p{margin:4px;text-align:center}small{color:#444}@media(max-height:500px){p{font-size:12px}}
+/* Default view (calibrations 01–02): one large centred board. Tour view (03):
+   a smaller board stepped through nine screen positions so a camera whose view
+   is filled by the screen sees the board in every image corner and edge. */
+html,body{margin:0;background:#fff;color:#111;font:16px system-ui;overflow:hidden}
+main{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;box-sizing:border-box;padding:1vh 1vw}
+#board{display:block;width:min(96vw,120vh);height:auto;max-height:90vh}
+p{margin:4px;text-align:center}small{color:#444}@media(max-height:500px){p{font-size:12px}}
+body.tour main{display:block;padding:0}
+body.tour #board{position:absolute;max-height:none}
+body.tour .text{display:none}
 </style></head><body><main>
-<svg viewBox="-1 -1 12 9" role="img" aria-label="10 by 7 checkerboard squares, 9 by 6 inside corners, with a white border" xmlns="http://www.w3.org/2000/svg">
+<svg id="board" viewBox="-1 -1 12 9" role="img" aria-label="10 by 7 checkerboard squares, 9 by 6 inside corners, with a white border" xmlns="http://www.w3.org/2000/svg">
 <defs><pattern id="checker" width="2" height="2" patternUnits="userSpaceOnUse"><rect width="2" height="2" fill="white"/><rect width="1" height="1" fill="black"/><rect x="1" y="1" width="1" height="1" fill="black"/></pattern></defs>
 <rect x="-1" y="-1" width="12" height="9" fill="white"/><rect width="10" height="7" fill="url(#checker)"/>
 </svg>
-<p><strong>EdgeXR calibration target</strong> · 10 × 7 squares · 9 × 6 inner corners</p>
-<small>Keep this display size fixed during the recording. One square-wide white border is part of the target.</small>
-</main></body></html>
+<p class="text"><strong>EdgeXR calibration target</strong> · 10 × 7 squares · 9 × 6 inner corners</p>
+<small class="text">Keep this display size fixed during the recording. One square-wide white border is part of the target.<br>Recalibration 03: enter full screen, then press <b>T</b> to start the corner tour (T again stops it).</small>
+</main>
+<script>
+/* Corner tour: 9 positions × 8 s per round, repeated; keys 1–9 jump (numeric
+   keypad layout: 7 top-left … 3 bottom-right), +/- resize, T start/stop. */
+(function () {
+  const board = document.getElementById("board");
+  const ORDER = [7, 8, 9, 6, 3, 2, 1, 4, 5];   // TL, T, TR, R, BR, B, BL, L, centre
+  const HOLD_MS = 8000, MARGIN = 0.01;
+  let scale = 0.42, position = 7, timer = null, step = 0;
+
+  /** Place the board for a keypad position at the current scale. @param {number} key 1–9. @returns {void} */
+  function place(key) {
+    position = key;
+    const W = window.innerWidth, H = window.innerHeight;
+    const w = scale * W, h = w * 9 / 12;                    // board viewBox is 12 × 9 units
+    const col = (key - 1) % 3, row = 2 - Math.floor((key - 1) / 3);
+    const xs = [MARGIN * W, (W - w) / 2, W - w - MARGIN * W], ys = [MARGIN * H, (H - h) / 2, H - h - MARGIN * H];
+    board.style.width = `${w}px`; board.style.height = `${h}px`;
+    board.style.left = `${xs[col]}px`; board.style.top = `${ys[row]}px`;
+  }
+  /** Enter tour layout at the first position and advance every HOLD_MS. @returns {void} */
+  function start() {
+    document.body.classList.add("tour");
+    step = 0; place(ORDER[0]);
+    timer = setInterval(() => { step = (step + 1) % ORDER.length; place(ORDER[step]); }, HOLD_MS);
+  }
+  /** Leave tour layout and restore the original centred board. @returns {void} */
+  function stop() {
+    clearInterval(timer); timer = null;
+    document.body.classList.remove("tour");
+    board.removeAttribute("style");
+  }
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "t" || e.key === "T") { if (timer) stop(); else start(); return; }
+    if (!document.body.classList.contains("tour")) return;
+    if (/^[1-9]$/.test(e.key)) { clearInterval(timer); timer = null; place(Number(e.key)); }
+    if (e.key === "+" || e.key === "=") { scale = Math.min(0.6, scale + 0.02); place(position); }
+    if (e.key === "-") { scale = Math.max(0.2, scale - 0.02); place(position); }
+  });
+  window.addEventListener("resize", () => { if (document.body.classList.contains("tour")) place(position); });
+})();
+</script>
+</body></html>

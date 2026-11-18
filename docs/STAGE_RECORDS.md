@@ -1,5 +1,15 @@
 # EdgeXR technique and AP evidence register
 
+2026-11-19 — **Recalibration 02 reviewed; rejected for whole-image use.**
+[Summary](../benchmarks/results/camera-calibration-screen-02.json),
+[next procedure](CAMERA_RECALIBRATION_03.md). 175/180 samples detected; held-out
+per-view error median/p95 0.17/0.42 px (01: 0.19/1.11). Failed preset checks:
+centre span 0.40 (≥0.6), only one image corner reached (36 px; others 139–161),
+lens polynomial still folds (distorted radius 0.956; corner round trips 27–69 px).
+Cause from frames: board drawn near full-screen with the laptop close. Fix: on-screen
+corner tour added to `calibration-screen.html` (default view unchanged). A 2–3 s
+non-board interval was excluded automatically. Analysis CPU/energy not measured.
+
 2026-11-16 — **Learning site reorganized; calibration fold found (derived).**
 [Start page](learning/index.html), new [head orientation](learning/orientation-explorer.html),
 [pixel → direction](learning/camera-geometry.html) and

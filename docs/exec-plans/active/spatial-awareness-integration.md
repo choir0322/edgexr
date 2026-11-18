@@ -30,7 +30,8 @@ AP/systems learning; each step names the processor question it adds. See
 
 - [x] 2026-11-16 User approved the specification; bottle as first test object.
 - [x] 2026-11-16 Decision record written; third-view plan deferred.
-- [ ] Recalibrate with corner coverage: [procedure and acceptance checks](../../CAMERA_RECALIBRATION_02.md).
+- [x] 2026-11-19 Recalibration 02 reviewed: centre fit improved, corners still uncovered and model still folds ([summary](../../../benchmarks/results/camera-calibration-screen-02.json)).
+- [ ] Recalibration 03 with the on-screen corner tour ([procedure](../../CAMERA_RECALIBRATION_03.md)).
 - [ ] Step 1: detections become bearings (head orientation + calibrated pixel ray).
 - [ ] Step 2: object memory keyed by bearing, prediction and matched/missing/moved.
 - [ ] Step 3: drift correction from phase-correlation shift and ORB view anchors.
