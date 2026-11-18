@@ -1,5 +1,13 @@
 # Camera recalibration 03: on-screen corner tour
 
+**Result (2026-11-19):** best fit error so far (held-out 0.12/0.30 px) but corners
+still not reached (centre span 0.66 × 0.38; points 158–232 px from image corners)
+and focal length unstable within the session (halves 841 vs 735 px): each round's
+views lie on one plane, and the browser toolbar was still visible. Combined with
+02 and refitted with k3 fixed at zero, it gives the working calibration for step 1
+([joint review](../benchmarks/results/camera-calibration-joint-02-03.json),
+[03 summary](../benchmarks/results/camera-calibration-screen-03.json)).
+
 ## What 02 showed
 
 [Calibration 02](../benchmarks/results/camera-calibration-screen-02.json)

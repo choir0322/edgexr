@@ -1,0 +1,171 @@
+{
+ "opencv": "4.11.0",
+ "views": {
+  "camera-calibration-screen-02": 175,
+  "camera-calibration-screen-03": 188
+ },
+ "coverage": {
+  "camera-calibration-screen-02": {
+   "centre_span_fraction_xy": [
+    0.40030679702758787,
+    0.4004335191514757
+   ],
+   "closest_point_to_corner_px": [
+    155.43914587082705,
+    139.50963338661956,
+    90.78416811918042,
+    203.35553589053666
+   ]
+  },
+  "camera-calibration-screen-03": {
+   "centre_span_fraction_xy": [
+    0.6583800792694092,
+    0.3762210845947266
+   ],
+   "closest_point_to_corner_px": [
+    157.82884491822122,
+    168.78614634970725,
+    231.9599997019189,
+    200.30285369217066
+   ]
+  },
+  "joint": {
+   "centre_span_fraction_xy": [
+    0.6583800792694092,
+    0.42441673278808595
+   ],
+   "closest_point_to_corner_px": [
+    155.43914587082705,
+    139.50963338661956,
+    90.78416811918042,
+    200.30285369217066
+   ]
+  }
+ },
+ "models": {
+  "free_k1_k2_p1_p2_k3": {
+   "cross_session": {
+    "camera-calibration-screen-02 -> camera-calibration-screen-03": {
+     "fx": 740.6851461569559,
+     "median": 0.12614080772251288,
+     "p95": 0.337148183961142,
+     "max": 0.6735986291137482
+    },
+    "camera-calibration-screen-03 -> camera-calibration-screen-02": {
+     "fx": 728.546057155498,
+     "median": 0.21738381878259203,
+     "p95": 0.5716706661994754,
+     "max": 1.6920938481756664
+    }
+   },
+   "joint_training_rms_px": 0.23450565216672295,
+   "camera_matrix": [
+    [
+     736.0900351098745,
+     0.0,
+     670.1188496564429
+    ],
+    [
+     0.0,
+     735.8078720196515,
+     330.3158955652552
+    ],
+    [
+     0.0,
+     0.0,
+     1.0
+    ]
+   ],
+   "distortion_k1_k2_p1_p2_k3": [
+    0.09065793326582032,
+    -0.06293302387465005,
+    8.654396287507149e-05,
+    -0.0003658531238697634,
+    -0.08052320620664716
+   ],
+   "joint_heldout_px": {
+    "median": 0.14212427938306083,
+    "p95": 0.40873936908100833,
+    "max": 1.7265667807409462
+   },
+   "interleaved_half_fx": [
+    737.1100853546419,
+    738.2681011054455
+   ],
+   "interleaved_half_fx_difference_pct": 0.1569788358579436,
+   "fold_distorted_radius": 0.9637333856736672,
+   "corner_round_trip_px_tl_tr_bl_br": [
+    20661.291370905725,
+    0.5240326715246248,
+    65.96141140798018,
+    17.6931307644603
+   ]
+  },
+  "k3_fixed_zero": {
+   "cross_session": {
+    "camera-calibration-screen-02 -> camera-calibration-screen-03": {
+     "fx": 735.946040723447,
+     "median": 0.1301519323089858,
+     "p95": 0.34841792460595233,
+     "max": 0.6736088492714923
+    },
+    "camera-calibration-screen-03 -> camera-calibration-screen-02": {
+     "fx": 726.4426176685057,
+     "median": 0.21437261247834596,
+     "p95": 0.5893606392302796,
+     "max": 1.106739298053336
+    }
+   },
+   "joint_training_rms_px": 0.246208333125384,
+   "camera_matrix": [
+    [
+     736.5907124751338,
+     0.0,
+     670.7778819606624
+    ],
+    [
+     0.0,
+     736.4288443343299,
+     330.1361618504469
+    ],
+    [
+     0.0,
+     0.0,
+     1.0
+    ]
+   ],
+   "distortion_k1_k2_p1_p2_k3": [
+    0.10919779272589492,
+    -0.13929863180532276,
+    -1.768728480536491e-05,
+    -7.24575621234368e-05,
+    0.0
+   ],
+   "joint_heldout_px": {
+    "median": 0.15556436752225158,
+    "p95": 0.43635489954346657,
+    "max": 1.1080938651782688
+   },
+   "interleaved_half_fx": [
+    736.427539423429,
+    737.1623055306114
+   ],
+   "interleaved_half_fx_difference_pct": 0.09972464314930339,
+   "fold_distorted_radius": 1.0421674002000383,
+   "corner_round_trip_px_tl_tr_bl_br": [
+    0.7950709455339993,
+    0.011250683188411468,
+    7.984828544066669,
+    0.11807935997418538
+   ]
+  }
+ },
+ "review_date": "2026-11-19",
+ "recordings": [
+  "camera-calibration-screen-02",
+  "camera-calibration-screen-03"
+ ],
+ "method": "scripts/review_camera_calibration.py on the Mac; same detection as spatial.camera_calibration; joint held-out = every fifth view of the combined list",
+ "decision": "Working calibration for step 1: joint 02+03 fit with k3 fixed at zero, status needs_review. Passes fit error, focal stability and invertibility at three corners (bottom-left 8 px). Fails the preset coverage checks (centre span 0.66 x 0.42; detected points 91-200 px from image corners), so directions outside the region covered by detected board points are extrapolated and must be flagged in step 1.",
+ "limits": "Screen target; same camera session conditions assumed (focus untouched); no independent metric check; k3=0 is a model choice made after seeing 03, recorded as a deviation from the preset plan."
+}

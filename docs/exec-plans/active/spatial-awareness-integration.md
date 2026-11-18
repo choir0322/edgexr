@@ -31,7 +31,10 @@ AP/systems learning; each step names the processor question it adds. See
 - [x] 2026-11-16 User approved the specification; bottle as first test object.
 - [x] 2026-11-16 Decision record written; third-view plan deferred.
 - [x] 2026-11-19 Recalibration 02 reviewed: centre fit improved, corners still uncovered and model still folds ([summary](../../../benchmarks/results/camera-calibration-screen-02.json)).
-- [ ] Recalibration 03 with the on-screen corner tour ([procedure](../../CAMERA_RECALIBRATION_03.md)).
+- [x] 2026-11-19 Recalibration 03 reviewed; joint 02+03 fit with k3 = 0 adopted as the
+  working calibration, status  ([review](../../../benchmarks/results/camera-calibration-joint-02-03.json)).
+  Preset coverage checks still fail; step 1 must flag directions outside the region
+  covered by detected board points as extrapolated.
 - [ ] Step 1: detections become bearings (head orientation + calibrated pixel ray).
 - [ ] Step 2: object memory keyed by bearing, prediction and matched/missing/moved.
 - [ ] Step 3: drift correction from phase-correlation shift and ORB view anchors.
@@ -97,6 +100,14 @@ recalibrated with the board reaching the corners (board centres covered only
 bottle about 20° or more off centre.
 
 ## Decision log
+
+2026-11-19: Deviation from the recalibration acceptance plan, recorded explicitly.
+No recording met the preset corner-coverage checks. Rather than a fourth capture,
+use the joint 02+03 fit with k3 fixed at zero: held-out median/p95 0.16/0.44 px,
+interleaved-half focal lengths within 0.10%, cross-session p95 0.35–0.59 px, and
+the model inverts at three corners (bottom-left 8 px). k3 = 0 was chosen after
+seeing 03's fold, so it is a post-hoc model choice; directions outside the measured
+region (≈1–2° model disagreement at the corners) are flagged, not trusted.
 
 2026-11-16: Fixed-base spatial awareness replaces offline reconstruction as the
 pre-FPGA endpoint; rotation cannot provide depth, so near/far comes from a depth

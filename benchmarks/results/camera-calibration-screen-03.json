@@ -1,0 +1,75 @@
+{
+ "trial": "camera-calibration-screen-03",
+ "review_date": "2026-11-19",
+ "decision": "not accepted alone: best fit error so far but corners not reached and focal length unstable within the session; used jointly with 02 (see camera-calibration-joint-02-03.json)",
+ "host": "Linux-6.12.47+rpt-rpi-v8-aarch64-with-glibc2.36",
+ "capture_seconds_requested": 380.0,
+ "opencv": "4.11.0",
+ "sampled_frames": 190,
+ "detected_frames": 188,
+ "camera_matrix": [
+  [
+   728.874075227381,
+   0.0,
+   664.9874389895042
+  ],
+  [
+   0.0,
+   728.5601822851894,
+   329.9113495123234
+  ],
+  [
+   0.0,
+   0.0,
+   1.0
+  ]
+ ],
+ "distortion_k1_k2_p1_p2_k3": [
+  0.08447154929003207,
+  -0.0611665743029788,
+  -6.510265428675237e-05,
+  -0.001663775985440403,
+  -0.07547397590969016
+ ],
+ "training_global_rms_px": 0.18618658334219026,
+ "heldout_per_view_rms_px": {
+  "median": 0.123,
+  "p95_empirical": 0.296,
+  "max": 0.414
+ },
+ "coverage": {
+  "centre_span_fraction_xy": [
+   0.6583800792694092,
+   0.3762210845947266
+  ],
+  "closest_point_to_corner_px": [
+   157.82884491822122,
+   168.78614634970725,
+   231.9599997019189,
+   200.30285369217066
+  ]
+ },
+ "board_inner_width_px": {
+  "median": 283,
+  "min": 198,
+  "max": 324
+ },
+ "lens_fold_distorted_radius": 0.9673,
+ "image_corner_round_trip_px_tl_tr_bl_br": [
+  1920.3,
+  1.9,
+  63.9,
+  131.8
+ ],
+ "split_half_fx_px": [
+  840.93,
+  735.28
+ ],
+ "findings": [
+  "Browser toolbar stayed visible (not true full screen), shrinking the usable top of the screen.",
+  "Within each tour round the laptop was still, so all views in a round are coplanar; four rounds give too few board orientations to pin down focal length (halves differ 13%).",
+  "Even with the screen filling the view, the board's white border and outer squares keep detected corners ~70 px inside the screen edge."
+ ],
+ "analysis_wall_seconds_reported": 202.75776154699997,
+ "analysis_cpu_rss_temperature_energy": "not measured"
+}
