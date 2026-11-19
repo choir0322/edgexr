@@ -136,6 +136,27 @@ def coverage(views: list[np.ndarray]) -> dict[str, Any]:
             "closest_point_to_corner_px": [float(np.min(np.hypot(*(points - c).T))) for c in CORNERS]}
 
 
+SUPPORT_CELL = 40
+
+
+def support_grid(views: list[np.ndarray]) -> list[str]:
+    """Mark 40-px image cells that contain at least one detected board corner.
+
+    Args:
+        views (list[np.ndarray]): Detected corner arrays.
+    Returns:
+        list[str]: One string per cell row (top first), "1" supported, "0" not.
+    """
+    columns, rows = IMAGE_SIZE[0] // SUPPORT_CELL, IMAGE_SIZE[1] // SUPPORT_CELL
+    grid = [["0"] * columns for _ in range(rows)]
+    for view in views:
+        for u, v in view.reshape(-1, 2):
+            column, row = int(u // SUPPORT_CELL), int(v // SUPPORT_CELL)
+            if 0 <= column < columns and 0 <= row < rows:
+                grid[row][column] = "1"
+    return ["".join(row) for row in grid]
+
+
 def main() -> int:
     """Review two or more recordings and write one JSON summary.
 
@@ -146,6 +167,8 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("videos", type=Path, nargs="+")
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--config-output", type=Path,
+                        help="also write the joint k3=0 model plus its support grid as a live config")
     args = parser.parse_args()
     sessions = {video.parent.name: detect(video) for video in args.videos}
     combined = [view for views in sessions.values() for view in views]
@@ -176,6 +199,19 @@ def main() -> int:
     with args.output.open("x", encoding="utf-8") as stream:
         json.dump(report, stream, indent=1)
         stream.write("\n")
+    if args.config_output:
+        chosen = report["models"]["k3_fixed_zero"]
+        config = {"source": [video.parent.name for video in args.videos],
+                  "model": "OpenCV k1,k2,p1,p2,k3 with k3 fixed at zero; joint fit, every fifth view held out",
+                  "status": "needs_review", "image_size_wh": list(IMAGE_SIZE),
+                  "camera_matrix": chosen["camera_matrix"],
+                  "distortion_coefficients": chosen["distortion_k1_k2_p1_p2_k3"],
+                  "support_cell_px": SUPPORT_CELL, "support_grid": support_grid(combined),
+                  "support_scope": "1 = at least one detected board corner fell in this cell; "
+                                   "directions from 0 cells are extrapolated by the lens model"}
+        with args.config_output.open("x", encoding="utf-8") as stream:
+            json.dump(config, stream, indent=1)
+            stream.write("\n")
     print(json.dumps(report["models"], indent=1))
     return 0
 

@@ -1,5 +1,17 @@
 # Current live pipeline
 
+2026-11-20: **opt-in detection bearings (step 1)**. With `--detect
+--relative-orientation --bearings configs/camera_calibration.json`, capture pairs
+each 720p detector frame with the newest preceding gyro orientation (≤200 ms,
+`LiveImu.orientation_at`, previously scene-only). After tracking, the detector
+worker calls `spatial.bearing.attach_bearings`: box centre → undistorted ray
+(working joint 02+03 calibration, k3 = 0) → rotated by the frame's quaternion →
+start-frame yaw/pitch, head yaw/pitch, `extrapolated` (no calibration data in that
+40-px cell) or `unknown` (no/stale gyro, non-invertible lens). Bearings travel in
+`detector.boxes[].bearing` through `/api/telemetry` and appear in the browser label
+as `@ yaw/pitch`. Receipt time, not exposure time: turning adds rate × latency
+error. No object memory, distance or world heading yet.
+
 2026-11-15: a separate **offline two-view reconstruction** path is implemented:
 720p video + candidate calibration → two explicitly selected grayscale frames →
 ORB/mutual descriptor matches → undistorted rays → essential matrix and relative
@@ -273,6 +285,8 @@ flowchart TD
     NET["OpenCV DNN CPU<br/>MobileNet-SSD; OpenCV thread setting 2"]
     BOX["parse_detections: live score at least 0.30<br/>Source-coordinate boxes"]
     TRACK["BasicTracker.update in detector worker<br/>Same-class raw/predicted IoU; session-local IDs"]
+    BEARING["Optional --bearings: attach_bearings<br/>Box centre → undistorted ray → × frame quaternion<br/>Start-frame yaw/pitch; extrapolated/unknown flags"]
+    CALIB["configs/camera_calibration.json<br/>Joint 02+03 fit, k3 = 0, 40-px support grid"]
     DESC["Optional --reidentify<br/>8x8 mean-centered grayscale crop descriptor<br/>1280x720 source box; no raw crop retained"]
     MEMORY["RetiredObjectMemory in detector worker<br/>Up to 32 IDs, at most 10 s since last sighting<br/>Gallery cosine score + ambiguity abstain"]
     RETRY["Optional --reid-retry-seconds<br/>Provisional new ID ?; retry on later detector update<br/>Restore ↺ or confirm new ID at deadline"]
@@ -314,6 +328,9 @@ flowchart TD
     CAMRATE -. "opt-in timestamped rates" .-> ORIENT
     RESULT --> STATE
     TRACK --> STATE
+    TRACK -. "--bearings" .-> BEARING --> STATE
+    CALIB -. "loaded once at startup" .-> BEARING
+    ORIENT -. "orientation_at(frame receipt), ≤200 ms preceding" .-> BEARING
     BIAS --> STATE
     CAMRATE -. "optional telemetry only" .-> STATE
     ORIENT -. "relative rotation telemetry only" .-> STATE

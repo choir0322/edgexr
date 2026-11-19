@@ -14,6 +14,7 @@ from collections import deque
 from pathlib import Path
 import threading
 import time
+from spatial.bearing import attach_bearings
 from vision.basic_tracker import BasicTracker
 from vision.detect_image import infer_once, parse_detections
 from vision.object_memory import RetiredObjectMemory, grayscale_grid_descriptor
@@ -354,6 +355,11 @@ def detect_latest(
                 boxes, frame[1], source_shift if state.motion_aware_tracking else None,
                 descriptors=descriptors,
             )
+            # Step 1: give each box a direction from the head's start pose using the
+            # gyro orientation paired with this frame (no effect without --bearings).
+            camera_model = getattr(state, "camera_model", None)
+            if camera_model is not None:
+                identified = attach_bearings(identified, camera_model, orientation, frame[1])
             state.detector.publish(
                 frame, identified, (finished - started) * 1000, finished,
                 tracker.last_stats,

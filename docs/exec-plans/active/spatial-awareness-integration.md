@@ -35,7 +35,9 @@ AP/systems learning; each step names the processor question it adds. See
   working calibration, status `needs_review` ([review](../../../benchmarks/results/camera-calibration-joint-02-03.json)).
   Preset coverage checks still fail; step 1 must flag directions outside the region
   covered by detected board points as extrapolated.
-- [ ] Step 1: detections become bearings (head orientation + calibrated pixel ray).
+- [x] 2026-11-20 Step 1 implemented: `spatial.bearing`, `--bearings`, detector frame/gyro
+  pairing, browser label, `configs/camera_calibration.json`; 240 unit tests pass on the Mac.
+- [ ] Step 1 Pi trial ([procedure and fixed criteria](../../STEP1_BEARING_TRIAL.md)).
 - [ ] Step 2: object memory keyed by bearing, prediction and matched/missing/moved.
 - [ ] Step 3: drift correction from phase-correlation shift and ORB view anchors.
 - [ ] Step 4: monocular depth CNN for near/far (needs approval of a specific model).

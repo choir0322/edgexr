@@ -1,5 +1,16 @@
 # EdgeXR technique and AP evidence register
 
+2026-11-20 — **Step 1 detection bearings implemented; Pi trial pending.**
+Source [`spatial/bearing.py`](../src/spatial/bearing.py), wiring in `app.live_preview`
+(`--bearings`) and `vision.live_detector`; tests `test_bearing.py`,
+`test_bearing_trial_analysis.py`; [trial](STEP1_BEARING_TRIAL.md); [pipeline](PIPELINE.md)
+updated. Technique: box centre → undistorted ray (joint 02+03, k3 = 0) → rotated by
+the gyro quaternion paired with frame receipt → start-frame yaw/pitch, with
+extrapolated/unknown flags. Synthetic checks: bearing constant to 1e-5° across
+pans/tilts; analyzer recovers a simulated 40 ms frame delay as ≈45 ms. AP question:
+frame-to-gyro delay (turn-direction bearing offset) and pairing lag; Pi cost not
+measured. Status: implemented, not validated on hardware.
+
 2026-11-19 — **Recalibration 03 reviewed; joint 02+03 calibration adopted provisionally.**
 [03 summary](../benchmarks/results/camera-calibration-screen-03.json),
 [joint review](../benchmarks/results/camera-calibration-joint-02-03.json),

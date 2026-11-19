@@ -22,6 +22,7 @@
   <h1>From a pixel to a direction</h1>
   <p class="lede">The detector reports “bottle at pixel (900, 300)”. To remember where the bottle is after the head turns away, the program needs a <em>direction</em>, not a pixel. The camera calibration provides the conversion.</p>
   <div class="stats" id="headline-stats"></div>
+  <div class="callout plan"><strong>Which calibration?</strong> The figures on this page use calibration 01, the one whose lens model folds near the corners (section 3). The live program now uses a joint fit of recordings 02 and 03 with k3 fixed at zero (<a href="../../configs/camera_calibration.json">configs/camera_calibration.json</a>): its inverse holds at three image corners, and directions outside the measured region are flagged as extrapolated. See the <a href="../../benchmarks/results/camera-calibration-joint-02-03.json">joint review</a>.</div>
   <p class="small muted">Labels: <span class="badge measured">measured</span> recorded on the Pi · <span class="badge derived">derived</span> calculated from measured or configured numbers, not timed · <span class="badge illustrative">illustrative</span> teaching drawing · <span class="badge planned">planned</span> not built yet.</p>
 
   <section class="block">
@@ -87,8 +88,8 @@
 
   <section class="block">
     <span class="eyebrow">5 · Step 1 preview</span>
-    <h2>Same bottle, different head angles <span class="badge planned">planned</span> <span class="badge illustrative">illustrative</span></h2>
-    <p>Step 1 of the <a href="index.html#plan">spatial-awareness plan</a> adds the head’s direction (from the gyro) to the pixel’s direction (from calibration). The bottle’s <strong>bearing</strong>, its direction from the fixed base, should then stay the same while its pixel position changes. Pan the head and watch both.</p>
+    <h2>Same bottle, different head angles <span class="badge derived">built · Pi trial pending</span> <span class="badge illustrative">illustrative</span></h2>
+    <p>Step 1 of the <a href="index.html#plan">spatial-awareness plan</a> is now in the live preview (<code>--bearings</code>, <a href="../../src/spatial/bearing.py">spatial/bearing.py</a>; trial: <a href="../STEP1_BEARING_TRIAL.md">procedure</a>). It adds the head’s direction (from the gyro) to the pixel’s direction (from calibration). The bottle’s <strong>bearing</strong>, its direction from the fixed base, should then stay the same while its pixel position changes. Pan the head and watch both.</p>
     <div class="panel">
       <div class="controls"><label for="pan">Head pan <input id="pan" type="range" min="-40" max="40" value="0" step="1"><output id="pan-out"></output></label><span class="small muted">Safe commanded range for this rig: ±40°.</span></div>
       <div class="preview">

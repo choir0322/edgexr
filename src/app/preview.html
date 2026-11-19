@@ -163,6 +163,8 @@ Scene diagnostic images are saved only when --scene-save-images is enabled on th
  * @property {number} [track_id] Positive session-local tracker ID when available.
  * @property {string} [match_source] ``appearance`` or ``appearance_retry`` marks a tentative restored ID.
  * @property {string} [identity_status] ``provisional`` marks an ID still in the retry window.
+ * @property {{status:string, yaw_deg:number, pitch_deg:number, extrapolated:boolean}} [bearing]
+ *   Optional start-frame direction (``--bearings``); degrees, not distance.
  */
 /**
  * Independently sampled IMU status; values are absent unless the reader is ready.
@@ -236,13 +238,18 @@ const fmt = (v, unit) => v == null ? '—' : v.toFixed(1) + ' ' + unit;
 /**
  * Put an available provisional ID first so it remains visible near image edges.
  * @param {DetectionBox} box Current detection in source-image coordinates.
- * @returns {string} Label with #ID when present, otherwise the earlier label format.
+ * @returns {string} Label with #ID when present, then an optional bearing such as
+ *   "@ −30.1°/+1.2°" (yaw/pitch); "~" marks an extrapolated lens region, "@ ?" unknown.
  */
 function detectionLabel(box) {
   const id = Number.isInteger(box.track_id) && box.track_id > 0 ? `#${box.track_id} ` : '';
   const restored = box.match_source === 'appearance' || box.match_source === 'appearance_retry' ? '↺ ' : '';
   const provisional = box.identity_status === 'provisional' ? '? ' : '';
-  return `${id}${restored}${provisional}${box.label} ${box.confidence.toFixed(2)}`;
+  const b = box.bearing;
+  const signed = (v) => `${v < 0 ? '−' : '+'}${Math.abs(v).toFixed(1)}°`;
+  const bearing = !b ? '' : b.status === 'ready'
+    ? ` @ ${b.extrapolated ? '~' : ''}${signed(b.yaw_deg)}/${signed(b.pitch_deg)}` : ' @ ?';
+  return `${id}${restored}${provisional}${box.label} ${box.confidence.toFixed(2)}${bearing}`;
 }
 
 /**

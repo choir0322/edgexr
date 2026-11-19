@@ -19,7 +19,7 @@
     { id: "geometry", col: 1, y: 360, title: "Camera geometry", sub: "calibration · needs review", status: "pending", href: "camera-geometry.html" },
     { id: "depth", col: 1, y: 450, title: "Depth network", sub: "near / far · step 4", status: "planned", href: "detection-architecture.html" },
     { id: "tracker", col: 2, y: 95, title: "Tracker IDs", sub: "IoU · short-term", status: "measured", href: "basic-tracker.html" },
-    { id: "bearings", col: 2, y: 225, title: "Object bearings", sub: "step 1", status: "planned", href: "camera-geometry.html" },
+    { id: "bearings", col: 2, y: 225, title: "Object bearings", sub: "step 1 · Pi trial pending", status: "pending", href: "camera-geometry.html" },
     { id: "memory", col: 2, y: 330, title: "Object memory", sub: "predict · step 2", status: "planned", href: "basic-tracker.html" },
     { id: "drift", col: 2, y: 440, title: "Drift correction", sub: "step 3", status: "planned", href: "orientation-explorer.html" },
     { id: "browser", col: 3, y: 95, title: "Browser preview", sub: "Mac over SSH", status: "measured", href: "program-flow-explorer.html" },
@@ -30,7 +30,7 @@
   const EDGES = [
     ["camera", "motion"], ["camera", "detector"], ["camera", "scene"], ["camera", "depth", "planned"],
     ["imu", "orientation"], ["servo", "camera", "physical"], ["servo", "imu", "physical"],
-    ["detector", "tracker"], ["detector", "bearings", "planned"], ["orientation", "bearings", "planned"], ["geometry", "bearings", "planned"],
+    ["detector", "tracker"], ["detector", "bearings"], ["orientation", "bearings"], ["geometry", "bearings"],
     ["bearings", "memory", "planned"], ["depth", "memory", "planned"], ["scene", "drift", "planned"], ["motion", "drift", "planned"],
     ["motion", "browser"], ["tracker", "browser"], ["scene", "recorder"], ["orientation", "recorder"], ["memory", "browser", "planned"],
   ];

@@ -34,6 +34,7 @@ from vision.live_detector import (
 )
 from vision.motion_history import MotionHistory
 from vision.reid_trial import ReidTrialRecorder
+from spatial.bearing import load_camera_model
 
 
 def read_frame(stream: BinaryIO, size: int = WIDTH * HEIGHT) -> bytes | None:
@@ -138,6 +139,8 @@ class State:
         )
         self.detection_frame = None
         self.detection_orientation = None
+        # Optional calibration for detection bearings (step 1); None keeps boxes unchanged.
+        self.camera_model = None
         self.scene = LiveScene(scene_memory)
         self.scene_frame = None
         self.full_frames = detection_enabled or scene_memory
@@ -164,7 +167,8 @@ class State:
             self.received += 1
             self.latest = (self.received, timestamp, pixels)
             orientation = (self.imu.orientation_at(timestamp)
-                           if detection_pixels is not None and self.scene.enabled else None)
+                           if detection_pixels is not None
+                           and (self.scene.enabled or self.camera_model is not None) else None)
             if detection_pixels is not None and self.detector.enabled:
                 self.detection_frame = (self.received, timestamp, detection_pixels)
                 self.detection_orientation = orientation
@@ -801,6 +805,9 @@ def main() -> None:
         type=Path,
         default=Path("models/mobilenet-ssd/mobilenet_iter_73000.caffemodel"),
     )
+    parser.add_argument("--bearings", type=Path,
+                        help="add start-frame yaw/pitch bearings to detections using this calibration "
+                             "JSON (e.g. configs/camera_calibration.json); requires --detect --relative-orientation")
     parser.add_argument("--scene-memory", action="store_true",
                         help="explicit visual view memory at target 1 Hz; no gyro correction")
     parser.add_argument("--scene-exclude-people", action="store_true",
@@ -841,6 +848,8 @@ def main() -> None:
         parser.error("--imu-sleep-ms 10 requires --imu")
     if args.relative_orientation and (not args.imu or args.camera_axis_basis is None):
         parser.error("--relative-orientation requires --imu and --camera-axis-basis")
+    if args.bearings is not None and (not args.detect or not args.relative_orientation):
+        parser.error("--bearings requires --detect and --relative-orientation")
     if args.reidentify and not args.detect:
         parser.error("--reidentify requires --detect")
     if not math.isfinite(args.reid_retry_seconds) or not 0 <= args.reid_retry_seconds <= 5:
@@ -890,6 +899,11 @@ def main() -> None:
         reid_spatial=args.reid_spatial,
         scene_memory=args.scene_memory,
     )
+    if args.bearings is not None:
+        try:
+            state.camera_model = load_camera_model(args.bearings)
+        except (OSError, ValueError) as error:
+            parser.error(f"Invalid --bearings calibration: {error}")
     process = None
     server = None
     recorder = None
