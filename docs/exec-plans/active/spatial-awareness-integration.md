@@ -39,7 +39,8 @@ AP/systems learning; each step names the processor question it adds. See
   pairing, browser label, `configs/camera_calibration.json`; 240 unit tests pass on the Mac.
 - [x] 2026-11-20 Step 1 trial 01: failed fixed criteria (false positives, edge-cut boxes,
   placement); yaw bearings stable ([results](../../STEP1_BEARING_RESULTS_01.md)).
-- [ ] Step 1 trial 02 with filters fixed beforehand ([procedure](../../STEP1_BEARING_TRIAL.md#trial-02-current)).
+- [x] 2026-11-20 Step 1 trial 02 passes ([results](../../STEP1_BEARING_RESULTS_02.md)); limits: drift ~3°
+  over setup minutes, few moving samples, false detections. Step 1 complete.
 - [ ] Step 2: object memory keyed by bearing, prediction and matched/missing/moved.
 - [ ] Step 3: drift correction from phase-correlation shift and ORB view anchors.
 - [ ] Step 4: monocular depth CNN for near/far (needs approval of a specific model).

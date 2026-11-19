@@ -1,0 +1,168 @@
+{
+ "trial": "bearing-trial-02",
+ "review_date": "2026-11-20",
+ "status": "pass_preregistered_criteria_with_filters_fixed_after_trial_01",
+ "conditions": {
+  "preview": "--imu --imu-sleep-ms 10 --camera-axis-basis configs/camera_axes_neutral.json --relative-orientation --detect --bearings configs/camera_calibration.json",
+  "servo": "servo_orientation_demo --still-seconds 10 (pan 0,-20,+20,0 then tilt 0,-20,+20,0 at <=10 deg/s)",
+  "analysis": "scripts/analyze_bearing_trial.py --max-box-width-fraction 0.4 --exclude-edge-clipped",
+  "scene": "one bottle raised to lens height, placed until the live label read about -30/0 deg; head left centred from trial 01",
+  "power_cooling": "not recorded; passive heatsink per hardware record"
+ },
+ "summary": {
+  "label": "bottle",
+  "max_box_width_fraction": 0.4,
+  "exclude_edge_clipped": true,
+  "edge_clipped_excluded": 3,
+  "bearing_from_centred_head_deg": {
+   "window": {
+    "n": 20,
+    "image_yaw_deg": -34.93451600533678,
+    "image_pitch_deg": -4.918118393333302,
+    "quaternion_wxyz": [
+     0.9985705010337389,
+     0.03939149136516714,
+     0.027577834723446708,
+     0.02333940670244167
+    ]
+   },
+   "yaw": {
+    "n": 59,
+    "median": -34.911549290949026,
+    "p5": -36.87200476209281,
+    "p95": -34.22981077821459,
+    "spread_p5_p95": 2.642193983878215
+   },
+   "pitch": {
+    "n": 59,
+    "median": -4.923833035185573,
+    "p5": -7.145502189076674,
+    "p95": -3.5770658750097346,
+    "spread_p5_p95": 3.5684363140669393
+   }
+  },
+  "unclipped_boxes": {
+   "yaw": {
+    "n": 59,
+    "median": -31.73768325732236,
+    "p5": -33.67307682695916,
+    "p95": -31.065172581988417,
+    "spread_p5_p95": 2.6079042449707437
+   },
+   "pitch": {
+    "n": 59,
+    "median": 0.31900335188072076,
+    "p5": -1.9089565777137287,
+    "p95": 1.664836779663203,
+    "spread_p5_p95": 3.573793357376932
+   }
+  },
+  "counts": {
+   "telemetry_rows": 616,
+   "unique_results": 72,
+   "results_without_label": 8,
+   "results_with_several": 1,
+   "boxes_excluded_too_wide": 5,
+   "label_results": 64,
+   "ready": 64,
+   "ready_not_extrapolated": 59,
+   "unknown_reasons": {}
+  },
+  "bearing_yaw_deg": {
+   "n": 59,
+   "median": -31.73768325732236,
+   "p5": -33.67307682695916,
+   "p95": -31.065172581988417,
+   "spread_p5_p95": 2.6079042449707437
+  },
+  "bearing_pitch_deg": {
+   "n": 59,
+   "median": 0.31900335188072076,
+   "p5": -1.9089565777137287,
+   "p95": 1.664836779663203,
+   "spread_p5_p95": 3.573793357376932
+  },
+  "image_yaw_deg_without_gyro": {
+   "n": 59,
+   "median": -34.93451600533678,
+   "p5": -36.0090137608938,
+   "p95": -29.34288595573675,
+   "spread_p5_p95": 6.66612780515705
+  },
+  "head_yaw_deg_while_visible": {
+   "n": 59,
+   "median": 3.295955479789754,
+   "p5": -6.69141637422818,
+   "p95": 3.6696351593884597,
+   "spread_p5_p95": 10.36105153361664
+  },
+  "bearing_yaw_by_motion_deg": {
+   "still": {
+    "n": 51,
+    "median": -31.731060184728832,
+    "p5": -32.476121187677606,
+    "p95": -31.114754811147634,
+    "spread_p5_p95": 1.361366376529972
+   },
+   "turning_right": {
+    "n": 4,
+    "median": -31.512623917976146,
+    "p5": -41.058151597888894,
+    "p95": -30.63168274788773,
+    "spread_p5_p95": 10.426468850001164
+   },
+   "turning_left": {
+    "n": 3,
+    "median": -33.656925651559966,
+    "p5": -33.802286230152724,
+    "p95": -32.929486848338485,
+    "spread_p5_p95": 0.8727993818142394
+   },
+   "slow": {
+    "n": 1,
+    "median": -34.828563386791686,
+    "p5": -34.828563386791686,
+    "p95": -34.828563386791686,
+    "spread_p5_p95": 0.0
+   }
+  },
+  "latency_estimate_ms": 134.73771741310145,
+  "orientation_lag_ms": {
+   "n": 64,
+   "median": 7.358010249959079,
+   "p5": 0.8362306001231447,
+   "p95": 12.212649800096642,
+   "spread_p5_p95": 11.376419199973498
+  },
+  "first_last_still_yaw_deg": [
+   -31.35743261954496,
+   -32.24976581042837
+  ],
+  "criteria": {
+   "min_ready_bearings": 20,
+   "min_head_yaw_span_deg": 15.0,
+   "max_yaw_spread_p5_p95_deg": 4.0,
+   "max_pitch_spread_p5_p95_deg": 4.0,
+   "max_still_yaw_spread_p5_p95_deg": 3.0,
+   "max_first_last_still_difference_deg": 2.0
+  },
+  "checks": {
+   "enough_ready_bearings": true,
+   "head_moved_enough": true,
+   "yaw_stable": true,
+   "pitch_stable": true,
+   "still_yaw_stable": true,
+   "returns_after_sweep": true
+  },
+  "pass": true
+ },
+ "findings": [
+  "Bearing yaw median -31.7 deg (spread 2.6 deg) while image yaw ranged -15 to -36 deg during the pan; bearing pitch median +0.3 deg (spread 3.6 deg) while image pitch ranged -11 to +8 deg during the tilt.",
+  "Only about 7 readings came from the moving head (2 Hz detector during ~2 s pan legs); most evidence is from settled poses.",
+  "5 oversized false 'bottle' boxes excluded by the preset width filter; at 23.0 s a second, false 'bottle' box (score 0.60) outranked the real bottle (0.57) and gave -42.7 deg: object identity is step 2.",
+  "Gyro drift: the head never moved before the sweep, yet head yaw read +3.3 deg in the centred window; the label read about -30 deg at placement but -31.7 deg in the run. True direction from the centred head per calibration: -34.9 deg yaw, -4.9 deg pitch. Reference drift of several degrees over minutes motivates step 3.",
+  "AP: turn-direction offset suggests ~135 ms frame-to-gyro delay (4 right / 3 left samples; trial 01 ~93-100 ms): order 0.1 s, not yet separated. Pairing lag median 7.4 ms, p95 12.2 ms."
+ ],
+ "decision": "Step 1 accepted as a bounded result: bearings stay within a few degrees while the image position changes by 20 deg; limits are drift, few moving samples and false detections.",
+ "not_measured": "Pi CPU/latency cost of bearing computation; independent angle ground truth; long-duration drift."
+}

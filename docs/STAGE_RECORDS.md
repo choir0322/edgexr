@@ -1,5 +1,14 @@
 # EdgeXR technique and AP evidence register
 
+2026-11-20 — **Step 1 bearing trial 02: passes fixed criteria; step 1 measured.**
+[Results](STEP1_BEARING_RESULTS_02.md), [summary](../benchmarks/results/bearing-trial-02.json).
+59 bearings; yaw −31.7° (spread 2.6°) while image yaw ranged −15° to −36°; pitch
++0.3° (spread 3.6°) while image pitch ranged −11° to +8°; return within 0.9°.
+Limits: ~7 moving samples at 2 Hz; one false box outscored the bottle; gyro
+reference drifted ~3° before the sweep. AP: frame-to-gyro delay order 0.1 s
+(≈135 ms here, ≈95 ms in trial 01); pairing lag median 7.4 ms. CPU cost of
+bearings not measured.
+
 2026-11-20 — **Step 1 bearing trial 01: fails fixed criteria; yaw behaviour sound.**
 [Results](STEP1_BEARING_RESULTS_01.md), [summary](../benchmarks/results/bearing-trial-01.json).
 Bottle bearing yaw ≈ −29.6° while image yaw changed 13–42°; still spread 1.6°,
