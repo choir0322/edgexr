@@ -80,6 +80,26 @@ class TrialAnalysisTests(unittest.TestCase):
         self.assertGreater(summary["image_yaw_deg_without_gyro"]["spread_p5_p95"], 20)
         self.assertAlmostEqual(summary["latency_estimate_ms"], 40, delta=8)
 
+    def test_from_centre_matches_image_angles_when_centred(self) -> None:
+        """Seen from the centred head, a direction equals its image angles at that pose.
+
+        Args: None.
+        Returns: None.
+        """
+        model = load_camera_model(ROOT / "configs" / "camera_calibration.json")
+        tilt, roll = math.radians(-12) / 2, math.radians(3) / 2
+        # A start pose with pan, tilt and a little roll, as left over from an earlier run.
+        head = analyzer.hamilton((math.cos(math.radians(7) / 2), 0, math.sin(math.radians(7) / 2), 0),
+                                 analyzer.hamilton((math.cos(tilt), math.sin(tilt), 0, 0),
+                                                   (math.cos(roll), 0, 0, math.sin(roll))))
+        orientation = {"status": "ready", "quaternion_wxyz": list(head), "reference_monotonic_s": 0.0,
+                       "sample_monotonic_s": 9.99}
+        u, v = distort(model, math.tan(math.radians(-35)), 0.2)
+        box = {"box_xyxy": [u - 10, v - 10, u + 10, v + 10]}
+        bearing = attach_bearings([box], model, orientation, 10.0)[0]["bearing"]
+        yaw, pitch = analyzer.from_centre(bearing["yaw_deg"], bearing["pitch_deg"], bearing["head_quaternion_wxyz"])
+        self.assertAlmostEqual(yaw, bearing["image_yaw_deg"], places=6)
+        self.assertAlmostEqual(pitch, bearing["image_pitch_deg"], places=6)
 
 if __name__ == "__main__":
     unittest.main()

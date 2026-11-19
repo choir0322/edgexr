@@ -1,5 +1,9 @@
 # Step 1 trial: does a bottle keep its bearing while the head turns?
 
+**Trial 01 (2026-11-20): failed the fixed criteria**, mainly because of detector
+false positives and a bottle cut off by the image edge; see
+[results 01](STEP1_BEARING_RESULTS_01.md). Use the **trial 02** section below.
+
 **Question.** The live preview now gives each detection a *bearing*: its yaw/pitch
 from the head's starting direction (camera geometry + gyro orientation). If that
 works, a bottle that stays put should report about the same bearing while the head
@@ -87,3 +91,34 @@ Reported but not gated: how much the image position moved without gyro correctio
 the turn-direction delay estimate, orientation pairing lag, unknown/extrapolated
 counts, and the bearing compared with your tape measurement (±1–2° expected from
 placement alone). Not claimed: distance, object identity or a world compass heading.
+
+## Trial 02 (current)
+
+Same commands as above with three differences.
+
+1. **Don't move the head.** The last run ended with both servos at 0°, so the
+   preview's starting direction is the centred head. Start the preview (Pi
+   terminal 1) and the Mac tunnel and browser exactly as above.
+2. **Place the bottle using the browser label** instead of a tape measure:
+   - stand it 1.2–1.5 m away, raised on a box or books so its middle is at lens height;
+   - move it until its label reads about **−30° / 0°** (between −28° and −32°, pitch
+     between −3° and +3°);
+   - the **whole bottle must be inside the image**: its box must not touch any edge.
+3. Use a new output folder in Pi terminal 2:
+
+   ```bash
+   cd ~/projects/edgexr
+   sudo env PYTHONPATH=src python3 -m spatial.servo_orientation_demo \
+     --execute --confirm-centered --confirm-clearance --still-seconds 10 \
+     --output recordings/bearing-trial-02
+   ```
+
+   then stop the preview and copy:
+
+   ```bash
+   scp -r pi@ai-fusion.local:/home/pi/projects/edgexr/recordings/bearing-trial-02 \
+     /Users/ryanchoi/Desktop/
+   ```
+
+Analysis (fixed before trial 02): the same five criteria, computed with
+`--max-box-width-fraction 0.4 --exclude-edge-clipped`.

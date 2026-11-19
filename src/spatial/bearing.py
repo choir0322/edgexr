@@ -161,8 +161,8 @@ def box_bearing(model: CameraModel, box_xyxy: Sequence[float], orientation: dict
         frame_s (float): Frame host receipt seconds.
     Returns:
         dict[str, Any]: status ready/unknown, image yaw/pitch (camera frame), bearing
-            yaw/pitch (start frame), head yaw/pitch (where the lens points), extrapolated
-            flag, orientation lag in ms.
+            yaw/pitch (start frame), head yaw/pitch and quaternion (where the lens
+            points), extrapolated flag, orientation lag in ms.
     """
     u, v = (box_xyxy[0] + box_xyxy[2]) / 2, (box_xyxy[1] + box_xyxy[3]) / 2
     x, y, round_trip = undistort(model, u, v)
@@ -180,6 +180,7 @@ def box_bearing(model: CameraModel, box_xyxy: Sequence[float], orientation: dict
     head_yaw, head_pitch = angles(rotate(context["quaternion_wxyz"], (0.0, 0.0, 1.0)))
     return {**result, "status": "ready", "yaw_deg": yaw, "pitch_deg": pitch,
             "head_yaw_deg": head_yaw, "head_pitch_deg": head_pitch,
+            "head_quaternion_wxyz": list(context["quaternion_wxyz"]),
             "orientation_lag_ms": (frame_s - context["sample_monotonic_s"]) * 1000,
             "reference_monotonic_s": context["reference_monotonic_s"]}
 

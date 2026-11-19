@@ -1,5 +1,14 @@
 # EdgeXR technique and AP evidence register
 
+2026-11-20 — **Step 1 bearing trial 01: fails fixed criteria; yaw behaviour sound.**
+[Results](STEP1_BEARING_RESULTS_01.md), [summary](../benchmarks/results/bearing-trial-01.json).
+Bottle bearing yaw ≈ −29.6° while image yaw changed 13–42°; still spread 1.6°,
+return within 0.8°. Failed yaw/pitch spread (51.5°/22.0°) from four oversized false
+"bottle" boxes and edge-cut boxes; post hoc, plausible unclipped boxes give
+2.2°/2.9° but only 14 samples. AP: turn-direction offset suggests ~90–100 ms
+frame-to-gyro delay (tentative); in-program pairing lag median 5.5 ms. Trial 02
+uses filters fixed beforehand, quaternion logging and label-based placement.
+
 2026-11-20 — **Step 1 detection bearings implemented; Pi trial pending.**
 Source [`spatial/bearing.py`](../src/spatial/bearing.py), wiring in `app.live_preview`
 (`--bearings`) and `vision.live_detector`; tests `test_bearing.py`,

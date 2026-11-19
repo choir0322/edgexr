@@ -37,7 +37,9 @@ AP/systems learning; each step names the processor question it adds. See
   covered by detected board points as extrapolated.
 - [x] 2026-11-20 Step 1 implemented: `spatial.bearing`, `--bearings`, detector frame/gyro
   pairing, browser label, `configs/camera_calibration.json`; 240 unit tests pass on the Mac.
-- [ ] Step 1 Pi trial ([procedure and fixed criteria](../../STEP1_BEARING_TRIAL.md)).
+- [x] 2026-11-20 Step 1 trial 01: failed fixed criteria (false positives, edge-cut boxes,
+  placement); yaw bearings stable ([results](../../STEP1_BEARING_RESULTS_01.md)).
+- [ ] Step 1 trial 02 with filters fixed beforehand ([procedure](../../STEP1_BEARING_TRIAL.md#trial-02-current)).
 - [ ] Step 2: object memory keyed by bearing, prediction and matched/missing/moved.
 - [ ] Step 3: drift correction from phase-correlation shift and ORB view anchors.
 - [ ] Step 4: monocular depth CNN for near/far (needs approval of a specific model).
