@@ -41,7 +41,8 @@ AP/systems learning; each step names the processor question it adds. See
   placement); yaw bearings stable ([results](../../STEP1_BEARING_RESULTS_01.md)).
 - [x] 2026-11-20 Step 1 trial 02 passes ([results](../../STEP1_BEARING_RESULTS_02.md)); limits: drift ~3°
   over setup minutes, few moving samples, false detections. Step 1 complete.
-- [ ] Step 2: object memory keyed by bearing, prediction and matched/missing/moved.
+- [x] 2026-11-20 Step 2 implemented (`spatial.object_map`, `--object-memory`); 254 unit tests pass.
+- [ ] Step 2 Pi trial: stay / removed / moved ([procedure and fixed expectations](../../STEP2_OBJECT_TRIAL.md)).
 - [ ] Step 3: drift correction from phase-correlation shift and ORB view anchors.
 - [ ] Step 4: monocular depth CNN for near/far (needs approval of a specific model).
 - [ ] Step 5: whole-program per-stage Pi profile (CPU, latency, memory, temperature).

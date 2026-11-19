@@ -99,21 +99,29 @@ class Step:
     due_s: float
 
 
-def build_steps() -> list[Step]:
+def build_steps(hold_away_s: float = 0.0, pan_only: bool = False) -> list[Step]:
     """Make sequential pan and tilt paths: 0 → −20 → +20 → 0.
 
+    Args:
+        hold_away_s (float): Extra seconds to hold at pan +20° before returning
+            (0 keeps the original schedule); used to change the scene out of view.
+        pan_only (bool): Skip the tilt sweep (object-memory trials).
     Returns:
         list[Step]: 160 one-degree commands, with 2 s settling between axes.
     """
+    if not math.isfinite(hold_away_s) or not 0 <= hold_away_s <= 30:
+        raise ValueError("Hold must be between 0 and 30 seconds")
     steps: list[Step] = []
     due = 0.0
-    for axis in ("pan", "tilt"):
+    for axis in (("pan",) if pan_only else ("pan", "tilt")):
         current = 0
         for target in (-LIMIT_DEG, LIMIT_DEG, 0):
             while current != target:
                 current += 1 if target > current else -1
                 due += STEP_SECONDS
                 steps.append(Step(axis, current, due))
+            if axis == "pan" and target == LIMIT_DEG:
+                due += hold_away_s
         due += 2.0
     return steps
 
@@ -314,6 +322,9 @@ def main() -> int:
     parser.add_argument("--confirm-clearance", action="store_true", help="both axes and cables are clear through ±20°")
     parser.add_argument("--output", type=Path,
                         help="new recordings/ directory for servo commands and sampled non-image preview telemetry")
+    parser.add_argument("--pan-only", action="store_true", help="skip the tilt sweep (object-memory trials)")
+    parser.add_argument("--hold-away-seconds", type=float, default=0,
+                        help="0..30 s pause at pan +20° (head turned away) to change the scene; step-2 trials")
     parser.add_argument("--still-seconds", type=float, default=0,
                         help="0..60 s stationary evidence before sweeps; use 30 for the one-run direction check")
     args = parser.parse_args()
@@ -321,10 +332,15 @@ def main() -> int:
         required_checkpoints = checkpoint_names(args.still_seconds)
     except ValueError as error:
         parser.error(str(error))
-    steps = build_steps()
+    try:
+        steps = build_steps(args.hold_away_seconds, args.pan_only)
+    except ValueError as error:
+        parser.error(str(error))
     pan_return = final_pan_step(steps)
-    print("Pan 0 → −20 → +20 → 0, then tilt 0 → −20 → +20 → 0; "
-          f"{len(steps)} one-degree commands at ≤10 commanded °/s.", flush=True)
+    hold_step = next(step for step in steps if step.axis == "pan" and step.angle_deg == LIMIT_DEG)
+    path = "Pan 0 → −20 → +20 → 0" + ("" if args.pan_only else ", then tilt 0 → −20 → +20 → 0")
+    hold = f"; holds {args.hold_away_seconds:g} s at pan +20°" if args.hold_away_seconds else ""
+    print(f"{path}{hold}; {len(steps)} one-degree commands at ≤10 commanded °/s.", flush=True)
     if not args.execute:
         print("No motors commanded. Add --execute and both confirmation flags for the real run.")
         return 0
@@ -383,6 +399,9 @@ def main() -> int:
             def after_step(step: Step, actual: float) -> None:
                 """Use the existing pan-to-tilt pause for a settled pan image."""
                 save_command(step.axis, step.angle_deg, actual)
+                if step is hold_step and args.hold_away_seconds:
+                    print(f"Head turned away: holding {args.hold_away_seconds:g} s. "
+                          "Change the scene now (remove or move the object), then step out of view.", flush=True)
                 if step is pan_return:
                     time.sleep(1.4)
                     save_checkpoint("after_pan")
@@ -408,13 +427,13 @@ def main() -> int:
                 print(f"Stationary baseline: {args.still_seconds:g} seconds. Do not touch the rig; pan starts automatically afterward.", flush=True)
                 time.sleep(args.still_seconds)
             save_checkpoint("before_pan")
-            print("Starting pan, then tilt. Keep the base fixed.", flush=True)
+            print("Starting pan" + ("" if args.pan_only else ", then tilt") + ". Keep the base fixed.", flush=True)
             count = run_steps(steps, servos, on_command=after_step)
             print("Final 0° command sent; logging two seconds of settled orientation.", flush=True)
             time.sleep(FINAL_SETTLE_SECONDS)
             save_checkpoint("after_tilt")
             status = "complete"
-            print(f"Completed {count} commands; pan and tilt returned to commanded 0°.", flush=True)
+            print(f"Completed {count} commands; returned to commanded 0°.", flush=True)
             exit_code = 0
     except KeyboardInterrupt:
         failure = "interrupted"

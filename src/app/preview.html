@@ -100,8 +100,13 @@ nav a { color: #68d6bb; }
 <main>
 <h1>EdgeXR · Camera motion</h1>
 <p>Live image movement at 320 × 180, with optional IMU readings and object detection.</p>
-<nav><a href="#session-view-map">Session View Map</a> · <a href="#image">Camera preview</a></nav>
+<nav><a href="#object-memory-panel">Object memory</a> · <a href="#session-view-map">Session View Map</a> · <a href="#image">Camera preview</a></nav>
 <div id="status" role="status" aria-live="polite">Connecting…</div>
+<section id="object-memory-panel" aria-labelledby="object-memory-title">
+<h2 id="object-memory-title">Object memory</h2>
+<small>Objects remembered by bearing (direction from the starting head pose). Gyro drift is not corrected.</small>
+<pre id="object-memory">Object memory is off. Restart the Pi preview with --bearings and --object-memory.</pre>
+</section>
 <section id="session-view-map" aria-labelledby="view-map-title">
 <h2 id="view-map-title">Session View Map</h2>
 <small>Preview UI: view-map-2 · Estimated viewing directions, not positions. Gyro drift is not corrected.</small>
@@ -289,7 +294,36 @@ function renderEnrollments(receipts) {
  * @param {FrameSnapshot} data Snapshot from the existing Pi HTTP route.
  * @returns {void} Updates canvases/text only; no inference or fusion runs here.
  */
+/**
+ * Text summary of remembered objects and their latest events (step 2).
+ * @param {Object} map ``object_map`` snapshot: status, objects, events, update timing.
+ * @returns {string} Lines for the object-memory panel.
+ */
+function objectMemoryText(map) {
+  if (!map || map.status === 'off') return 'Object memory is off. Restart the Pi preview with --bearings and --object-memory.';
+  const deg = (v) => `${v < 0 ? '−' : '+'}${Math.abs(v).toFixed(1)}°`;
+  const describe = {
+    seen: () => 'seen', tentative: () => 'tentative (needs a second sighting)',
+    out_of_view: (o) => `out of view · remembered ${o.unseen_s.toFixed(0)} s`,
+    expected: (o) => o.predicted_px ? `expected at (${o.predicted_px.map((v) => v.toFixed(0)).join(', ')}) · not seen yet` : 'expected',
+    missing: () => 'MISSING from its remembered direction',
+  };
+  const lines = map.objects.length ? map.objects.map((o) =>
+    `#${o.id} ${o.label.padEnd(8)} ${deg(o.yaw_deg)} / ${deg(o.pitch_deg)}  ${(describe[o.state] || (() => o.state))(o)}`)
+    : ['No objects remembered yet.'];
+  if (map.status !== 'ready') lines.push(`Paused: ${map.status.replace(/_/g, ' ')}`);
+  const events = map.events.slice(-6).reverse().map((e) => {
+    const extra = e.event === 'moved' ? ` by ${e.moved_deg.toFixed(1)}° (from ${deg(e.from_yaw_deg)})`
+      : e.event === 'confirmed_return' && e.prediction_error_px != null ? ` (prediction off by ${e.prediction_error_px.toFixed(0)} px)` : '';
+    return `  ${e.event.replace('_', ' ')} · #${e.id} ${e.label} at ${deg(e.yaw_deg)}${extra}`;
+  });
+  if (events.length) lines.push('', 'Latest events (newest first):', ...events);
+  if (map.update_ms_mean != null) lines.push('', `Update cost: ${map.update_ms_last.toFixed(2)} ms last, ${map.update_ms_max.toFixed(2)} ms max over recent updates`);
+  return lines.join('\n');
+}
+
 function render(data) {
+  document.getElementById('object-memory').textContent = objectMemoryText(data.object_map);
   const scene = data.scene || {status: 'off'};
   const row = scene.result;
   const recording = scene.recording;

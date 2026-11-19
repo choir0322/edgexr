@@ -36,6 +36,35 @@ class ServoOrientationDemoTests(unittest.TestCase):
             self.assertLessEqual(max(abs(step.angle_deg) for step in segment), LIMIT_DEG)
         self.assertGreaterEqual(steps[80].due_s - steps[79].due_s, 2.1 - 1e-9)
 
+    def test_hold_away_only_delays_the_return_from_plus_twenty(self) -> None:
+        """A hold adds time after pan reaches +20° without changing angles or spacing rules.
+
+        Args: None.
+        Returns: None.
+        """
+        plain, held = build_steps(), build_steps(8.0)
+        self.assertEqual([s.angle_deg for s in plain], [s.angle_deg for s in held])
+        hold_index = next(i for i, s in enumerate(held) if s.axis == "pan" and s.angle_deg == LIMIT_DEG)
+        self.assertAlmostEqual(held[hold_index + 1].due_s - held[hold_index].due_s, 8.1, places=9)
+        self.assertAlmostEqual(held[-1].due_s - plain[-1].due_s, 8.0, places=9)
+        def no_wait(seconds: float) -> None:
+            """Skip real sleeping in this hardware-free check.
+
+            Args:
+                seconds (float): Requested pause, ignored.
+            Returns:
+                None: Returns immediately.
+            """
+
+        ticks = iter([i * 0.01 for i in range(100000)])
+        self.assertEqual(run_steps(held[: hold_index + 2], {"pan": FakeServo()},
+                                   clock=ticks.__next__, pause=no_wait), hold_index + 2)
+        with self.assertRaises(ValueError):
+            build_steps(31)
+        pan_only = build_steps(8.0, pan_only=True)
+        self.assertEqual(len(pan_only), 80)
+        self.assertEqual({s.axis for s in pan_only}, {"pan"})
+
     def test_pan_checkpoint_only_follows_final_zero_command(self) -> None:
         """Crossing 0° mid-sweep must not trigger the after-pan checkpoint."""
         steps = build_steps()

@@ -144,12 +144,12 @@
 
   <section class="lesson" aria-labelledby="away-title">
     <div class="eyebrow">Why the ID is lost when the head looks away</div>
-    <h2 id="away-title">A tracker remembers about one second; object memory must remember a direction <span class="tag plan">planned · step 2</span></h2>
+    <h2 id="away-title">A tracker remembers about one second; object memory must remember a direction <span class="tag plan">built · Pi trial pending</span></h2>
     <p>Detection runs about twice per second. When the head pans away from a bottle, its box simply stops appearing. After two missed updates (about one second) the tracker forgets the ID, so when the head returns the same bottle gets a new number. The tracker also works in image coordinates: when the head turns, every box slides across the image even though nothing in the room moved (the optional <a href="MOTION_AWARE_TRACKING.md">motion-aware matching</a> compensates for small shifts using image motion).</p>
     <div class="lesson-panel">
       <svg id="lookaway" viewBox="0 0 860 172" role="img" aria-label="Timeline: the tracker forgets the bottle and gives it a new ID; planned object memory keeps it by direction and confirms it on return"></svg>
     </div>
-    <p>Step 2 stores each object by its <strong>bearing</strong> (direction from the fixed base, see <a href="camera-geometry.html">Pixel → direction</a>) instead of its pixel box, for minutes rather than one second. Before the bottle comes back into view, the program can say where it should appear, then confirm it, report it missing or report it moved.</p>
+    <p>Step 2 (now in the preview as <code>--object-memory</code>, <a href="../../src/spatial/object_map.py">spatial/object_map.py</a>) stores each object by its <strong>bearing</strong> (direction from the fixed base, see <a href="camera-geometry.html">Pixel → direction</a>) instead of its pixel box, for minutes rather than one second. Before the bottle comes back into view, the program can say where it should appear, then confirm it, report it missing or report it moved.</p>
   </section>
 
   <footer>This is an offline teaching simulation, not live inference. The example boxes and IDs are illustrative.

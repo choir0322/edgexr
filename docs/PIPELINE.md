@@ -1,5 +1,18 @@
 # Current live pipeline
 
+2026-11-20: **opt-in object memory (step 2)**. With `--bearings --object-memory`,
+the detector worker passes each result's bearings and paired orientation to
+`spatial.object_map.ObjectMap.update`: drop boxes wider than 40% of the image →
+predict each remembered object's in-view pixel from the frame's quaternion (out of
+view beyond the lens model's 50° fold) → match by class within 6° (closest first)
+→ events new (after two sightings) / confirmed_return / missing (three in-view
+misses ≈1.5 s) / seen_again / moved (missing plus a confirmed sighting elsewhere,
+or a same-class object first seen after it was last seen). At most 32 objects;
+update time recorded. `/api/telemetry` carries `object_map`; the browser shows a
+text panel. Optional `--object-evidence` saves up to 20 detector frames that
+contain two boxes of one class. No distance, appearance matching or drift
+correction yet.
+
 2026-11-20: **opt-in detection bearings (step 1)**. With `--detect
 --relative-orientation --bearings configs/camera_calibration.json`, capture pairs
 each 720p detector frame with the newest preceding gyro orientation (≤200 ms,
@@ -287,6 +300,7 @@ flowchart TD
     TRACK["BasicTracker.update in detector worker<br/>Same-class raw/predicted IoU; session-local IDs"]
     BEARING["Optional --bearings: attach_bearings<br/>Box centre → undistorted ray → × frame quaternion<br/>Start-frame yaw/pitch; extrapolated/unknown flags"]
     CALIB["configs/camera_calibration.json<br/>Joint 02+03 fit, k3 = 0, 40-px support grid"]
+    OBJMAP["Optional --object-memory: ObjectMap.update<br/>Predict in-view pixels; match class within 6°<br/>new / confirmed_return / missing / moved"]
     DESC["Optional --reidentify<br/>8x8 mean-centered grayscale crop descriptor<br/>1280x720 source box; no raw crop retained"]
     MEMORY["RetiredObjectMemory in detector worker<br/>Up to 32 IDs, at most 10 s since last sighting<br/>Gallery cosine score + ambiguity abstain"]
     RETRY["Optional --reid-retry-seconds<br/>Provisional new ID ?; retry on later detector update<br/>Restore ↺ or confirm new ID at deadline"]
@@ -329,6 +343,7 @@ flowchart TD
     RESULT --> STATE
     TRACK --> STATE
     TRACK -. "--bearings" .-> BEARING --> STATE
+    BEARING -. "--object-memory, with frame quaternion" .-> OBJMAP --> STATE
     CALIB -. "loaded once at startup" .-> BEARING
     ORIENT -. "orientation_at(frame receipt), ≤200 ms preceding" .-> BEARING
     BIAS --> STATE

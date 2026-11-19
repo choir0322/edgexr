@@ -1,5 +1,18 @@
 # EdgeXR technique and AP evidence register
 
+2026-11-20 — **Step 2 object memory implemented; Pi trial pending.**
+Source [`spatial/object_map.py`](../src/spatial/object_map.py); `--object-memory`,
+`--object-evidence`; servo `--pan-only --hold-away-seconds`; tests
+`test_object_map.py`, `test_object_trial_analysis.py`; [trial](STEP2_OBJECT_TRIAL.md).
+Technique: class + bearing memory, in-view prediction through the calibration,
+greedy 6° matching, two-sighting confirmation, missing after three in-view misses,
+moved by confirmation elsewhere or by later-appearing same-class object. Found
+while testing: the working lens model folds at 50.4° off-axis, so prediction treats
+larger angles as out of view. Earlier check of the trial-02 false box: same frame
+and inference as the real box; 0 MJPEG decode errors in ~24,000 recorded frames, so
+no evidence of stale/mixed frames. AP question: per-update cost versus memory size
+(reported live); Pi values not measured yet.
+
 2026-11-20 — **Step 1 bearing trial 02: passes fixed criteria; step 1 measured.**
 [Results](STEP1_BEARING_RESULTS_02.md), [summary](../benchmarks/results/bearing-trial-02.json).
 59 bearings; yaw −31.7° (spread 2.6°) while image yaw ranged −15° to −36°; pitch

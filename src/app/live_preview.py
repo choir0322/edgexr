@@ -35,6 +35,7 @@ from vision.live_detector import (
 from vision.motion_history import MotionHistory
 from vision.reid_trial import ReidTrialRecorder
 from spatial.bearing import load_camera_model
+from spatial.object_map import ObjectMap
 
 
 def read_frame(stream: BinaryIO, size: int = WIDTH * HEIGHT) -> bytes | None:
@@ -141,6 +142,9 @@ class State:
         self.detection_orientation = None
         # Optional calibration for detection bearings (step 1); None keeps boxes unchanged.
         self.camera_model = None
+        # Optional object memory by direction (step 2) and duplicate-box evidence frames.
+        self.object_map = None
+        self.object_evidence = None
         self.scene = LiveScene(scene_memory)
         self.scene_frame = None
         self.full_frames = detection_enabled or scene_memory
@@ -320,6 +324,8 @@ class State:
             result["imu"] = self.imu.snapshot(now)
             result["detector"] = self.detector.snapshot(now, status == "live")
             result["scene"] = self.scene.snapshot(now, status == "live")
+            result["object_map"] = (self.object_map.snapshot(now) if self.object_map is not None
+                                    else {"status": "off"})
             return result
 
 
@@ -808,6 +814,11 @@ def main() -> None:
     parser.add_argument("--bearings", type=Path,
                         help="add start-frame yaw/pitch bearings to detections using this calibration "
                              "JSON (e.g. configs/camera_calibration.json); requires --detect --relative-orientation")
+    parser.add_argument("--object-memory", action="store_true",
+                        help="remember detected objects by bearing and report new/confirmed/missing/moved; requires --bearings")
+    parser.add_argument("--object-evidence", type=Path,
+                        help="new recordings/ directory: save up to 20 detector frames that contain two or more "
+                             "boxes of one class; requires --object-memory")
     parser.add_argument("--scene-memory", action="store_true",
                         help="explicit visual view memory at target 1 Hz; no gyro correction")
     parser.add_argument("--scene-exclude-people", action="store_true",
@@ -850,6 +861,14 @@ def main() -> None:
         parser.error("--relative-orientation requires --imu and --camera-axis-basis")
     if args.bearings is not None and (not args.detect or not args.relative_orientation):
         parser.error("--bearings requires --detect and --relative-orientation")
+    if args.object_memory and args.bearings is None:
+        parser.error("--object-memory requires --bearings")
+    if args.object_evidence is not None:
+        evidence_path = args.object_evidence.resolve()
+        recordings_root = (Path.cwd() / "recordings").resolve()
+        if (not args.object_memory or not evidence_path.is_relative_to(recordings_root)
+                or evidence_path == recordings_root or evidence_path.exists()):
+            parser.error("--object-evidence requires --object-memory and a new directory under recordings/")
     if args.reidentify and not args.detect:
         parser.error("--reidentify requires --detect")
     if not math.isfinite(args.reid_retry_seconds) or not 0 <= args.reid_retry_seconds <= 5:
@@ -904,6 +923,11 @@ def main() -> None:
             state.camera_model = load_camera_model(args.bearings)
         except (OSError, ValueError) as error:
             parser.error(f"Invalid --bearings calibration: {error}")
+    if args.object_memory:
+        state.object_map = ObjectMap(state.camera_model)
+    if args.object_evidence is not None:
+        args.object_evidence.mkdir(parents=True)
+        state.object_evidence = {"folder": args.object_evidence, "saved": 0, "limit": 20}
     process = None
     server = None
     recorder = None

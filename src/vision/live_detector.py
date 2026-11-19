@@ -243,6 +243,35 @@ class CpuDetector:
         )
 
 
+def save_duplicate_evidence(evidence: dict | None, frame: Frame, boxes: list[Record]) -> bool:
+    """Save a detector frame as PNG when one class has two or more boxes (bounded).
+
+    Args:
+        evidence (dict | None): {"folder": Path, "saved": int, "limit": int} or None.
+        frame (Frame): Sequence, receipt seconds and 1280x720 grayscale bytes.
+        boxes (list[Record]): Detections for that exact frame.
+    Returns:
+        bool: True if a PNG and its JSON were written.
+    """
+    if evidence is None or evidence["saved"] >= evidence["limit"]:
+        return False
+    labels = [box.get("label") for box in boxes]
+    if not any(labels.count(label) > 1 for label in set(labels)):
+        return False
+    import json
+    import cv2 as cv
+    import numpy as np
+
+    gray = np.frombuffer(frame[2], dtype=np.uint8).reshape(SOURCE_HEIGHT, SOURCE_WIDTH)
+    stem = evidence["folder"] / f"frame-{frame[0]:08d}"
+    if not cv.imwrite(str(stem.with_suffix(".png")), gray):
+        return False
+    stem.with_suffix(".json").write_text(json.dumps(
+        {"sequence": frame[0], "receipt_monotonic_s": frame[1], "boxes": boxes}, default=str) + "\n")
+    evidence["saved"] += 1
+    return True
+
+
 def detect_latest(
     state: State,
     factory: Callable[[], Callable[[bytes], list[Record]]],
@@ -360,6 +389,12 @@ def detect_latest(
             camera_model = getattr(state, "camera_model", None)
             if camera_model is not None:
                 identified = attach_bearings(identified, camera_model, orientation, frame[1])
+            # Step 2: update the object memory and keep rare duplicate-class frames
+            # (two boxes of one class) as evidence for checking false detections.
+            object_map = getattr(state, "object_map", None)
+            if object_map is not None:
+                object_map.update(identified, orientation, frame[1])
+                save_duplicate_evidence(getattr(state, "object_evidence", None), frame, identified)
             state.detector.publish(
                 frame, identified, (finished - started) * 1000, finished,
                 tracker.last_stats,

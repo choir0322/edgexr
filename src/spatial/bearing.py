@@ -85,6 +85,28 @@ def distort(model: CameraModel, x: float, y: float) -> tuple[float, float]:
     return model.fx * xd + model.cx, model.fy * yd + model.cy
 
 
+def max_ideal_radius(model: CameraModel) -> float:
+    """Largest ideal normalized radius before the radial polynomial folds back.
+
+    Beyond it, distort() maps directions far outside the view back into the image,
+    so callers must treat larger radii as out of view rather than project them.
+
+    Args:
+        model (CameraModel): Calibration.
+    Returns:
+        float: Radius (tan of the off-axis angle); 10 if no fold before that.
+    """
+    previous = 0.0
+    for step in range(1, 10001):
+        r = step * 0.001
+        r2 = r * r
+        distorted = r * (1 + model.k1 * r2 + model.k2 * r2 * r2 + model.k3 * r2 * r2 * r2)
+        if distorted <= previous:
+            return r - 0.001
+        previous = distorted
+    return 10.0
+
+
 def undistort(model: CameraModel, u: float, v: float, iterations: int = 20) -> tuple[float, float, float]:
     """Invert the lens model by fixed-point iteration (OpenCV's method, more steps).
 
