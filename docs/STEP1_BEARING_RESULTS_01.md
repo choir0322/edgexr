@@ -40,7 +40,7 @@ measured, not from the gyro/calibration arithmetic. Summary:
 
 ## Changes for trial 02 (decided before running it)
 
-1. Analysis uses `--max-box-width-fraction 0.4 --exclude-edge-clipped`; the five
+1. Analysis uses `--max-box-width-fraction 0.4 --exclude-edge-clipped`; the
    criteria are unchanged.
 2. Each bearing now logs the head quaternion, so directions can be re-expressed
    exactly from the centred head.

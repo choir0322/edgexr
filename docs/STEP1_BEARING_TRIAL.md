@@ -120,5 +120,5 @@ Same commands as above with three differences.
      /Users/ryanchoi/Desktop/
    ```
 
-Analysis (fixed before trial 02): the same five criteria, computed with
+Analysis (fixed before trial 02): the same criteria, computed with
 `--max-box-width-fraction 0.4 --exclude-edge-clipped`.
