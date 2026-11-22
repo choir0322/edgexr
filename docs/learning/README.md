@@ -49,9 +49,9 @@ Code or on GitHub. In VS Code, open a linked file and use symbol search
    changing the workers ([Pi procedure](../AP_BASELINE.md)).
 7. [Spatial progress and systems log](SPATIAL_PROGRESS_AND_SYSTEMS.md): chronological changes.
 
-For background reading, the [reading plan](CSAPP_READING_PLAN.md) (CS:APP and
-Harris & Harris) finishes the pre-CPU reading by the end of December 2026 and
-schedules the remaining chapters next to the FPGA and driver work.
+The [integrated learning plan](CSAPP_READING_PLAN.md) pairs each week's CS:APP or
+Harris & Harris reading with a hands-on task on EdgeXR, the FPGA or the Pi, from
+November 2026 to June 2027 (ESP32-P4 migration after that).
 
 [Code conventions](CODE_CONVENTIONS.md) explains the comment, type and docstring
 notation. [The live pipeline diagram](../PIPELINE.md) is the compact reference for

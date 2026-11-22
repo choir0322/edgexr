@@ -43,9 +43,9 @@ AP/systems learning; each step names the processor question it adds. See
   over setup minutes, few moving samples, false detections. Step 1 complete.
 - [x] 2026-11-20 Step 2 implemented (`spatial.object_map`, `--object-memory`); 254 unit tests pass.
 - [ ] Step 2 Pi trial: stay / removed / moved ([procedure and fixed expectations](../../STEP2_OBJECT_TRIAL.md)).
-- [ ] Step 3: drift correction from phase-correlation shift and ORB view anchors.
-- [ ] Step 4: monocular depth CNN for near/far (needs approval of a specific model).
-- [ ] Step 5: whole-program per-stage Pi profile (CPU, latency, memory, temperature).
+- [ ] Step 3: drift correction from phase-correlation shift and ORB view anchors (target: implement week of 2026-11-30, Pi trial week of 2026-12-14).
+- [ ] Step 4: monocular depth CNN for near/far (needs approval of a specific model). **Optional since 2026-11-22**: off the critical path; first item cut if time runs short.
+- [ ] Step 5: whole-program per-stage Pi profile (CPU, latency, memory, temperature); target week of 2026-12-28, then freeze EdgeXR v1 on 2026-12-31.
 - [ ] Review/update `docs/PIPELINE.md` and the relevant `docs/learning/` guide each step.
 
 ## Plan of work
@@ -106,6 +106,10 @@ recalibrated with the board reaching the corners (board centres covered only
 bottle about 20° or more off centre.
 
 ## Decision log
+
+2026-11-22: Schedule aligned with the [integrated learning plan](../../learning/CSAPP_READING_PLAN.md):
+steps 2, 3 and 5 finish in December with EdgeXR v1 frozen on 2026-12-31; step 4 is optional.
+Step 5's profile becomes the baseline for the C/NEON matcher and the FPGA accelerator.
 
 2026-11-19: Deviation from the recalibration acceptance plan, recorded explicitly.
 No recording met the preset corner-coverage checks. Rather than a fourth capture,
