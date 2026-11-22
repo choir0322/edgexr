@@ -141,3 +141,52 @@ No semantic path is running yet. Sources supporting the concepts:
 - [DynaSLAM](https://arxiv.org/abs/1806.05620): research precedent for excluding
   dynamic content; its segmentation/geometry pipeline is more capable than
   simple MobileNet-SSD box masks, and its results do not transfer to this Pi.
+
+## Added goal: reduced EdgeXR on the ESP32-P4-Nano
+
+**User direction, 2026-11-22** ([decision](decisions/2026-11-22-esp32-p4-migration-goal.md)):
+add a migration of the spatial-vision program from the Raspberry Pi 4 to the
+ESP32-P4-Nano. This is **added to** the existing plan; every earlier goal and date
+above and in the [reading plan](learning/CSAPP_READING_PLAN.md) is unchanged.
+Status: **planned**; nothing is built, bought or wired.
+
+The P4 has no Linux, OpenCV or Python, so this is a C/C++ rewrite on ESP-IDF
+(FreeRTOS) of a reduced "EdgeXR-lite", checked against the Pi version's recorded
+results. Board specifications below are datasheet values to verify on the board.
+
+| When | Phase | What gets built | Evidence / processor question |
+|---|---|---|---|
+| March 2027 (optional, ~2 days, alongside the planned matcher work) | P0 probe | Compile the same C Hamming matcher for the P4; run one Espressif 8-bit detector | Same task on Pi vs P4: time per call, memory use; sets realistic P4 targets before committing |
+| July 2027 | P1 bring-up | ESP-IDF on the Mac, logging over UART, FreeRTOS tasks, cycle-counter timing | Verified clock, memory sizes and timer resolution |
+| July | P2 sensors and motors | SH3001 IMU over I2C and servo PWM wired directly to the P4 (Fusion HAT is Pi-only; reviewed wiring procedure first); gyro integration and quaternion in C | Same orientation tests as the Pi (unit tests ported); read rate, CPU per read |
+| July–Aug | P3 camera | Try the OV9281 through the P4's USB 2.0 host + hardware JPEG decoder; fallback: a MIPI-CSI camera (purchase needs approval) | Frame rate, frame-to-gyro delay (compare with the Pi's ~0.1 s), buffer placement in SRAM vs PSRAM |
+| Aug | P4 vision kernels | Phase-correlation motion (Espressif FFT), a lighter ORB-style matcher reusing the C matcher | Same outputs as the Pi on recorded frames (golden-data tests); time per frame |
+| Aug–Sep | P5 detector | 8-bit quantized model: convert MobileNet-SSD, or use an Espressif model (model download needs approval) | Accuracy versus the Pi on the same images; latency; memory |
+| Sep | P6 spatial layer | Bearings and object memory ported from `spatial.bearing` / `spatial.object_map` (calibration reused, or redone for a new camera) | Step-1 and step-2 trials repeated on the P4 with the same criteria |
+| Sep–Oct | P7 integration and profile | Tasks across both cores; DMA; one documented run | Per-task CPU, PSRAM bandwidth, latency tails; Pi vs P4 comparison table (energy if measurable) |
+| Oct (optional) | P8 FPGA link | Tang Primer 20K accelerator attached to the P4 (SPI or the P4's parallel interface) | Same accelerator, two hosts: transfer cost and end-to-end time compared with the Pi link |
+
+**Acceptance (EdgeXR-lite):** step-1 bearing and step-2 object-memory trials pass
+on the P4 with the same fixed criteria as on the Pi; detector rate and all timings
+measured, not estimated; a written Pi-versus-P4 comparison. **Not in scope:**
+Linux on the P4, matching the Pi's full detector accuracy, or replacing the Pi
+version.
+
+**What this goal teaches** (beyond the earlier goals):
+
+- **Embedded systems without an operating system's help:** memory maps, interrupts,
+  DMA, FreeRTOS task priorities and two-core scheduling, compared with Linux.
+- **Designing for scarce memory:** 768 KB of fast SRAM plus slower PSRAM; deciding
+  where each buffer lives, tiling and streaming. CS:APP Chapter 6 applied under
+  pressure.
+- **Porting with proof:** turning Python/OpenCV into C, fixed versus floating point,
+  and golden-data tests showing the port matches the original.
+- **Deploying quantized models:** 8-bit conversion, calibration data, operator
+  support and the accuracy-versus-speed trade-off on real hardware.
+- **A commercial RISC-V chip next to your own:** what the P4's extra vector and AI
+  instructions buy, compared with your RV32I core.
+- **Fixed-function hardware inside a chip:** the P4's JPEG codec, image processor and
+  scaler compared with your own FPGA accelerator; when dedicated hardware is worth it.
+- **Hardware bring-up:** datasheets, logic levels, I2C, USB host and MIPI-CSI cameras.
+- **Choosing the right processor:** application processor versus microcontroller
+  versus FPGA, measured on the same workload.

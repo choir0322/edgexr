@@ -63,3 +63,16 @@ the systems section of your project write-up.
 
 The March–June chapters (CS:APP 8–10 and 12) are the background for the
 user-written [Pi ↔ Tang Primer 20K link driver](../SYSTEMS_AND_AP_EXTENSIONS.md#user-written-pi--tang-primer-20k-link-driver).
+
+## Added after June 2027: ESP32-P4 migration reading
+
+Added 2026-11-22 for the [ESP32-P4 migration goal](../SYSTEMS_AND_AP_EXTENSIONS.md#added-goal-reduced-edgexr-on-the-esp32-p4-nano);
+everything above is unchanged. Read each item just before its phase:
+
+| Phase | Read |
+|---|---|
+| P1 bring-up (July) | ESP-IDF Programming Guide: getting started, build system, logging; FreeRTOS basics (tasks, queues, priorities; *Mastering the FreeRTOS Real Time Kernel*) |
+| P2–P3 (July–Aug) | ESP32-P4 Technical Reference Manual: memory map, caches and PSRAM, DMA, I2C, USB host, MIPI-CSI/ISP, JPEG codec (selected sections) |
+| P4 (Aug) | ESP-DSP library (FFT); revisit CS:APP Ch 5 and Ch 6 for the C kernels |
+| P5 (Aug–Sep) | ESP-DL documentation: 8-bit quantization and model conversion |
+| P7 (Sep–Oct) | ESP-IDF performance and memory-placement guides; revisit CS:APP Ch 12 for two-core concurrency |
